@@ -9,6 +9,8 @@ import * as db from "./db";
 import { storagePut } from "./storage";
 import { invokeLLM } from "./_core/llm";
 import { transcribeAudio } from "./_core/voiceTranscription";
+import * as pdfService from "./pdfService";
+import * as cloudStorage from "./cloudStorageService";
 
 // Subscription tier limits
 const TIER_LIMITS = {
@@ -804,6 +806,523 @@ Be helpful, concise, and professional. If a user asks about a specific file oper
       }))
       .query(async ({ ctx, input }) => {
         return await db.getUserUsageStats(ctx.user.id, input.startDate, input.endDate);
+      }),
+  }),
+
+  // Real PDF Processing
+  pdf: router({
+    merge: protectedProcedure
+      .input(z.object({
+        fileUrls: z.array(z.string().url()),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const user = await db.getUserById(ctx.user.id);
+        if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+        await checkConversionLimit(ctx.user.id, user.subscriptionTier);
+        
+        // Download all PDFs
+        const pdfBuffers: Buffer[] = [];
+        for (const url of input.fileUrls) {
+          const response = await fetch(url);
+          const arrayBuffer = await response.arrayBuffer();
+          pdfBuffers.push(Buffer.from(arrayBuffer));
+        }
+        
+        // Merge PDFs
+        const mergedPdf = await pdfService.mergePdfs({ pdfBuffers });
+        
+        // Upload result to S3
+        const fileKey = `${ctx.user.id}/merged/${nanoid()}.pdf`;
+        const { url } = await storagePut(fileKey, mergedPdf, "application/pdf");
+        
+        // Create conversion record
+        await db.createConversion({
+          userId: ctx.user.id,
+          sourceFilename: `merged_${input.fileUrls.length}_files.pdf`,
+          sourceFormat: "pdf",
+          sourceSize: pdfBuffers.reduce((sum, b) => sum + b.length, 0),
+          outputFormat: "pdf",
+          conversionType: "merge",
+          status: "completed",
+          
+          completedAt: new Date(),
+        });
+        
+        await db.incrementUserConversions(ctx.user.id);
+        
+        return { url, size: mergedPdf.length };
+      }),
+      
+    split: protectedProcedure
+      .input(z.object({
+        fileUrl: z.string().url(),
+        ranges: z.array(z.object({
+          start: z.number().min(1),
+          end: z.number().min(1),
+        })),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const user = await db.getUserById(ctx.user.id);
+        if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+        await checkConversionLimit(ctx.user.id, user.subscriptionTier);
+        
+        // Download PDF
+        const response = await fetch(input.fileUrl);
+        const arrayBuffer = await response.arrayBuffer();
+        const pdfBuffer = Buffer.from(arrayBuffer);
+        
+        // Split PDF
+        const splitPdfs = await pdfService.splitPdf({
+          pdfBuffer,
+          ranges: input.ranges,
+        });
+        
+        // Upload results to S3
+        const results: { url: string; pages: string; size: number }[] = [];
+        for (let i = 0; i < splitPdfs.length; i++) {
+          const fileKey = `${ctx.user.id}/split/${nanoid()}_part${i + 1}.pdf`;
+          const { url } = await storagePut(fileKey, splitPdfs[i], "application/pdf");
+          results.push({
+            url,
+            pages: `${input.ranges[i].start}-${input.ranges[i].end}`,
+            size: splitPdfs[i].length,
+          });
+        }
+        
+        await db.incrementUserConversions(ctx.user.id);
+        
+        return { files: results };
+      }),
+      
+    compress: protectedProcedure
+      .input(z.object({
+        fileUrl: z.string().url(),
+        quality: z.enum(["low", "medium", "high"]).default("medium"),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const user = await db.getUserById(ctx.user.id);
+        if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+        await checkConversionLimit(ctx.user.id, user.subscriptionTier);
+        
+        // Download PDF
+        const response = await fetch(input.fileUrl);
+        const arrayBuffer = await response.arrayBuffer();
+        const pdfBuffer = Buffer.from(arrayBuffer);
+        const originalSize = pdfBuffer.length;
+        
+        // Compress PDF
+        const compressedPdf = await pdfService.compressPdf({
+          pdfBuffer,
+          quality: input.quality,
+        });
+        
+        // Upload result to S3
+        const fileKey = `${ctx.user.id}/compressed/${nanoid()}.pdf`;
+        const { url } = await storagePut(fileKey, compressedPdf, "application/pdf");
+        
+        await db.incrementUserConversions(ctx.user.id);
+        
+        const compressionRatio = ((originalSize - compressedPdf.length) / originalSize * 100).toFixed(1);
+        
+        return {
+          url,
+          originalSize,
+          compressedSize: compressedPdf.length,
+          compressionRatio: `${compressionRatio}%`,
+        };
+      }),
+      
+    rotate: protectedProcedure
+      .input(z.object({
+        fileUrl: z.string().url(),
+        rotation: z.enum(["90", "180", "270"]),
+        pageIndices: z.array(z.number()).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const user = await db.getUserById(ctx.user.id);
+        if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+        await checkConversionLimit(ctx.user.id, user.subscriptionTier);
+        
+        // Download PDF
+        const response = await fetch(input.fileUrl);
+        const arrayBuffer = await response.arrayBuffer();
+        const pdfBuffer = Buffer.from(arrayBuffer);
+        
+        // Rotate PDF
+        const rotatedPdf = await pdfService.rotatePdf({
+          pdfBuffer,
+          rotation: parseInt(input.rotation) as 90 | 180 | 270,
+          pageIndices: input.pageIndices,
+        });
+        
+        // Upload result to S3
+        const fileKey = `${ctx.user.id}/rotated/${nanoid()}.pdf`;
+        const { url } = await storagePut(fileKey, rotatedPdf, "application/pdf");
+        
+        await db.incrementUserConversions(ctx.user.id);
+        
+        return { url, size: rotatedPdf.length };
+      }),
+      
+    watermark: protectedProcedure
+      .input(z.object({
+        fileUrl: z.string().url(),
+        text: z.string().min(1).max(100),
+        opacity: z.number().min(0).max(1).default(0.3),
+        fontSize: z.number().min(10).max(200).default(50),
+        position: z.enum(["center", "diagonal", "top", "bottom"]).default("diagonal"),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const user = await db.getUserById(ctx.user.id);
+        if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+        
+        if (user.subscriptionTier === "free") {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Custom watermarks require Pro or Enterprise subscription",
+          });
+        }
+        
+        await checkConversionLimit(ctx.user.id, user.subscriptionTier);
+        
+        // Download PDF
+        const response = await fetch(input.fileUrl);
+        const arrayBuffer = await response.arrayBuffer();
+        const pdfBuffer = Buffer.from(arrayBuffer);
+        
+        // Add watermark
+        const watermarkedPdf = await pdfService.addWatermark({
+          pdfBuffer,
+          text: input.text,
+          opacity: input.opacity,
+          fontSize: input.fontSize,
+          position: input.position,
+        });
+        
+        // Upload result to S3
+        const fileKey = `${ctx.user.id}/watermarked/${nanoid()}.pdf`;
+        const { url } = await storagePut(fileKey, watermarkedPdf, "application/pdf");
+        
+        await db.incrementUserConversions(ctx.user.id);
+        
+        return { url, size: watermarkedPdf.length };
+      }),
+      
+    encrypt: protectedProcedure
+      .input(z.object({
+        fileUrl: z.string().url(),
+        password: z.string().min(4).max(128),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const user = await db.getUserById(ctx.user.id);
+        if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+        await checkConversionLimit(ctx.user.id, user.subscriptionTier);
+        
+        // Download PDF
+        const response = await fetch(input.fileUrl);
+        const arrayBuffer = await response.arrayBuffer();
+        const pdfBuffer = Buffer.from(arrayBuffer);
+        
+        // Encrypt PDF
+        const encryptedPdf = await pdfService.encryptPdf({
+          pdfBuffer,
+          userPassword: input.password,
+        });
+        
+        // Upload result to S3
+        const fileKey = `${ctx.user.id}/encrypted/${nanoid()}.pdf`;
+        const { url } = await storagePut(fileKey, encryptedPdf, "application/pdf");
+        
+        await db.incrementUserConversions(ctx.user.id);
+        
+        return { url, size: encryptedPdf.length };
+      }),
+      
+    imagesToPdf: protectedProcedure
+      .input(z.object({
+        imageUrls: z.array(z.string().url()),
+        pageSize: z.enum(["A4", "Letter", "Legal"]).default("A4"),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const user = await db.getUserById(ctx.user.id);
+        if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+        await checkConversionLimit(ctx.user.id, user.subscriptionTier);
+        
+        // Download all images
+        const imageBuffers: Buffer[] = [];
+        for (const url of input.imageUrls) {
+          const response = await fetch(url);
+          const arrayBuffer = await response.arrayBuffer();
+          imageBuffers.push(Buffer.from(arrayBuffer));
+        }
+        
+        // Convert to PDF
+        const pdfBuffer = await pdfService.imagesToPdf({
+          imageBuffers,
+          pageSize: input.pageSize,
+        });
+        
+        // Upload result to S3
+        const fileKey = `${ctx.user.id}/converted/${nanoid()}.pdf`;
+        const { url } = await storagePut(fileKey, pdfBuffer, "application/pdf");
+        
+        await db.incrementUserConversions(ctx.user.id);
+        
+        return { url, size: pdfBuffer.length };
+      }),
+      
+    htmlToPdf: protectedProcedure
+      .input(z.object({
+        html: z.string(),
+        pageSize: z.enum(["A4", "Letter", "Legal"]).default("A4"),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const user = await db.getUserById(ctx.user.id);
+        if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+        await checkConversionLimit(ctx.user.id, user.subscriptionTier);
+        
+        // Convert HTML to PDF
+        const pdfBuffer = await pdfService.htmlToPdf({
+          html: input.html,
+          pageSize: input.pageSize,
+        });
+        
+        // Upload result to S3
+        const fileKey = `${ctx.user.id}/converted/${nanoid()}.pdf`;
+        const { url } = await storagePut(fileKey, pdfBuffer, "application/pdf");
+        
+        await db.incrementUserConversions(ctx.user.id);
+        
+        return { url, size: pdfBuffer.length };
+      }),
+      
+    markdownToPdf: protectedProcedure
+      .input(z.object({
+        markdown: z.string(),
+        pageSize: z.enum(["A4", "Letter", "Legal"]).default("A4"),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const user = await db.getUserById(ctx.user.id);
+        if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+        await checkConversionLimit(ctx.user.id, user.subscriptionTier);
+        
+        // Convert Markdown to PDF
+        const pdfBuffer = await pdfService.markdownToPdf({
+          markdown: input.markdown,
+          pageSize: input.pageSize,
+        });
+        
+        // Upload result to S3
+        const fileKey = `${ctx.user.id}/converted/${nanoid()}.pdf`;
+        const { url } = await storagePut(fileKey, pdfBuffer, "application/pdf");
+        
+        await db.incrementUserConversions(ctx.user.id);
+        
+        return { url, size: pdfBuffer.length };
+      }),
+      
+    getInfo: protectedProcedure
+      .input(z.object({
+        fileUrl: z.string().url(),
+      }))
+      .query(async ({ ctx, input }) => {
+        // Download PDF
+        const response = await fetch(input.fileUrl);
+        const arrayBuffer = await response.arrayBuffer();
+        const pdfBuffer = Buffer.from(arrayBuffer);
+        
+        // Get PDF info
+        return await pdfService.getPdfInfo(pdfBuffer);
+      }),
+  }),
+
+  // Cloud Storage Integrations
+  cloudStorage: router({
+    getAuthUrl: protectedProcedure
+      .input(z.object({
+        provider: z.enum(["google_drive", "dropbox", "onedrive"]),
+        redirectUri: z.string().url(),
+      }))
+      .query(async ({ ctx, input }) => {
+        // Get client ID from user's connected accounts or environment
+        // For demo, we'll return the auth URL structure
+        const clientId = process.env[`${input.provider.toUpperCase()}_CLIENT_ID`] || "demo_client_id";
+        const authUrl = cloudStorage.getAuthUrl(
+          input.provider,
+          clientId,
+          input.redirectUri,
+          ctx.user.id.toString()
+        );
+        return { authUrl };
+      }),
+      
+    exchangeToken: protectedProcedure
+      .input(z.object({
+        provider: z.enum(["google_drive", "dropbox", "onedrive"]),
+        code: z.string(),
+        redirectUri: z.string().url(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const clientId = process.env[`${input.provider.toUpperCase()}_CLIENT_ID`];
+        const clientSecret = process.env[`${input.provider.toUpperCase()}_CLIENT_SECRET`];
+        
+        if (!clientId || !clientSecret) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `${input.provider} integration not configured`,
+          });
+        }
+        
+        const tokens = await cloudStorage.exchangeCodeForToken(
+          input.provider,
+          input.code,
+          clientId,
+          clientSecret,
+          input.redirectUri
+        );
+        
+        // Store tokens in database (encrypted in production)
+        await db.saveCloudStorageConnection({
+          userId: ctx.user.id,
+          provider: input.provider,
+          accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken,
+          expiresAt: tokens.expiresIn ? new Date(Date.now() + tokens.expiresIn * 1000) : undefined,
+        });
+        
+        return { success: true };
+      }),
+      
+    listConnections: protectedProcedure.query(async ({ ctx }) => {
+      return await db.getCloudStorageConnections(ctx.user.id);
+    }),
+    
+    disconnect: protectedProcedure
+      .input(z.object({
+        provider: z.enum(["google_drive", "dropbox", "onedrive"]),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        await db.deleteCloudStorageConnection(ctx.user.id, input.provider);
+        return { success: true };
+      }),
+      
+    listFiles: protectedProcedure
+      .input(z.object({
+        provider: z.enum(["google_drive", "dropbox", "onedrive"]),
+        folderId: z.string().optional(),
+        pageToken: z.string().optional(),
+      }))
+      .query(async ({ ctx, input }) => {
+        const connection = await db.getCloudStorageConnection(ctx.user.id, input.provider);
+        if (!connection) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: `${input.provider} not connected`,
+          });
+        }
+        
+        const service = cloudStorage.createCloudStorageService(input.provider, connection.accessToken);
+        return await service.listFiles({
+          folderId: input.folderId,
+          pageToken: input.pageToken,
+        });
+      }),
+      
+    importFile: protectedProcedure
+      .input(z.object({
+        provider: z.enum(["google_drive", "dropbox", "onedrive"]),
+        fileId: z.string(),
+        filename: z.string(),
+        mimeType: z.string(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const connection = await db.getCloudStorageConnection(ctx.user.id, input.provider);
+        if (!connection) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: `${input.provider} not connected`,
+          });
+        }
+        
+        const service = cloudStorage.createCloudStorageService(input.provider, connection.accessToken);
+        
+        // Download file from cloud storage
+        let fileBuffer: Buffer;
+        if (input.provider === "google_drive") {
+          fileBuffer = await (service as cloudStorage.GoogleDriveService).downloadFile(input.fileId);
+        } else if (input.provider === "dropbox") {
+          fileBuffer = await (service as cloudStorage.DropboxService).downloadFile(input.fileId);
+        } else {
+          fileBuffer = await (service as cloudStorage.OneDriveService).downloadFile(input.fileId);
+        }
+        
+        // Upload to our S3 storage
+        const fileKey = `${ctx.user.id}/imported/${nanoid()}_${input.filename}`;
+        const { url } = await storagePut(fileKey, fileBuffer, input.mimeType);
+        
+        // Create file record
+        const fileId = await db.createFile({
+          userId: ctx.user.id,
+          filename: input.filename,
+          mimeType: input.mimeType,
+          fileSize: fileBuffer.length,
+          url: url,
+          fileKey: fileKey,
+          originalFilename: input.filename,
+        });
+        
+        return { fileId, url, size: fileBuffer.length };
+      }),
+      
+    exportFile: protectedProcedure
+      .input(z.object({
+        provider: z.enum(["google_drive", "dropbox", "onedrive"]),
+        fileId: z.number(),
+        folderId: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const connection = await db.getCloudStorageConnection(ctx.user.id, input.provider);
+        if (!connection) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: `${input.provider} not connected`,
+          });
+        }
+        
+        // Get file from our storage
+        const file = await db.getFileById(input.fileId);
+        if (!file || file.userId !== ctx.user.id) {
+          throw new TRPCError({ code: "NOT_FOUND" });
+        }
+        
+        // Download from our S3
+        const response = await fetch(file.url);
+        const arrayBuffer = await response.arrayBuffer();
+        const fileBuffer = Buffer.from(arrayBuffer);
+        
+        const service = cloudStorage.createCloudStorageService(input.provider, connection.accessToken);
+        
+        // Upload to cloud storage
+        let cloudFile: cloudStorage.CloudFile;
+        if (input.provider === "google_drive") {
+          cloudFile = await (service as cloudStorage.GoogleDriveService).uploadFile(
+            file.filename,
+            fileBuffer,
+            file.mimeType,
+            input.folderId
+          );
+        } else if (input.provider === "dropbox") {
+          const path = input.folderId ? `${input.folderId}/${file.filename}` : `/${file.filename}`;
+          cloudFile = await (service as cloudStorage.DropboxService).uploadFile(path, fileBuffer);
+        } else {
+          cloudFile = await (service as cloudStorage.OneDriveService).uploadFile(
+            file.filename,
+            fileBuffer,
+            input.folderId
+          );
+        }
+        
+        return { cloudFileId: cloudFile.id, cloudFileName: cloudFile.name };
       }),
   }),
 

@@ -712,3 +712,113 @@ export async function updateApprovalRequest(id: number, data: Partial<InsertAppr
   if (!db) return;
   await db.update(approvalRequests).set(data).where(eq(approvalRequests.id, id));
 }
+
+// ==================== CLOUD STORAGE CONNECTION OPERATIONS ====================
+
+import { cloudStorageConnections, InsertCloudStorageConnection } from "../drizzle/schema";
+
+export async function saveCloudStorageConnection(data: {
+  userId: number;
+  provider: "google_drive" | "dropbox" | "onedrive";
+  accessToken: string;
+  refreshToken?: string;
+  expiresAt?: Date;
+  accountEmail?: string;
+  accountName?: string;
+}) {
+  const db = await getDb();
+  if (!db) return null;
+  
+  // Check if connection already exists
+  const existing = await db.select().from(cloudStorageConnections)
+    .where(and(
+      eq(cloudStorageConnections.userId, data.userId),
+      eq(cloudStorageConnections.provider, data.provider)
+    ))
+    .limit(1);
+  
+  if (existing.length > 0) {
+    // Update existing connection
+    await db.update(cloudStorageConnections)
+      .set({
+        accessToken: data.accessToken,
+        refreshToken: data.refreshToken,
+        expiresAt: data.expiresAt,
+        accountEmail: data.accountEmail,
+        accountName: data.accountName,
+        isActive: true,
+      })
+      .where(eq(cloudStorageConnections.id, existing[0].id));
+    return existing[0].id;
+  }
+  
+  // Create new connection
+  const result = await db.insert(cloudStorageConnections).values({
+    userId: data.userId,
+    provider: data.provider,
+    accessToken: data.accessToken,
+    refreshToken: data.refreshToken,
+    expiresAt: data.expiresAt,
+    accountEmail: data.accountEmail,
+    accountName: data.accountName,
+  });
+  return result[0].insertId;
+}
+
+export async function getCloudStorageConnection(userId: number, provider: "google_drive" | "dropbox" | "onedrive") {
+  const db = await getDb();
+  if (!db) return undefined;
+  
+  const result = await db.select().from(cloudStorageConnections)
+    .where(and(
+      eq(cloudStorageConnections.userId, userId),
+      eq(cloudStorageConnections.provider, provider),
+      eq(cloudStorageConnections.isActive, true)
+    ))
+    .limit(1);
+  
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getCloudStorageConnections(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return await db.select().from(cloudStorageConnections)
+    .where(and(
+      eq(cloudStorageConnections.userId, userId),
+      eq(cloudStorageConnections.isActive, true)
+    ));
+}
+
+export async function deleteCloudStorageConnection(userId: number, provider: "google_drive" | "dropbox" | "onedrive") {
+  const db = await getDb();
+  if (!db) return;
+  
+  await db.update(cloudStorageConnections)
+    .set({ isActive: false })
+    .where(and(
+      eq(cloudStorageConnections.userId, userId),
+      eq(cloudStorageConnections.provider, provider)
+    ));
+}
+
+export async function updateCloudStorageToken(
+  userId: number, 
+  provider: "google_drive" | "dropbox" | "onedrive",
+  accessToken: string,
+  expiresAt?: Date
+) {
+  const db = await getDb();
+  if (!db) return;
+  
+  await db.update(cloudStorageConnections)
+    .set({
+      accessToken,
+      expiresAt,
+    })
+    .where(and(
+      eq(cloudStorageConnections.userId, userId),
+      eq(cloudStorageConnections.provider, provider)
+    ));
+}

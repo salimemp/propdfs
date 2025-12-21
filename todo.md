@@ -156,3 +156,35 @@
 - [x] Unit tests for team management
 - [ ] Integration tests for file operations
 - [ ] Accessibility testing
+
+## Cloud Storage Integrations (New)
+- [ ] Google Drive integration - OAuth setup
+- [ ] Google Drive integration - File picker UI
+- [ ] Google Drive integration - Import files from Drive
+- [ ] Google Drive integration - Export files to Drive
+- [ ] Dropbox integration - OAuth setup
+- [ ] Dropbox integration - File picker UI
+- [ ] Dropbox integration - Import files from Dropbox
+- [ ] Dropbox integration - Export files to Dropbox
+- [ ] OneDrive integration - OAuth setup
+- [ ] OneDrive integration - File picker UI
+- [ ] OneDrive integration - Import files from OneDrive
+- [ ] OneDrive integration - Export files to OneDrive
+- [x] Cloud storage picker component in Convert page
+- [x] Cloud storage settings in user preferences
+
+## Real PDF Processing (New)
+- [x] Install pdf-lib for PDF manipulation
+- [x] Implement PDF merge functionality
+- [x] Implement PDF split functionality
+- [x] Implement PDF compress functionality
+- [x] Implement PDF rotate functionality
+- [x] Implement PDF watermark functionality
+- [x] Implement PDF encrypt/decrypt functionality
+- [ ] Implement PDF to image conversion
+- [x] Implement image to PDF conversion
+- [x] Implement HTML to PDF conversion
+- [x] Implement Markdown to PDF conversion
+- [x] Update conversion API to use real processing
+- [ ] Add progress tracking for conversions
+- [x] Store converted files in S3

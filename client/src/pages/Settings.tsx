@@ -11,11 +11,36 @@ import { trpc } from "@/lib/trpc";
 import { getLoginUrl } from "@/const";
 import { 
   User, Bell, Shield, Globe, Palette, Key, 
-  Loader2, Save, LogOut, Trash2, CreditCard
+  Loader2, Save, LogOut, Trash2, CreditCard, Cloud,
+  CheckCircle, XCircle, ExternalLink, Link2Off
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { Link, useLocation } from "wouter";
+
+const cloudProviders = [
+  { 
+    id: "google_drive" as const, 
+    name: "Google Drive", 
+    icon: "🔵", 
+    color: "from-blue-500 to-blue-600",
+    description: "Access files from your Google Drive account"
+  },
+  { 
+    id: "dropbox" as const, 
+    name: "Dropbox", 
+    icon: "📦", 
+    color: "from-blue-600 to-blue-700",
+    description: "Connect your Dropbox for seamless file access"
+  },
+  { 
+    id: "onedrive" as const, 
+    name: "OneDrive", 
+    icon: "☁️", 
+    color: "from-sky-500 to-sky-600",
+    description: "Import and export files to Microsoft OneDrive"
+  },
+];
 
 export default function Settings() {
   const { user, loading: authLoading, isAuthenticated, logout } = useAuth();
@@ -44,6 +69,22 @@ export default function Settings() {
     undefined,
     { enabled: isAuthenticated }
   );
+
+  // Cloud storage queries
+  const { data: cloudConnections, refetch: refetchConnections } = trpc.cloudStorage.listConnections.useQuery(
+    undefined,
+    { enabled: isAuthenticated }
+  );
+
+  const disconnectMutation = trpc.cloudStorage.disconnect.useMutation({
+    onSuccess: () => {
+      toast.success("Cloud storage disconnected");
+      refetchConnections();
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
 
   const updatePreferencesMutation = trpc.user.updatePreferences.useMutation({
     onSuccess: () => {
@@ -82,6 +123,15 @@ export default function Settings() {
     setLocation("/");
   };
 
+  const handleConnectCloud = (providerId: string) => {
+    // In production, this would redirect to OAuth flow
+    toast.info(`To connect ${providerId}, you'll need to configure OAuth credentials in the environment. Contact your administrator.`);
+  };
+
+  const handleDisconnectCloud = (providerId: "google_drive" | "dropbox" | "onedrive") => {
+    disconnectMutation.mutate({ provider: providerId });
+  };
+
   if (authLoading || !isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -102,7 +152,7 @@ export default function Settings() {
         </div>
 
         <Tabs defaultValue="profile" className="space-y-6">
-          <TabsList>
+          <TabsList className="flex-wrap">
             <TabsTrigger value="profile" className="gap-2">
               <User className="h-4 w-4" />
               Profile
@@ -110,6 +160,10 @@ export default function Settings() {
             <TabsTrigger value="preferences" className="gap-2">
               <Globe className="h-4 w-4" />
               Preferences
+            </TabsTrigger>
+            <TabsTrigger value="integrations" className="gap-2">
+              <Cloud className="h-4 w-4" />
+              Integrations
             </TabsTrigger>
             <TabsTrigger value="security" className="gap-2">
               <Shield className="h-4 w-4" />
@@ -294,6 +348,135 @@ export default function Settings() {
                 Save Preferences
               </Button>
             </div>
+          </TabsContent>
+
+          {/* Integrations Tab */}
+          <TabsContent value="integrations" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Cloud Storage Integrations</CardTitle>
+                <CardDescription>
+                  Connect your cloud storage accounts to import and export files directly
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {cloudProviders.map((provider) => {
+                  const connection = cloudConnections?.find(c => c.provider === provider.id);
+                  const isConnected = !!connection;
+                  
+                  return (
+                    <div 
+                      key={provider.id}
+                      className={`p-4 rounded-lg border-2 transition-all ${
+                        isConnected 
+                          ? 'border-green-200 bg-green-50' 
+                          : 'border-slate-200 hover:border-slate-300'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                          <div className={`h-12 w-12 rounded-lg bg-gradient-to-br ${provider.color} flex items-center justify-center text-white text-xl`}>
+                            {provider.icon}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-semibold">{provider.name}</h3>
+                              {isConnected && (
+                                <span className="flex items-center gap-1 text-xs text-green-600 bg-green-100 px-2 py-0.5 rounded-full">
+                                  <CheckCircle className="h-3 w-3" />
+                                  Connected
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-sm text-slate-500">{provider.description}</p>
+                            {isConnected && connection?.accountEmail && (
+                              <p className="text-xs text-slate-400 mt-1">
+                                {connection.accountEmail}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {isConnected ? (
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleDisconnectCloud(provider.id)}
+                              disabled={disconnectMutation.isPending}
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            >
+                              {disconnectMutation.isPending ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Link2Off className="h-4 w-4 mr-1" />
+                              )}
+                              Disconnect
+                            </Button>
+                          ) : (
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleConnectCloud(provider.id)}
+                            >
+                              <ExternalLink className="h-4 w-4 mr-1" />
+                              Connect
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>API Access</CardTitle>
+                <CardDescription>
+                  Manage API keys for programmatic access
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="p-4 bg-slate-50 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium">API Key</p>
+                      <p className="text-sm text-slate-500">
+                        Use this key to access ProPDFs API
+                      </p>
+                    </div>
+                    <Button variant="outline" onClick={() => toast.info("API access coming soon!")}>
+                      Generate Key
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Webhooks</CardTitle>
+                <CardDescription>
+                  Configure webhooks for real-time notifications
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="p-4 bg-slate-50 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium">Webhook Endpoints</p>
+                      <p className="text-sm text-slate-500">
+                        Receive notifications when conversions complete
+                      </p>
+                    </div>
+                    <Button variant="outline" onClick={() => toast.info("Webhooks coming soon!")}>
+                      Add Endpoint
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* Security Tab */}

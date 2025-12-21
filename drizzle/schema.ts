@@ -408,3 +408,28 @@ export const chatHistory = mysqlTable("chat_history", {
 
 export type ChatHistory = typeof chatHistory.$inferSelect;
 export type InsertChatHistory = typeof chatHistory.$inferInsert;
+
+/**
+ * Cloud storage connections (Google Drive, Dropbox, OneDrive)
+ */
+export const cloudStorageConnections = mysqlTable("cloud_storage_connections", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  
+  provider: mysqlEnum("provider", ["google_drive", "dropbox", "onedrive"]).notNull(),
+  accessToken: text("accessToken").notNull(),
+  refreshToken: text("refreshToken"),
+  expiresAt: timestamp("expiresAt"),
+  
+  accountEmail: varchar("accountEmail", { length: 320 }),
+  accountName: varchar("accountName", { length: 255 }),
+  
+  isActive: boolean("isActive").default(true).notNull(),
+  lastSyncAt: timestamp("lastSyncAt"),
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type CloudStorageConnection = typeof cloudStorageConnections.$inferSelect;
+export type InsertCloudStorageConnection = typeof cloudStorageConnections.$inferInsert;
