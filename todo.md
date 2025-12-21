@@ -1,0 +1,158 @@
+# ProPDFs - Project TODO
+
+## Database & Schema
+- [x] Users table with subscription tiers and preferences
+- [x] Files table for uploaded documents with metadata
+- [x] Conversions table for tracking conversion history
+- [x] Teams table for workspace management
+- [x] Team members table with role-based access
+- [x] Subscriptions table for billing management
+- [x] Audit logs table for compliance tracking
+- [x] Tags table for file organization
+- [x] Folders table for hierarchical storage
+
+## Core PDF Conversion
+- [x] PDF to Office conversion (Word, Excel, PowerPoint)
+- [x] Office to PDF conversion (doc, docx, xls, xlsx, ppt, pptx)
+- [x] Image to PDF conversion (JPG, PNG, TIFF, BMP, SVG, WebP)
+- [x] PDF to Image conversion
+- [ ] E-book conversion (EPUB, MOBI to/from PDF)
+- [ ] CAD file conversion (DWG, DXF to PDF)
+- [x] Text format conversion (TXT, RTF, HTML, Markdown to/from PDF)
+- [x] File upload with size validation (25MB free, unlimited paid)
+- [x] Conversion queue management
+- [x] Progress tracking for conversions
+
+## Advanced PDF Operations
+- [x] Merge multiple PDFs
+- [x] Split PDF into pages
+- [x] Rearrange PDF pages
+- [x] Rotate PDF pages
+- [x] Intelligent compression (up to 90% reduction)
+- [x] Password protection
+- [x] AES-256 encryption
+- [x] Digital signatures
+- [x] Text/image watermarking with positioning
+- [x] Bates numbering for legal documents
+- [ ] PDF/A compliance conversion
+- [ ] PDF comparison (text & visual diff)
+- [ ] Web optimization and linearization
+
+## Authentication & Security
+- [x] Manus OAuth authentication
+- [ ] Email/password authentication with salt+hash
+- [ ] Magic link (passwordless) login
+- [ ] Social login integration (Google, GitHub)
+- [ ] Passkey/FIDO2 biometric login
+- [ ] TOTP 2FA (authenticator app)
+- [ ] Hardware token support (YubiKey)
+- [ ] QR code login for mobile
+- [x] Zero-knowledge file encryption
+- [x] Auto-expiration for files (configurable)
+- [x] Complete audit trail logging
+- [x] Session management
+
+## Team Collaboration
+- [x] Team creation and management
+- [x] Role-based access control (Admin, Editor, Viewer)
+- [x] Shared workspaces with real-time updates
+- [x] Approval workflows
+- [x] Document version control with rollback
+- [ ] Comments and annotations
+- [x] Team invitations via email
+
+## Cloud Storage
+- [x] Encrypted file storage (S3)
+- [x] Storage quota management (50GB Pro, 1TB Enterprise)
+- [ ] Smart sync across devices
+- [x] File tagging system
+- [x] Advanced search with filters
+- [x] Folder organization
+- [x] Automatic backups
+- [ ] Point-in-time recovery
+- [ ] Google Drive integration
+- [ ] Dropbox integration
+- [ ] OneDrive integration
+- [ ] Box integration
+
+## Batch Processing
+- [x] Multi-file upload (up to 500 files)
+- [x] Batch conversion queue
+- [ ] Parallel processing
+- [x] Progress tracking for batch jobs
+- [x] Error handling and retry logic
+
+## OCR & Transcription
+- [x] Smart OCR with 99%+ accuracy
+- [x] Language detection (50+ languages)
+- [ ] Context-aware text recognition
+- [x] Audio transcription to text
+- [x] Meeting notes capture
+- [x] Multi-language transcription support
+
+## AI Features
+- [x] Smart document classification
+- [x] Automatic metadata extraction
+- [x] Content-aware compression
+- [x] Intelligent page rotation
+- [x] Predictive conversion suggestions
+- [x] AI chatbot assistant (ProPDF)
+- [ ] Voice interaction support
+
+## Analytics Dashboard
+- [x] Conversion metrics display
+- [x] Success rate tracking
+- [x] Processing time analytics
+- [x] Per-user usage statistics
+- [x] Per-team analytics
+- [x] Performance monitoring (API response times)
+- [x] Error rate tracking
+- [ ] Cost tracking and ROI reporting
+- [x] Exportable custom reports
+
+## Subscription & Billing
+- [x] Free tier (10 conversions/month, 25MB limit)
+- [x] Pro plan ($5.99/month, unlimited)
+- [x] Enterprise plan ($28.99/month, team features)
+- [x] Usage tracking per tier
+- [x] Conversion limit enforcement
+- [x] Storage quota enforcement
+- [x] Google Ads placeholders for freemium
+
+## Internationalization
+- [x] Multi-language UI support (50+ languages)
+- [x] Currency display with local pricing
+- [x] Region-specific date/time formats
+- [x] Measurement unit preferences (Metric/Imperial)
+- [ ] Regional tax calculations
+
+## Accessibility & Compliance
+- [x] WCAG 2.1 AA compliance
+- [x] Screen reader optimization
+- [ ] Text-to-speech for PDF content
+- [x] High contrast mode
+- [x] Complete keyboard navigation
+- [x] GDPR compliance features
+- [x] HIPAA compliance features
+- [x] PIPEDA compliance
+- [x] CCPA compliance
+- [x] SOC 2 Type II compliance indicators
+
+## Frontend Pages
+- [x] Landing page with feature showcase
+- [x] Pricing page with tier comparison
+- [x] User dashboard
+- [x] File manager interface
+- [x] Conversion tool interface
+- [ ] PDF editor interface
+- [x] Team management page
+- [x] Analytics dashboard page
+- [x] Settings and preferences page
+- [x] Account/subscription management
+
+## Testing & Quality
+- [x] Unit tests for conversion API
+- [x] Unit tests for authentication
+- [x] Unit tests for team management
+- [ ] Integration tests for file operations
+- [ ] Accessibility testing
