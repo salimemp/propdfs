@@ -26,6 +26,8 @@ type ConversionType =
   | "word_to_pdf" | "excel_to_pdf" | "ppt_to_pdf"
   | "image_to_pdf" | "pdf_to_image"
   | "html_to_pdf" | "markdown_to_pdf"
+  | "epub_to_pdf" | "mobi_to_pdf" | "pdf_to_epub" | "pdf_to_mobi"
+  | "dwg_to_pdf" | "dxf_to_pdf" | "dwg_to_svg" | "dxf_to_svg"
   | "merge" | "split" | "compress" | "rotate" | "watermark" | "encrypt";
 
 interface UploadedFile {
@@ -52,6 +54,20 @@ const conversionOptions = [
   { value: "pdf_to_image", label: "PDF to Image", icon: Image, from: "PDF", to: "PNG" },
   { value: "html_to_pdf", label: "HTML to PDF", icon: FileText, from: "HTML", to: "PDF" },
   { value: "markdown_to_pdf", label: "Markdown to PDF", icon: FileText, from: "MD", to: "PDF" },
+];
+
+const ebookConversions = [
+  { value: "epub_to_pdf", label: "EPUB to PDF", icon: FileText, from: "EPUB", to: "PDF" },
+  { value: "mobi_to_pdf", label: "MOBI to PDF", icon: FileText, from: "MOBI", to: "PDF" },
+  { value: "pdf_to_epub", label: "PDF to EPUB", icon: FileText, from: "PDF", to: "EPUB" },
+  { value: "pdf_to_mobi", label: "PDF to MOBI", icon: FileText, from: "PDF", to: "MOBI" },
+];
+
+const cadConversions = [
+  { value: "dwg_to_pdf", label: "DWG to PDF", icon: FileText, from: "DWG", to: "PDF" },
+  { value: "dxf_to_pdf", label: "DXF to PDF", icon: FileText, from: "DXF", to: "PDF" },
+  { value: "dwg_to_svg", label: "DWG to SVG", icon: Image, from: "DWG", to: "SVG" },
+  { value: "dxf_to_svg", label: "DXF to SVG", icon: Image, from: "DXF", to: "SVG" },
 ];
 
 const pdfOperations = [
@@ -665,8 +681,10 @@ export default function Convert() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="convert">Convert</TabsTrigger>
+          <TabsTrigger value="ebooks">E-books</TabsTrigger>
+          <TabsTrigger value="cad">CAD Files</TabsTrigger>
           <TabsTrigger value="operations">PDF Operations</TabsTrigger>
           <TabsTrigger value="transcribe">Transcribe</TabsTrigger>
         </TabsList>
@@ -823,6 +841,175 @@ export default function Convert() {
                   </Button>
                 </div>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* E-books Tab */}
+        <TabsContent value="ebooks" className="space-y-6 mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>E-book Conversions</CardTitle>
+              <CardDescription>
+                Convert between PDF and popular e-book formats (EPUB, MOBI)
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {ebookConversions.map((option) => (
+                  <button
+                    key={option.value}
+                    onClick={() => {
+                      setConversionType(option.value as ConversionType);
+                      setSelectedOperation(null);
+                      setActiveTab("convert");
+                      toast.info(`Selected ${option.label}. Upload your files to continue.`);
+                    }}
+                    className={`p-4 rounded-lg border-2 transition-all hover:shadow-md ${
+                      conversionType === option.value
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    <option.icon className={`h-8 w-8 mx-auto mb-2 ${
+                      conversionType === option.value ? 'text-blue-600' : 'text-slate-400'
+                    }`} />
+                    <p className="text-sm font-medium text-slate-900">{option.label}</p>
+                    <p className="text-xs text-slate-500 mt-1">
+                      {option.from} → {option.to}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="bg-purple-50 border-purple-200">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <FileText className="h-5 w-5 text-purple-600" />
+                <div>
+                  <p className="font-medium text-purple-900">Calibre-Powered Conversion</p>
+                  <p className="text-sm text-purple-700">
+                    E-book conversions use Calibre for high-quality format transformation with metadata preservation.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader>
+              <CardTitle>Supported E-book Formats</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid md:grid-cols-2 gap-6">
+                <div>
+                  <h4 className="font-medium text-slate-900 mb-2">Input Formats</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {['EPUB', 'MOBI', 'AZW', 'AZW3', 'FB2', 'LIT', 'PDB', 'PDF', 'TXT', 'HTML', 'DOCX', 'RTF'].map(fmt => (
+                      <span key={fmt} className="px-2 py-1 bg-slate-100 rounded text-sm text-slate-700">{fmt}</span>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <h4 className="font-medium text-slate-900 mb-2">Output Formats</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {['EPUB', 'MOBI', 'PDF', 'TXT', 'HTML', 'DOCX'].map(fmt => (
+                      <span key={fmt} className="px-2 py-1 bg-blue-100 rounded text-sm text-blue-700">{fmt}</span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* CAD Files Tab */}
+        <TabsContent value="cad" className="space-y-6 mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>CAD File Conversions</CardTitle>
+              <CardDescription>
+                Convert AutoCAD DWG and DXF files to PDF, SVG, or PNG
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {cadConversions.map((option) => (
+                  <button
+                    key={option.value}
+                    onClick={() => {
+                      setConversionType(option.value as ConversionType);
+                      setSelectedOperation(null);
+                      setActiveTab("convert");
+                      toast.info(`Selected ${option.label}. Upload your files to continue.`);
+                    }}
+                    className={`p-4 rounded-lg border-2 transition-all hover:shadow-md ${
+                      conversionType === option.value
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    <option.icon className={`h-8 w-8 mx-auto mb-2 ${
+                      conversionType === option.value ? 'text-blue-600' : 'text-slate-400'
+                    }`} />
+                    <p className="text-sm font-medium text-slate-900">{option.label}</p>
+                    <p className="text-xs text-slate-500 mt-1">
+                      {option.from} → {option.to}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="bg-orange-50 border-orange-200">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <FileText className="h-5 w-5 text-orange-600" />
+                <div>
+                  <p className="font-medium text-orange-900">CAD Processing</p>
+                  <p className="text-sm text-orange-700">
+                    CAD files are processed using LibreCAD and LibreOffice for accurate rendering and conversion.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader>
+              <CardTitle>CAD Conversion Options</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid md:grid-cols-3 gap-6">
+                <div>
+                  <h4 className="font-medium text-slate-900 mb-2">Paper Sizes</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {['A4', 'A3', 'A2', 'A1', 'A0', 'Letter', 'Legal', 'Tabloid'].map(size => (
+                      <span key={size} className="px-2 py-1 bg-slate-100 rounded text-sm text-slate-700">{size}</span>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <h4 className="font-medium text-slate-900 mb-2">Output Formats</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {['PDF', 'SVG', 'PNG'].map(fmt => (
+                      <span key={fmt} className="px-2 py-1 bg-blue-100 rounded text-sm text-blue-700">{fmt}</span>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <h4 className="font-medium text-slate-900 mb-2">Features</h4>
+                  <ul className="text-sm text-slate-600 space-y-1">
+                    <li>• Scale adjustment (0.1x - 10x)</li>
+                    <li>• Layer selection</li>
+                    <li>• Portrait/Landscape orientation</li>
+                    <li>• Custom DPI (72-600)</li>
+                  </ul>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

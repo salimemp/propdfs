@@ -12,6 +12,8 @@ import { transcribeAudio } from "./_core/voiceTranscription";
 import * as pdfService from "./pdfService";
 import * as cloudStorage from "./cloudStorageService";
 import * as oauthService from "./oauthService";
+import * as ebookService from "./ebookService";
+import * as cadService from "./cadService";
 
 // Subscription tier limits
 const TIER_LIMITS = {
@@ -1657,6 +1659,359 @@ Be helpful, concise, and professional. If a user asks about a specific file oper
           bandwidthGb: costs.reduce((sum, c) => sum + parseFloat(c.bandwidthGb), 0).toFixed(2),
         };
       }),
+  }),
+
+  // E-book conversion (EPUB, MOBI)
+  ebook: router({
+    // Convert EPUB to PDF
+    epubToPdf: protectedProcedure
+      .input(z.object({
+        fileUrl: z.string().url(),
+        title: z.string().optional(),
+        author: z.string().optional(),
+        fontSize: z.number().min(8).max(24).optional(),
+        pageSize: z.enum(["a4", "letter", "a5", "b5"]).optional(),
+        margins: z.object({
+          top: z.number().optional(),
+          bottom: z.number().optional(),
+          left: z.number().optional(),
+          right: z.number().optional(),
+        }).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const user = await db.getUserById(ctx.user.id);
+        if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+        await checkConversionLimit(ctx.user.id, user.subscriptionTier);
+        
+        const response = await fetch(input.fileUrl);
+        const arrayBuffer = await response.arrayBuffer();
+        const inputBuffer = Buffer.from(arrayBuffer);
+        
+        const result = await ebookService.epubToPdf(inputBuffer, {
+          title: input.title,
+          author: input.author,
+          fontSize: input.fontSize,
+          pageSize: input.pageSize,
+          margins: input.margins,
+        });
+        
+        await db.incrementUserConversions(ctx.user.id);
+        
+        return result;
+      }),
+      
+    // Convert MOBI to PDF
+    mobiToPdf: protectedProcedure
+      .input(z.object({
+        fileUrl: z.string().url(),
+        title: z.string().optional(),
+        author: z.string().optional(),
+        fontSize: z.number().min(8).max(24).optional(),
+        pageSize: z.enum(["a4", "letter", "a5", "b5"]).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const user = await db.getUserById(ctx.user.id);
+        if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+        await checkConversionLimit(ctx.user.id, user.subscriptionTier);
+        
+        const response = await fetch(input.fileUrl);
+        const arrayBuffer = await response.arrayBuffer();
+        const inputBuffer = Buffer.from(arrayBuffer);
+        
+        const result = await ebookService.mobiToPdf(inputBuffer, {
+          title: input.title,
+          author: input.author,
+          fontSize: input.fontSize,
+          pageSize: input.pageSize,
+        });
+        
+        await db.incrementUserConversions(ctx.user.id);
+        
+        return result;
+      }),
+      
+    // Convert PDF to EPUB
+    pdfToEpub: protectedProcedure
+      .input(z.object({
+        fileUrl: z.string().url(),
+        title: z.string().optional(),
+        author: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const user = await db.getUserById(ctx.user.id);
+        if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+        await checkConversionLimit(ctx.user.id, user.subscriptionTier);
+        
+        const response = await fetch(input.fileUrl);
+        const arrayBuffer = await response.arrayBuffer();
+        const inputBuffer = Buffer.from(arrayBuffer);
+        
+        const result = await ebookService.pdfToEpub(inputBuffer, {
+          title: input.title,
+          author: input.author,
+        });
+        
+        await db.incrementUserConversions(ctx.user.id);
+        
+        return result;
+      }),
+      
+    // Convert PDF to MOBI
+    pdfToMobi: protectedProcedure
+      .input(z.object({
+        fileUrl: z.string().url(),
+        title: z.string().optional(),
+        author: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const user = await db.getUserById(ctx.user.id);
+        if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+        await checkConversionLimit(ctx.user.id, user.subscriptionTier);
+        
+        const response = await fetch(input.fileUrl);
+        const arrayBuffer = await response.arrayBuffer();
+        const inputBuffer = Buffer.from(arrayBuffer);
+        
+        const result = await ebookService.pdfToMobi(inputBuffer, {
+          title: input.title,
+          author: input.author,
+        });
+        
+        await db.incrementUserConversions(ctx.user.id);
+        
+        return result;
+      }),
+      
+    // Extract e-book metadata
+    extractMetadata: protectedProcedure
+      .input(z.object({
+        fileUrl: z.string().url(),
+        format: z.enum(["epub", "mobi", "azw", "azw3", "fb2", "pdf"]),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const response = await fetch(input.fileUrl);
+        const arrayBuffer = await response.arrayBuffer();
+        const inputBuffer = Buffer.from(arrayBuffer);
+        
+        const metadata = await ebookService.extractEbookMetadata(inputBuffer, input.format);
+        
+        return metadata;
+      }),
+      
+    // Extract e-book cover
+    extractCover: protectedProcedure
+      .input(z.object({
+        fileUrl: z.string().url(),
+        format: z.enum(["epub", "mobi", "azw", "azw3", "fb2"]),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const response = await fetch(input.fileUrl);
+        const arrayBuffer = await response.arrayBuffer();
+        const inputBuffer = Buffer.from(arrayBuffer);
+        
+        const cover = await ebookService.extractEbookCover(inputBuffer, input.format);
+        
+        return cover;
+      }),
+      
+    // Get supported formats
+    getSupportedFormats: publicProcedure.query(() => {
+      return {
+        input: ebookService.getSupportedInputFormats(),
+        output: ebookService.getSupportedOutputFormats(),
+      };
+    }),
+  }),
+  
+  // CAD file conversion (DWG, DXF)
+  cad: router({
+    // Convert DWG to PDF
+    dwgToPdf: protectedProcedure
+      .input(z.object({
+        fileUrl: z.string().url(),
+        scale: z.number().min(0.1).max(10).optional(),
+        paperSize: z.enum(["a4", "a3", "a2", "a1", "a0", "letter", "legal", "tabloid"]).optional(),
+        orientation: z.enum(["portrait", "landscape"]).optional(),
+        layers: z.array(z.string()).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const user = await db.getUserById(ctx.user.id);
+        if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+        await checkConversionLimit(ctx.user.id, user.subscriptionTier);
+        
+        const response = await fetch(input.fileUrl);
+        const arrayBuffer = await response.arrayBuffer();
+        const inputBuffer = Buffer.from(arrayBuffer);
+        
+        const result = await cadService.dwgToPdf(inputBuffer, {
+          scale: input.scale,
+          paperSize: input.paperSize,
+          orientation: input.orientation,
+          layers: input.layers,
+        });
+        
+        await db.incrementUserConversions(ctx.user.id);
+        
+        return result;
+      }),
+      
+    // Convert DXF to PDF
+    dxfToPdf: protectedProcedure
+      .input(z.object({
+        fileUrl: z.string().url(),
+        scale: z.number().min(0.1).max(10).optional(),
+        paperSize: z.enum(["a4", "a3", "a2", "a1", "a0", "letter", "legal", "tabloid"]).optional(),
+        orientation: z.enum(["portrait", "landscape"]).optional(),
+        layers: z.array(z.string()).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const user = await db.getUserById(ctx.user.id);
+        if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+        await checkConversionLimit(ctx.user.id, user.subscriptionTier);
+        
+        const response = await fetch(input.fileUrl);
+        const arrayBuffer = await response.arrayBuffer();
+        const inputBuffer = Buffer.from(arrayBuffer);
+        
+        const result = await cadService.dxfToPdf(inputBuffer, {
+          scale: input.scale,
+          paperSize: input.paperSize,
+          orientation: input.orientation,
+          layers: input.layers,
+        });
+        
+        await db.incrementUserConversions(ctx.user.id);
+        
+        return result;
+      }),
+      
+    // Convert DWG to SVG
+    dwgToSvg: protectedProcedure
+      .input(z.object({
+        fileUrl: z.string().url(),
+        scale: z.number().min(0.1).max(10).optional(),
+        backgroundColor: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const user = await db.getUserById(ctx.user.id);
+        if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+        await checkConversionLimit(ctx.user.id, user.subscriptionTier);
+        
+        const response = await fetch(input.fileUrl);
+        const arrayBuffer = await response.arrayBuffer();
+        const inputBuffer = Buffer.from(arrayBuffer);
+        
+        const result = await cadService.dwgToSvg(inputBuffer, {
+          scale: input.scale,
+          backgroundColor: input.backgroundColor,
+        });
+        
+        await db.incrementUserConversions(ctx.user.id);
+        
+        return result;
+      }),
+      
+    // Convert DXF to SVG
+    dxfToSvg: protectedProcedure
+      .input(z.object({
+        fileUrl: z.string().url(),
+        scale: z.number().min(0.1).max(10).optional(),
+        backgroundColor: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const user = await db.getUserById(ctx.user.id);
+        if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+        await checkConversionLimit(ctx.user.id, user.subscriptionTier);
+        
+        const response = await fetch(input.fileUrl);
+        const arrayBuffer = await response.arrayBuffer();
+        const inputBuffer = Buffer.from(arrayBuffer);
+        
+        const result = await cadService.dxfToSvg(inputBuffer, {
+          scale: input.scale,
+          backgroundColor: input.backgroundColor,
+        });
+        
+        await db.incrementUserConversions(ctx.user.id);
+        
+        return result;
+      }),
+      
+    // Convert DWG to PNG
+    dwgToPng: protectedProcedure
+      .input(z.object({
+        fileUrl: z.string().url(),
+        dpi: z.number().min(72).max(600).optional(),
+        backgroundColor: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const user = await db.getUserById(ctx.user.id);
+        if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+        await checkConversionLimit(ctx.user.id, user.subscriptionTier);
+        
+        const response = await fetch(input.fileUrl);
+        const arrayBuffer = await response.arrayBuffer();
+        const inputBuffer = Buffer.from(arrayBuffer);
+        
+        const result = await cadService.dwgToPng(inputBuffer, {
+          dpi: input.dpi,
+          backgroundColor: input.backgroundColor,
+        });
+        
+        await db.incrementUserConversions(ctx.user.id);
+        
+        return result;
+      }),
+      
+    // Convert DXF to PNG
+    dxfToPng: protectedProcedure
+      .input(z.object({
+        fileUrl: z.string().url(),
+        dpi: z.number().min(72).max(600).optional(),
+        backgroundColor: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const user = await db.getUserById(ctx.user.id);
+        if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+        await checkConversionLimit(ctx.user.id, user.subscriptionTier);
+        
+        const response = await fetch(input.fileUrl);
+        const arrayBuffer = await response.arrayBuffer();
+        const inputBuffer = Buffer.from(arrayBuffer);
+        
+        const result = await cadService.dxfToPng(inputBuffer, {
+          dpi: input.dpi,
+          backgroundColor: input.backgroundColor,
+        });
+        
+        await db.incrementUserConversions(ctx.user.id);
+        
+        return result;
+      }),
+      
+    // Extract CAD metadata
+    extractMetadata: protectedProcedure
+      .input(z.object({
+        fileUrl: z.string().url(),
+        format: z.enum(["dwg", "dxf"]),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const response = await fetch(input.fileUrl);
+        const arrayBuffer = await response.arrayBuffer();
+        const inputBuffer = Buffer.from(arrayBuffer);
+        
+        const metadata = await cadService.extractCadMetadata(inputBuffer, input.format);
+        
+        return metadata;
+      }),
+      
+    // Get supported formats
+    getSupportedFormats: publicProcedure.query(() => {
+      return {
+        input: cadService.getSupportedCadInputFormats(),
+        output: cadService.getSupportedCadOutputFormats(),
+      };
+    }),
   }),
 
   // Text-to-speech for accessibility

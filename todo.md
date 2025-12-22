@@ -16,8 +16,8 @@
 - [x] Office to PDF conversion (doc, docx, xls, xlsx, ppt, pptx)
 - [x] Image to PDF conversion (JPG, PNG, TIFF, BMP, SVG, WebP)
 - [x] PDF to Image conversion
-- [ ] E-book conversion (EPUB, MOBI to/from PDF)
-- [ ] CAD file conversion (DWG, DXF to PDF)
+- [x] E-book conversion (EPUB, MOBI to/from PDF)
+- [x] CAD file conversion (DWG, DXF to PDF)
 - [x] Text format conversion (TXT, RTF, HTML, Markdown to/from PDF)
 - [x] File upload with size validation (25MB free, unlimited paid)
 - [x] Conversion queue management
@@ -276,3 +276,28 @@
 - [x] Retry failed conversions
 - [x] Integration with Convert page
 - [x] Job status badges
+
+## E-book Conversion (New)
+- [x] Install calibre/ebook-convert for e-book processing
+- [x] Implement EPUB to PDF conversion
+- [x] Implement MOBI to PDF conversion
+- [x] Implement PDF to EPUB conversion
+- [x] Implement PDF to MOBI conversion
+- [x] Add e-book conversion API routes
+- [x] Update Convert page UI with e-book options
+- [x] Add e-book metadata extraction
+- [x] Support cover image extraction
+
+## CAD File Conversion (New)
+- [x] Install LibreCAD for CAD processing
+- [x] Implement DWG to PDF conversion
+- [x] Implement DXF to PDF conversion
+- [x] Implement DWG to SVG conversion
+- [x] Implement DXF to SVG conversion
+- [x] Implement DWG to PNG conversion
+- [x] Implement DXF to PNG conversion
+- [x] Add CAD conversion API routes
+- [x] Update Convert page UI with CAD options
+- [x] Support layer visibility options
+- [x] Support scale and paper size settings
+- [x] Support paper orientation settings

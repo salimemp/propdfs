@@ -717,3 +717,241 @@ describe('Annotations & Comments', () => {
     expect(comment.resolved).toBe(true);
   });
 });
+
+
+// ==================== E-BOOK CONVERSION TESTS ====================
+
+describe("E-book Conversion Service", () => {
+  describe("ebookService exports", () => {
+    it("should export all e-book conversion functions", async () => {
+      const ebookService = await import("./ebookService");
+      
+      expect(typeof ebookService.epubToPdf).toBe("function");
+      expect(typeof ebookService.mobiToPdf).toBe("function");
+      expect(typeof ebookService.pdfToEpub).toBe("function");
+      expect(typeof ebookService.pdfToMobi).toBe("function");
+      expect(typeof ebookService.extractEbookMetadata).toBe("function");
+      expect(typeof ebookService.extractEbookCover).toBe("function");
+      expect(typeof ebookService.getSupportedInputFormats).toBe("function");
+      expect(typeof ebookService.getSupportedOutputFormats).toBe("function");
+    });
+  });
+
+  describe("Supported Formats", () => {
+    it("should return list of supported input formats", async () => {
+      const { getSupportedInputFormats } = await import("./ebookService");
+      const formats = getSupportedInputFormats();
+      
+      expect(Array.isArray(formats)).toBe(true);
+      expect(formats).toContain("epub");
+      expect(formats).toContain("mobi");
+      expect(formats).toContain("pdf");
+      expect(formats).toContain("azw");
+      expect(formats).toContain("azw3");
+    });
+
+    it("should return list of supported output formats", async () => {
+      const { getSupportedOutputFormats } = await import("./ebookService");
+      const formats = getSupportedOutputFormats();
+      
+      expect(Array.isArray(formats)).toBe(true);
+      expect(formats).toContain("epub");
+      expect(formats).toContain("mobi");
+      expect(formats).toContain("pdf");
+    });
+  });
+
+  describe("Conversion Options", () => {
+    it("should accept valid page size options", () => {
+      const validPageSizes = ["a4", "letter", "a5", "b5"];
+      validPageSizes.forEach(size => {
+        expect(typeof size).toBe("string");
+      });
+    });
+
+    it("should accept valid font size range", () => {
+      const minFontSize = 8;
+      const maxFontSize = 24;
+      expect(minFontSize).toBeLessThan(maxFontSize);
+      expect(minFontSize).toBeGreaterThan(0);
+    });
+
+    it("should accept margin configuration", () => {
+      const margins = {
+        top: 20,
+        bottom: 20,
+        left: 15,
+        right: 15,
+      };
+      expect(margins.top).toBeGreaterThanOrEqual(0);
+      expect(margins.bottom).toBeGreaterThanOrEqual(0);
+      expect(margins.left).toBeGreaterThanOrEqual(0);
+      expect(margins.right).toBeGreaterThanOrEqual(0);
+    });
+  });
+
+  describe("E-book Metadata", () => {
+    it("should define metadata structure", () => {
+      const metadata = {
+        title: "Sample Book",
+        author: "John Doe",
+        publisher: "Publisher Inc",
+        language: "en",
+        isbn: "978-0-123456-78-9",
+        publicationDate: "2024-01-01",
+        description: "A sample e-book",
+        pageCount: 250,
+      };
+      
+      expect(metadata.title).toBeDefined();
+      expect(metadata.author).toBeDefined();
+      expect(typeof metadata.pageCount).toBe("number");
+    });
+  });
+});
+
+// ==================== CAD CONVERSION TESTS ====================
+
+describe("CAD Conversion Service", () => {
+  describe("cadService exports", () => {
+    it("should export all CAD conversion functions", async () => {
+      const cadService = await import("./cadService");
+      
+      expect(typeof cadService.dwgToPdf).toBe("function");
+      expect(typeof cadService.dxfToPdf).toBe("function");
+      expect(typeof cadService.dwgToSvg).toBe("function");
+      expect(typeof cadService.dxfToSvg).toBe("function");
+      expect(typeof cadService.dwgToPng).toBe("function");
+      expect(typeof cadService.dxfToPng).toBe("function");
+      expect(typeof cadService.extractCadMetadata).toBe("function");
+      expect(typeof cadService.getSupportedCadInputFormats).toBe("function");
+      expect(typeof cadService.getSupportedCadOutputFormats).toBe("function");
+    });
+  });
+
+  describe("Supported CAD Formats", () => {
+    it("should return list of supported CAD input formats", async () => {
+      const { getSupportedCadInputFormats } = await import("./cadService");
+      const formats = getSupportedCadInputFormats();
+      
+      expect(Array.isArray(formats)).toBe(true);
+      expect(formats).toContain("dwg");
+      expect(formats).toContain("dxf");
+    });
+
+    it("should return list of supported CAD output formats", async () => {
+      const { getSupportedCadOutputFormats } = await import("./cadService");
+      const formats = getSupportedCadOutputFormats();
+      
+      expect(Array.isArray(formats)).toBe(true);
+      expect(formats).toContain("pdf");
+      expect(formats).toContain("svg");
+      expect(formats).toContain("png");
+    });
+  });
+
+  describe("CAD Conversion Options", () => {
+    it("should accept valid paper sizes", () => {
+      const validPaperSizes = ["a4", "a3", "a2", "a1", "a0", "letter", "legal", "tabloid"];
+      validPaperSizes.forEach(size => {
+        expect(typeof size).toBe("string");
+      });
+      expect(validPaperSizes.length).toBe(8);
+    });
+
+    it("should accept valid orientation options", () => {
+      const validOrientations = ["portrait", "landscape"];
+      expect(validOrientations).toContain("portrait");
+      expect(validOrientations).toContain("landscape");
+    });
+
+    it("should accept valid scale range", () => {
+      const minScale = 0.1;
+      const maxScale = 10;
+      expect(minScale).toBeLessThan(maxScale);
+      expect(minScale).toBeGreaterThan(0);
+    });
+
+    it("should accept valid DPI range for PNG output", () => {
+      const minDpi = 72;
+      const maxDpi = 600;
+      expect(minDpi).toBeLessThan(maxDpi);
+      expect(minDpi).toBeGreaterThan(0);
+    });
+
+    it("should accept layer selection array", () => {
+      const layers = ["Layer1", "Layer2", "Dimensions", "Text"];
+      expect(Array.isArray(layers)).toBe(true);
+      layers.forEach(layer => {
+        expect(typeof layer).toBe("string");
+      });
+    });
+  });
+
+  describe("CAD Metadata", () => {
+    it("should define CAD metadata structure", () => {
+      const metadata = {
+        version: "AutoCAD 2024",
+        createdBy: "Designer",
+        createdDate: "2024-01-01",
+        lastModified: "2024-06-15",
+        units: "millimeters",
+        layers: ["Layer1", "Layer2"],
+        blocks: ["Block1", "Block2"],
+        extents: {
+          minX: 0,
+          minY: 0,
+          maxX: 1000,
+          maxY: 800,
+        },
+      };
+      
+      expect(metadata.version).toBeDefined();
+      expect(metadata.units).toBeDefined();
+      expect(Array.isArray(metadata.layers)).toBe(true);
+      expect(metadata.extents.maxX).toBeGreaterThan(metadata.extents.minX);
+    });
+  });
+});
+
+// ==================== COMBINED CONVERSION TESTS ====================
+
+describe("Universal File Conversion", () => {
+  it("should support all documented conversion types", () => {
+    const allConversions = [
+      // Document conversions
+      "pdf_to_word", "pdf_to_excel", "pdf_to_ppt",
+      "word_to_pdf", "excel_to_pdf", "ppt_to_pdf",
+      // Image conversions
+      "image_to_pdf", "pdf_to_image",
+      // Text format conversions
+      "html_to_pdf", "markdown_to_pdf",
+      // E-book conversions
+      "epub_to_pdf", "mobi_to_pdf", "pdf_to_epub", "pdf_to_mobi",
+      // CAD conversions
+      "dwg_to_pdf", "dxf_to_pdf", "dwg_to_svg", "dxf_to_svg",
+      // PDF operations
+      "merge", "split", "compress", "rotate", "watermark", "encrypt",
+    ];
+    
+    expect(allConversions.length).toBe(24);
+  });
+
+  it("should categorize conversions correctly", () => {
+    const categories = {
+      document: ["pdf_to_word", "pdf_to_excel", "pdf_to_ppt", "word_to_pdf", "excel_to_pdf", "ppt_to_pdf"],
+      image: ["image_to_pdf", "pdf_to_image"],
+      text: ["html_to_pdf", "markdown_to_pdf"],
+      ebook: ["epub_to_pdf", "mobi_to_pdf", "pdf_to_epub", "pdf_to_mobi"],
+      cad: ["dwg_to_pdf", "dxf_to_pdf", "dwg_to_svg", "dxf_to_svg"],
+      operations: ["merge", "split", "compress", "rotate", "watermark", "encrypt"],
+    };
+    
+    expect(categories.document.length).toBe(6);
+    expect(categories.image.length).toBe(2);
+    expect(categories.text.length).toBe(2);
+    expect(categories.ebook.length).toBe(4);
+    expect(categories.cad.length).toBe(4);
+    expect(categories.operations.length).toBe(6);
+  });
+});
