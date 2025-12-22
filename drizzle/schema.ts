@@ -768,3 +768,187 @@ export const voiceCommands = mysqlTable("voice_commands", {
 
 export type VoiceCommand = typeof voiceCommands.$inferSelect;
 export type InsertVoiceCommand = typeof voiceCommands.$inferInsert;
+
+
+/**
+ * Email/password authentication credentials
+ */
+export const userCredentials = mysqlTable("user_credentials", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  
+  // Password (bcrypt hashed)
+  passwordHash: varchar("passwordHash", { length: 255 }).notNull(),
+  
+  // Email verification
+  emailVerified: boolean("emailVerified").default(false).notNull(),
+  emailVerificationToken: varchar("emailVerificationToken", { length: 128 }),
+  emailVerificationExpires: timestamp("emailVerificationExpires"),
+  
+  // Password reset
+  passwordResetToken: varchar("passwordResetToken", { length: 128 }),
+  passwordResetExpires: timestamp("passwordResetExpires"),
+  
+  // Security
+  failedLoginAttempts: int("failedLoginAttempts").default(0).notNull(),
+  lockedUntil: timestamp("lockedUntil"),
+  lastPasswordChange: timestamp("lastPasswordChange").defaultNow().notNull(),
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type UserCredentials = typeof userCredentials.$inferSelect;
+export type InsertUserCredentials = typeof userCredentials.$inferInsert;
+
+/**
+ * Magic link tokens for passwordless login
+ */
+export const magicLinks = mysqlTable("magic_links", {
+  id: int("id").autoincrement().primaryKey(),
+  
+  email: varchar("email", { length: 320 }).notNull(),
+  token: varchar("token", { length: 128 }).notNull().unique(),
+  
+  // Expiration (15 minutes)
+  expiresAt: timestamp("expiresAt").notNull(),
+  
+  // Usage tracking
+  usedAt: timestamp("usedAt"),
+  ipAddress: varchar("ipAddress", { length: 45 }),
+  userAgent: text("userAgent"),
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type MagicLink = typeof magicLinks.$inferSelect;
+export type InsertMagicLink = typeof magicLinks.$inferInsert;
+
+/**
+ * Device registration for smart sync
+ */
+export const userDevices = mysqlTable("user_devices", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  
+  // Device identification
+  deviceId: varchar("deviceId", { length: 128 }).notNull(),
+  deviceName: varchar("deviceName", { length: 255 }),
+  deviceType: mysqlEnum("deviceType", ["desktop", "laptop", "tablet", "mobile", "other"]).default("other").notNull(),
+  
+  // Browser/OS info
+  browser: varchar("browser", { length: 64 }),
+  os: varchar("os", { length: 64 }),
+  
+  // Sync status
+  lastSyncAt: timestamp("lastSyncAt"),
+  syncEnabled: boolean("syncEnabled").default(true).notNull(),
+  
+  // Push notifications
+  pushToken: text("pushToken"),
+  pushEnabled: boolean("pushEnabled").default(false).notNull(),
+  
+  // Security
+  lastActiveAt: timestamp("lastActiveAt").defaultNow().notNull(),
+  ipAddress: varchar("ipAddress", { length: 45 }),
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type UserDevice = typeof userDevices.$inferSelect;
+export type InsertUserDevice = typeof userDevices.$inferInsert;
+
+/**
+ * Sync queue for pending changes
+ */
+export const syncQueue = mysqlTable("sync_queue", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  deviceId: varchar("deviceId", { length: 128 }).notNull(),
+  
+  // Change info
+  entityType: mysqlEnum("entityType", ["file", "folder", "annotation", "setting"]).notNull(),
+  entityId: int("entityId").notNull(),
+  action: mysqlEnum("action", ["create", "update", "delete"]).notNull(),
+  
+  // Change data
+  changeData: json("changeData"),
+  
+  // Sync status
+  status: mysqlEnum("status", ["pending", "syncing", "synced", "conflict", "failed"]).default("pending").notNull(),
+  conflictResolution: mysqlEnum("conflictResolution", ["local_wins", "remote_wins", "manual"]),
+  
+  // Timing
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  syncedAt: timestamp("syncedAt"),
+});
+
+export type SyncQueueItem = typeof syncQueue.$inferSelect;
+export type InsertSyncQueueItem = typeof syncQueue.$inferInsert;
+
+/**
+ * File snapshots for point-in-time recovery
+ */
+export const fileSnapshots = mysqlTable("file_snapshots", {
+  id: int("id").autoincrement().primaryKey(),
+  fileId: int("fileId").notNull(),
+  userId: int("userId").notNull(),
+  
+  // Snapshot info
+  snapshotNumber: int("snapshotNumber").notNull(),
+  snapshotType: mysqlEnum("snapshotType", ["auto", "manual", "pre_edit"]).default("auto").notNull(),
+  description: varchar("description", { length: 255 }),
+  
+  // File data
+  fileKey: varchar("fileKey", { length: 512 }).notNull(),
+  fileUrl: text("fileUrl").notNull(),
+  fileSize: bigint("fileSize", { mode: "number" }).notNull(),
+  checksum: varchar("checksum", { length: 64 }),
+  
+  // Metadata at time of snapshot
+  metadata: json("metadata"),
+  
+  // Retention
+  expiresAt: timestamp("expiresAt"), // null = never expires
+  isProtected: boolean("isProtected").default(false).notNull(), // protected from auto-cleanup
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type FileSnapshot = typeof fileSnapshots.$inferSelect;
+export type InsertFileSnapshot = typeof fileSnapshots.$inferInsert;
+
+/**
+ * Context-aware OCR results
+ */
+export const ocrResults = mysqlTable("ocr_results", {
+  id: int("id").autoincrement().primaryKey(),
+  fileId: int("fileId").notNull(),
+  userId: int("userId").notNull(),
+  
+  // Document classification
+  documentType: mysqlEnum("documentType", ["invoice", "receipt", "form", "contract", "letter", "report", "table", "handwritten", "other"]).default("other").notNull(),
+  confidence: decimal("confidence", { precision: 5, scale: 4 }),
+  
+  // Extracted text
+  fullText: text("fullText"),
+  pageCount: int("pageCount").default(1).notNull(),
+  
+  // Structured data extraction
+  extractedFields: json("extractedFields"), // { field_name: { value, confidence, location } }
+  tables: json("tables"), // Array of extracted tables
+  
+  // Language detection
+  primaryLanguage: varchar("primaryLanguage", { length: 10 }),
+  detectedLanguages: json("detectedLanguages"),
+  
+  // Processing info
+  processingTimeMs: int("processingTimeMs"),
+  ocrEngine: varchar("ocrEngine", { length: 64 }).default("tesseract"),
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type OcrResult = typeof ocrResults.$inferSelect;
+export type InsertOcrResult = typeof ocrResults.$inferInsert;

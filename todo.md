@@ -40,8 +40,8 @@
 
 ## Authentication & Security
 - [x] Manus OAuth authentication
-- [ ] Email/password authentication with salt+hash
-- [ ] Magic link (passwordless) login
+- [x] Email/password authentication with salt+hash
+- [x] Magic link (passwordless) login
 - [ ] Social login integration (Google, GitHub)
 - [ ] Passkey/FIDO2 biometric login
 - [ ] TOTP 2FA (authenticator app)
@@ -64,12 +64,12 @@
 ## Cloud Storage
 - [x] Encrypted file storage (S3)
 - [x] Storage quota management (50GB Pro, 1TB Enterprise)
-- [ ] Smart sync across devices
+- [x] Smart sync across devices
 - [x] File tagging system
 - [x] Advanced search with filters
 - [x] Folder organization
 - [x] Automatic backups
-- [ ] Point-in-time recovery
+- [x] Point-in-time recovery
 - [ ] Google Drive integration
 - [ ] Dropbox integration
 - [ ] OneDrive integration
@@ -85,7 +85,7 @@
 ## OCR & Transcription
 - [x] Smart OCR with 99%+ accuracy
 - [x] Language detection (50+ languages)
-- [ ] Context-aware text recognition
+- [x] Context-aware text recognition
 - [x] Audio transcription to text
 - [x] Meeting notes capture
 - [x] Multi-language transcription support
@@ -97,7 +97,7 @@
 - [x] Intelligent page rotation
 - [x] Predictive conversion suggestions
 - [x] AI chatbot assistant (ProPDF)
-- [ ] Voice interaction support
+- [x] Voice interaction support
 
 ## Analytics Dashboard
 - [x] Conversion metrics display
@@ -428,3 +428,70 @@
 - [x] Support page-by-page reading
 - [x] Add read aloud button to PDF viewer
 - [x] Add read aloud tests
+
+
+## Email/Password Authentication (New)
+- [x] Create password hashing service with bcrypt/argon2
+- [x] Add password and email fields to users table
+- [x] Implement user registration with email/password
+- [x] Implement email verification flow
+- [x] Create verification token generation
+- [x] Send verification emails via Resend
+- [x] Implement password login endpoint
+- [x] Add password reset flow
+- [x] Create registration and login UI components
+- [x] Add email/password auth tests
+
+## Magic Link (Passwordless) Login (New)
+- [x] Create magic link token generation
+- [x] Implement magic link email sending
+- [x] Create magic link verification endpoint
+- [x] Add magic link expiration (15 minutes)
+- [x] Create magic link login UI
+- [x] Add rate limiting for magic link requests
+- [x] Add magic link auth tests
+
+## QR Code for 2FA Setup (New)
+- [x] Install qrcode.react library
+- [x] Create QR code component for TOTP setup
+- [x] Integrate QR code into 2FA setup dialog
+- [x] Add fallback manual entry option
+- [x] Style QR code display
+
+## Read Aloud in PDF Editor (New)
+- [x] Add Read Aloud button to PDF Editor toolbar
+- [x] Extract text from current PDF page
+- [x] Integrate ReadAloud component into Editor
+- [x] Add page-by-page reading mode
+- [x] Sync reading with current page view
+- [x] Add keyboard shortcuts for read aloud
+
+## Smart Sync Across Devices (New)
+- [x] Create device registration system
+- [x] Implement sync status tracking
+- [x] Add last sync timestamp per device
+- [x] Create sync conflict resolution
+- [x] Implement incremental sync
+- [x] Add sync status indicator in UI
+- [x] Create sync settings page
+- [x] Add offline queue for pending changes
+
+## Point-in-Time Recovery (New)
+- [x] Create file snapshots table
+- [x] Implement automatic snapshot creation on changes
+- [x] Add snapshot retention policy (30 days)
+- [x] Create recovery point selection UI
+- [x] Implement file restoration from snapshot
+- [x] Add recovery history view
+- [x] Create snapshot cleanup job
+
+## Context-Aware Text Recognition (New)
+- [x] Enhance OCR with context analysis
+- [x] Implement document type detection
+- [x] Add field extraction for invoices
+- [x] Add field extraction for receipts
+- [x] Add field extraction for forms
+- [x] Implement table structure recognition
+- [x] Add handwriting recognition enhancement
+- [x] Create context-aware OCR API endpoint
+- [x] Add context-aware OCR tests

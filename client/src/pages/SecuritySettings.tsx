@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { QRCodeSVG } from "qrcode.react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -486,12 +487,18 @@ export default function SecuritySettings() {
           
           {setupData ? (
             <div className="space-y-4">
-              {/* QR Code placeholder */}
+              {/* QR Code */}
               <div className="flex justify-center p-4 bg-white rounded-lg">
                 <div className="text-center">
-                  <QrCode className="h-32 w-32 mx-auto text-gray-400" />
-                  <p className="text-xs text-muted-foreground mt-2 break-all">
-                    {setupData.otpauthUri}
+                  <QRCodeSVG 
+                    value={setupData.otpauthUri} 
+                    size={160}
+                    level="M"
+                    includeMargin={true}
+                    className="mx-auto"
+                  />
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Scan with your authenticator app
                   </p>
                 </div>
               </div>

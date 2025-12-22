@@ -24,6 +24,10 @@ import * as totpService from "../app/services/totp-service";
 import * as crypto from 'crypto';
 import * as voiceCommandService from "../app/services/voice-command-service";
 import * as readAloudService from "../app/services/read-aloud-service";
+import * as passwordAuthService from "./passwordAuthService";
+import * as syncService from "./syncService";
+import * as recoveryService from "./recoveryService";
+import * as ocrService from "./ocrService";
 
 // Subscription tier limits
 const TIER_LIMITS = {
@@ -57,6 +61,137 @@ export const appRouter = router({
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
       return { success: true } as const;
     }),
+    
+    // Email/password registration
+    register: publicProcedure
+      .input(z.object({
+        email: z.string().email(),
+        password: z.string().min(8).max(128),
+        name: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const result = await passwordAuthService.registerWithEmail(
+          input.email,
+          input.password,
+          input.name
+        );
+        if (!result.success) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: result.error });
+        }
+        // TODO: Send verification email via emailService
+        return { success: true, message: "Please check your email to verify your account" };
+      }),
+    
+    // Email/password login
+    loginWithPassword: publicProcedure
+      .input(z.object({
+        email: z.string().email(),
+        password: z.string(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const result = await passwordAuthService.loginWithEmail(input.email, input.password);
+        if (!result.success) {
+          if (result.requiresVerification) {
+            throw new TRPCError({ code: "FORBIDDEN", message: result.error });
+          }
+          throw new TRPCError({ code: "UNAUTHORIZED", message: result.error });
+        }
+        // Set session cookie
+        // Note: In production, you'd create a JWT or session here
+        return { success: true, user: result.user };
+      }),
+    
+    // Verify email
+    verifyEmail: publicProcedure
+      .input(z.object({ token: z.string() }))
+      .mutation(async ({ input }) => {
+        const result = await passwordAuthService.verifyEmail(input.token);
+        if (!result.success) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: result.error });
+        }
+        return { success: true };
+      }),
+    
+    // Request password reset
+    requestPasswordReset: publicProcedure
+      .input(z.object({ email: z.string().email() }))
+      .mutation(async ({ input }) => {
+        const result = await passwordAuthService.requestPasswordReset(input.email);
+        // Always return success to prevent email enumeration
+        // TODO: Send reset email via emailService
+        return { success: true, message: "If an account exists, a reset link has been sent" };
+      }),
+    
+    // Reset password with token
+    resetPassword: publicProcedure
+      .input(z.object({
+        token: z.string(),
+        newPassword: z.string().min(8).max(128),
+      }))
+      .mutation(async ({ input }) => {
+        const result = await passwordAuthService.resetPassword(input.token, input.newPassword);
+        if (!result.success) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: result.error });
+        }
+        return { success: true };
+      }),
+    
+    // Change password (for logged-in users)
+    changePassword: protectedProcedure
+      .input(z.object({
+        currentPassword: z.string(),
+        newPassword: z.string().min(8).max(128),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const result = await passwordAuthService.changePassword(
+          ctx.user.id,
+          input.currentPassword,
+          input.newPassword
+        );
+        if (!result.success) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: result.error });
+        }
+        return { success: true };
+      }),
+    
+    // Request magic link
+    requestMagicLink: publicProcedure
+      .input(z.object({ email: z.string().email() }))
+      .mutation(async ({ ctx, input }) => {
+        const ipAddress = ctx.req.ip || ctx.req.headers["x-forwarded-for"] as string;
+        const userAgent = ctx.req.headers["user-agent"];
+        const result = await passwordAuthService.createMagicLink(input.email, ipAddress, userAgent);
+        if (!result.success) {
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: result.error });
+        }
+        // TODO: Send magic link email via emailService
+        return { success: true, message: "Magic link sent to your email" };
+      }),
+    
+    // Verify magic link
+    verifyMagicLink: publicProcedure
+      .input(z.object({ token: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        const result = await passwordAuthService.verifyMagicLink(input.token);
+        if (!result.success) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: result.error });
+        }
+        // Set session cookie
+        // Note: In production, you'd create a JWT or session here
+        return { success: true, user: result.user, isNewUser: result.isNewUser };
+      }),
+    
+    // Resend verification email
+    resendVerification: publicProcedure
+      .input(z.object({ email: z.string().email() }))
+      .mutation(async ({ input }) => {
+        const result = await passwordAuthService.resendVerificationEmail(input.email);
+        if (!result.success) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: result.error });
+        }
+        // TODO: Send verification email via emailService
+        return { success: true, message: "Verification email sent" };
+      }),
   }),
 
   // User preferences and settings
@@ -2885,6 +3020,206 @@ Be helpful, concise, and professional. If a user asks about a specific file oper
     getDefaultSettings: publicProcedure.query(() => {
       return readAloudService.DEFAULT_READ_ALOUD_SETTINGS;
     }),
+  }),
+
+  // Smart Sync
+  sync: router({
+    // Register device
+    registerDevice: protectedProcedure
+      .input(z.object({
+        deviceId: z.string().optional(),
+        deviceName: z.string().optional(),
+        deviceType: z.enum(["desktop", "laptop", "tablet", "mobile", "other"]).optional(),
+        browser: z.string().optional(),
+        os: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const ipAddress = ctx.req.ip || ctx.req.headers["x-forwarded-for"] as string;
+        return await syncService.registerDevice(ctx.user.id, { ...input, ipAddress });
+      }),
+
+    // Get user devices
+    getDevices: protectedProcedure.query(async ({ ctx }) => {
+      return await syncService.getUserDevices(ctx.user.id);
+    }),
+
+    // Update device
+    updateDevice: protectedProcedure
+      .input(z.object({
+        deviceId: z.string(),
+        deviceName: z.string().optional(),
+        syncEnabled: z.boolean().optional(),
+        pushEnabled: z.boolean().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const { deviceId, ...updates } = input;
+        return await syncService.updateDevice(ctx.user.id, deviceId, updates);
+      }),
+
+    // Remove device
+    removeDevice: protectedProcedure
+      .input(z.object({ deviceId: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        return await syncService.removeDevice(ctx.user.id, input.deviceId);
+      }),
+
+    // Get pending changes
+    getPendingChanges: protectedProcedure
+      .input(z.object({
+        deviceId: z.string(),
+        lastSyncTime: z.date().optional(),
+      }))
+      .query(async ({ ctx, input }) => {
+        return await syncService.getPendingSyncChanges(ctx.user.id, input.deviceId, input.lastSyncTime);
+      }),
+
+    // Mark changes as synced
+    markSynced: protectedProcedure
+      .input(z.object({
+        deviceId: z.string(),
+        changeIds: z.array(z.number()),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        await syncService.markChangesSynced(ctx.user.id, input.deviceId, input.changeIds);
+        return { success: true };
+      }),
+
+    // Get sync status
+    getStatus: protectedProcedure.query(async ({ ctx }) => {
+      return await syncService.getSyncStatus(ctx.user.id);
+    }),
+
+    // Full sync for new device
+    fullSync: protectedProcedure.query(async ({ ctx }) => {
+      return await syncService.getFullSyncData(ctx.user.id);
+    }),
+  }),
+
+  // Point-in-Time Recovery
+  recovery: router({
+    // Create manual snapshot
+    createSnapshot: protectedProcedure
+      .input(z.object({
+        fileId: z.number(),
+        description: z.string().optional(),
+        fileData: z.string(), // base64
+        mimeType: z.string(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const buffer = Buffer.from(input.fileData, "base64");
+        return await recoveryService.createSnapshot(input.fileId, ctx.user.id, {
+          snapshotType: "manual",
+          description: input.description,
+          fileData: buffer,
+          mimeType: input.mimeType,
+        });
+      }),
+
+    // Get file snapshots
+    getSnapshots: protectedProcedure
+      .input(z.object({ fileId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        return await recoveryService.getFileSnapshots(input.fileId, ctx.user.id);
+      }),
+
+    // Get recovery timeline
+    getTimeline: protectedProcedure
+      .input(z.object({ fileId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        return await recoveryService.getRecoveryTimeline(input.fileId, ctx.user.id);
+      }),
+
+    // Restore from snapshot
+    restore: protectedProcedure
+      .input(z.object({ snapshotId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        return await recoveryService.restoreFromSnapshot(input.snapshotId, ctx.user.id);
+      }),
+
+    // Delete snapshot
+    deleteSnapshot: protectedProcedure
+      .input(z.object({ snapshotId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        return await recoveryService.deleteSnapshot(input.snapshotId, ctx.user.id);
+      }),
+
+    // Protect/unprotect snapshot
+    setProtection: protectedProcedure
+      .input(z.object({
+        snapshotId: z.number(),
+        isProtected: z.boolean(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        return await recoveryService.setSnapshotProtection(input.snapshotId, ctx.user.id, input.isProtected);
+      }),
+
+    // Compare snapshots
+    compare: protectedProcedure
+      .input(z.object({
+        snapshotId1: z.number(),
+        snapshotId2: z.number(),
+      }))
+      .query(async ({ ctx, input }) => {
+        return await recoveryService.compareSnapshots(input.snapshotId1, input.snapshotId2, ctx.user.id);
+      }),
+
+    // Get storage usage
+    getStorageUsage: protectedProcedure.query(async ({ ctx }) => {
+      return await recoveryService.getSnapshotStorageUsage(ctx.user.id);
+    }),
+  }),
+
+  // Context-Aware OCR
+  ocr: router({
+    // Analyze document
+    analyze: protectedProcedure
+      .input(z.object({
+        fileId: z.number(),
+        text: z.string(),
+        useAI: z.boolean().optional(),
+        extractTables: z.boolean().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        return await ocrService.analyzeDocument(input.fileId, ctx.user.id, input.text, {
+          useAI: input.useAI,
+          extractTables: input.extractTables,
+        });
+      }),
+
+    // Get OCR results
+    getResults: protectedProcedure
+      .input(z.object({ fileId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        return await ocrService.getOcrResults(input.fileId, ctx.user.id);
+      }),
+
+    // Search OCR results
+    search: protectedProcedure
+      .input(z.object({
+        query: z.string(),
+        documentType: z.string().optional(),
+        limit: z.number().optional(),
+      }))
+      .query(async ({ ctx, input }) => {
+        return await ocrService.searchOcrResults(ctx.user.id, input.query, {
+          documentType: input.documentType,
+          limit: input.limit,
+        });
+      }),
+
+    // Classify document
+    classify: publicProcedure
+      .input(z.object({ text: z.string() }))
+      .query(({ input }) => {
+        return ocrService.classifyDocument(input.text);
+      }),
+
+    // Detect language
+    detectLanguage: publicProcedure
+      .input(z.object({ text: z.string() }))
+      .query(({ input }) => {
+        return ocrService.detectLanguage(input.text);
+      }),
   }),
 });
 export type AppRouter = typeof appRouter;

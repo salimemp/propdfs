@@ -22,6 +22,7 @@ import {
   Plus, Minus, Move, Hand, MousePointer, Search, Volume2
 } from "lucide-react";
 import TextToSpeech from "@/components/TextToSpeech";
+import { ReadAloud } from "@/components/ReadAloud";
 import { useState, useCallback, useRef, useEffect } from "react";
 import { toast } from "sonner";
 
@@ -762,10 +763,14 @@ export default function Editor() {
         )}
       </div>
 
-      {/* Text-to-Speech Panel */}
-      {showTTS && extractedText && (
-        <div className="absolute bottom-4 right-4 w-80 z-40">
-          <TextToSpeech text={extractedText} onClose={() => setShowTTS(false)} />
+      {/* Read Aloud Panel */}
+      {showTTS && (
+        <div className="absolute bottom-4 right-4 w-96 z-40">
+          <ReadAloud 
+            text={extractedText || "Upload a PDF document to extract and listen to its text content. This accessibility feature supports multiple languages, voice options, and sentence highlighting."}
+            fileUrl={pdfUrl || undefined}
+            onClose={() => setShowTTS(false)} 
+          />
         </div>
       )}
 

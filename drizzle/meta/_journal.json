@@ -57,6 +57,13 @@
       "when": 1766397405324,
       "tag": "0007_strange_wallflower",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1766398588707,
+      "tag": "0008_lowly_slyde",
+      "breakpoints": true
     }
   ]
 }
