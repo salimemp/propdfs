@@ -570,3 +570,108 @@ export async function extractText(pdfBuffer: Buffer): Promise<string> {
   
   return `PDF contains ${pageCount} page(s). Full text extraction requires OCR processing.`;
 }
+
+
+/**
+ * Compare two PDFs and return differences
+ * This is a basic comparison based on page count and metadata
+ * For full visual/text comparison, you'd need additional libraries
+ */
+export interface PdfComparisonResult {
+  totalPages1: number;
+  totalPages2: number;
+  changedPages: number;
+  addedPages: number;
+  removedPages: number;
+  metadataChanges: {
+    field: string;
+    value1: string | undefined;
+    value2: string | undefined;
+  }[];
+  summary: string;
+}
+
+export async function comparePdfs(
+  buffer1: Buffer,
+  buffer2: Buffer
+): Promise<PdfComparisonResult> {
+  const pdf1 = await PDFDocument.load(buffer1);
+  const pdf2 = await PDFDocument.load(buffer2);
+  
+  const pageCount1 = pdf1.getPageCount();
+  const pageCount2 = pdf2.getPageCount();
+  
+  // Calculate page differences
+  const addedPages = Math.max(0, pageCount2 - pageCount1);
+  const removedPages = Math.max(0, pageCount1 - pageCount2);
+  
+  // Compare metadata
+  const metadataChanges: { field: string; value1: string | undefined; value2: string | undefined }[] = [];
+  
+  const fields = [
+    { name: 'title', get: (pdf: typeof pdf1) => pdf.getTitle() },
+    { name: 'author', get: (pdf: typeof pdf1) => pdf.getAuthor() },
+    { name: 'subject', get: (pdf: typeof pdf1) => pdf.getSubject() },
+    { name: 'creator', get: (pdf: typeof pdf1) => pdf.getCreator() },
+    { name: 'producer', get: (pdf: typeof pdf1) => pdf.getProducer() },
+  ];
+  
+  for (const field of fields) {
+    const val1 = field.get(pdf1);
+    const val2 = field.get(pdf2);
+    if (val1 !== val2) {
+      metadataChanges.push({
+        field: field.name,
+        value1: val1,
+        value2: val2,
+      });
+    }
+  }
+  
+  // Compare page dimensions to detect changed pages
+  let changedPages = 0;
+  const minPages = Math.min(pageCount1, pageCount2);
+  
+  for (let i = 0; i < minPages; i++) {
+    const page1 = pdf1.getPage(i);
+    const page2 = pdf2.getPage(i);
+    
+    const size1 = page1.getSize();
+    const size2 = page2.getSize();
+    
+    // If dimensions differ, consider it changed
+    if (size1.width !== size2.width || size1.height !== size2.height) {
+      changedPages++;
+    }
+  }
+  
+  // Generate summary
+  const summaryParts: string[] = [];
+  
+  if (addedPages > 0) {
+    summaryParts.push(`${addedPages} page(s) added`);
+  }
+  if (removedPages > 0) {
+    summaryParts.push(`${removedPages} page(s) removed`);
+  }
+  if (changedPages > 0) {
+    summaryParts.push(`${changedPages} page(s) with dimension changes`);
+  }
+  if (metadataChanges.length > 0) {
+    summaryParts.push(`${metadataChanges.length} metadata field(s) changed`);
+  }
+  
+  const summary = summaryParts.length > 0 
+    ? summaryParts.join(', ')
+    : 'No significant differences detected';
+  
+  return {
+    totalPages1: pageCount1,
+    totalPages2: pageCount2,
+    changedPages,
+    addedPages,
+    removedPages,
+    metadataChanges,
+    summary,
+  };
+}

@@ -17,7 +17,10 @@ import {
   subscriptions, InsertSubscription,
   usageAnalytics, InsertUsageAnalytics,
   conversionPresets, InsertConversionPreset,
-  chatHistory, InsertChatHistory
+  chatHistory, InsertChatHistory,
+  annotations, InsertAnnotation,
+  costTracking, InsertCostTracking,
+  pdfComparisons, InsertPdfComparison
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -821,4 +824,180 @@ export async function updateCloudStorageToken(
       eq(cloudStorageConnections.userId, userId),
       eq(cloudStorageConnections.provider, provider)
     ));
+}
+
+
+// ==================== ANNOTATION OPERATIONS ====================
+
+export async function getAnnotations(fileId: number, userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return await db.select().from(annotations)
+    .where(eq(annotations.fileId, fileId))
+    .orderBy(annotations.pageNumber, annotations.createdAt);
+}
+
+export async function createAnnotation(data: InsertAnnotation) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const result = await db.insert(annotations).values(data);
+  return { id: result[0].insertId, ...data };
+}
+
+export async function updateAnnotation(
+  id: number, 
+  userId: number, 
+  data: Partial<InsertAnnotation>
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  await db.update(annotations)
+    .set(data)
+    .where(and(
+      eq(annotations.id, id),
+      eq(annotations.userId, userId)
+    ));
+  
+  return { id, ...data };
+}
+
+export async function deleteAnnotation(id: number, userId: number) {
+  const db = await getDb();
+  if (!db) return;
+  
+  await db.delete(annotations)
+    .where(and(
+      eq(annotations.id, id),
+      eq(annotations.userId, userId)
+    ));
+}
+
+export async function resolveAnnotation(id: number, userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  await db.update(annotations)
+    .set({
+      isResolved: true,
+      resolvedBy: userId,
+      resolvedAt: new Date(),
+    })
+    .where(eq(annotations.id, id));
+  
+  return { id, isResolved: true };
+}
+
+// ==================== ADDITIONAL COMMENT OPERATIONS ====================
+
+export async function getComments(fileId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return await db.select().from(comments)
+    .where(and(
+      eq(comments.fileId, fileId),
+      eq(comments.status, "active")
+    ))
+    .orderBy(comments.createdAt);
+}
+
+export async function updateCommentWithAuth(id: number, userId: number, content: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  await db.update(comments)
+    .set({ content })
+    .where(and(
+      eq(comments.id, id),
+      eq(comments.userId, userId)
+    ));
+  
+  return { id, content };
+}
+
+export async function deleteCommentWithAuth(id: number, userId: number) {
+  const db = await getDb();
+  if (!db) return;
+  
+  await db.update(comments)
+    .set({ status: "deleted" })
+    .where(and(
+      eq(comments.id, id),
+      eq(comments.userId, userId)
+    ));
+}
+
+export async function resolveComment(id: number, userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  await db.update(comments)
+    .set({ status: "resolved" })
+    .where(eq(comments.id, id));
+  
+  return { id, status: "resolved" };
+}
+
+// ==================== COST TRACKING OPERATIONS ====================
+
+export async function getCostTracking(userId: number, startDate: Date, endDate: Date) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return await db.select().from(costTracking)
+    .where(and(
+      eq(costTracking.userId, userId),
+      gte(costTracking.date, startDate),
+      lte(costTracking.date, endDate)
+    ))
+    .orderBy(costTracking.date);
+}
+
+export async function createCostTracking(data: InsertCostTracking) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const result = await db.insert(costTracking).values(data);
+  return { id: result[0].insertId, ...data };
+}
+
+export async function updateCostTracking(id: number, data: Partial<InsertCostTracking>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  await db.update(costTracking)
+    .set(data)
+    .where(eq(costTracking.id, id));
+}
+
+// ==================== PDF COMPARISON OPERATIONS ====================
+
+export async function getPdfComparisons(userId: number, limit: number = 20) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return await db.select().from(pdfComparisons)
+    .where(eq(pdfComparisons.userId, userId))
+    .orderBy(desc(pdfComparisons.createdAt))
+    .limit(limit);
+}
+
+export async function createPdfComparison(data: InsertPdfComparison) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const result = await db.insert(pdfComparisons).values(data);
+  return { id: result[0].insertId, ...data };
+}
+
+export async function updatePdfComparison(id: number, data: Partial<InsertPdfComparison>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  await db.update(pdfComparisons)
+    .set(data)
+    .where(eq(pdfComparisons.id, id));
 }

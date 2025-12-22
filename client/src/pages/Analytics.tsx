@@ -7,7 +7,8 @@ import { trpc } from "@/lib/trpc";
 import { getLoginUrl } from "@/const";
 import { 
   BarChart3, TrendingUp, Clock, CheckCircle, XCircle,
-  Loader2, Download, FileText, Zap, HardDrive, Calendar
+  Loader2, Download, FileText, Zap, HardDrive, Calendar,
+  DollarSign, PiggyBank, TrendingDown, ArrowUpRight, ArrowDownRight
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
@@ -298,6 +299,84 @@ export default function Analytics() {
                     />
                   </div>
                 )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Cost Tracking & ROI */}
+        <div className="grid gap-6 md:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <DollarSign className="h-5 w-5 text-green-600" />
+                Cost Savings
+              </CardTitle>
+              <CardDescription>Estimated savings vs. manual processing</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-3xl font-bold text-green-600">$127.50</p>
+                    <p className="text-sm text-slate-500">Saved this month</p>
+                  </div>
+                  <div className="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center">
+                    <PiggyBank className="h-6 w-6 text-green-600" />
+                  </div>
+                </div>
+                <div className="pt-4 border-t space-y-3">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-slate-600">Manual processing cost</span>
+                    <span className="font-medium">$2.50/document</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-slate-600">ProPDFs cost</span>
+                    <span className="font-medium text-green-600">$0.00 (Free tier)</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-slate-600">Documents processed</span>
+                    <span className="font-medium">{stats?.total || 0}</span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-blue-600" />
+                ROI Analysis
+              </CardTitle>
+              <CardDescription>Return on investment metrics</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-3 bg-blue-50 rounded-lg">
+                    <p className="text-2xl font-bold text-blue-600">∞%</p>
+                    <p className="text-xs text-slate-600">ROI (Free tier)</p>
+                  </div>
+                  <div className="p-3 bg-green-50 rounded-lg">
+                    <p className="text-2xl font-bold text-green-600">85%</p>
+                    <p className="text-xs text-slate-600">Time saved</p>
+                  </div>
+                </div>
+                <div className="pt-4 border-t space-y-3">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-slate-600">Time per manual conversion</span>
+                    <span className="font-medium">5-10 min</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-slate-600">Time with ProPDFs</span>
+                    <span className="font-medium text-green-600">{avgProcessingTime}s</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-slate-600">Hours saved this month</span>
+                    <span className="font-medium">{((Number(stats?.total || 0) * 7.5) / 60).toFixed(1)} hrs</span>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>

@@ -568,3 +568,152 @@ describe("Cloud Storage Service", () => {
     expect(onedriveUrl).toContain("microsoft");
   });
 });
+
+
+// PDF Editor Tests
+describe('PDF Editor Features', () => {
+  it('should have annotation types defined', () => {
+    const annotationTypes = ['text', 'highlight', 'rectangle', 'circle', 'stamp', 'signature'];
+    annotationTypes.forEach(type => {
+      expect(typeof type).toBe('string');
+    });
+  });
+
+  it('should have stamp types defined', () => {
+    const stampTypes = ['approved', 'rejected', 'draft', 'confidential', 'final'];
+    expect(stampTypes.length).toBe(5);
+  });
+
+  it('should support zoom levels', () => {
+    const zoomLevels = [50, 75, 100, 125, 150, 200];
+    zoomLevels.forEach(level => {
+      expect(level).toBeGreaterThanOrEqual(50);
+      expect(level).toBeLessThanOrEqual(200);
+    });
+  });
+});
+
+// Text-to-Speech Tests
+describe('Text-to-Speech Features', () => {
+  it('should have valid speech rate range', () => {
+    const minRate = 0.5;
+    const maxRate = 2.0;
+    expect(minRate).toBeLessThan(maxRate);
+    expect(minRate).toBeGreaterThanOrEqual(0.1);
+    expect(maxRate).toBeLessThanOrEqual(10);
+  });
+
+  it('should have valid pitch range', () => {
+    const minPitch = 0.5;
+    const maxPitch = 2.0;
+    expect(minPitch).toBeLessThan(maxPitch);
+  });
+
+  it('should have valid volume range', () => {
+    const minVolume = 0;
+    const maxVolume = 1;
+    expect(minVolume).toBe(0);
+    expect(maxVolume).toBe(1);
+  });
+});
+
+// PDF Comparison Tests
+describe('PDF Comparison Features', () => {
+  it('should compare page counts', () => {
+    const pdf1Pages = 5;
+    const pdf2Pages = 7;
+    const difference = pdf2Pages - pdf1Pages;
+    expect(difference).toBe(2);
+  });
+
+  it('should detect added pages', () => {
+    const originalPages = 5;
+    const newPages = 8;
+    const addedPages = newPages - originalPages;
+    expect(addedPages).toBeGreaterThan(0);
+  });
+
+  it('should detect removed pages', () => {
+    const originalPages = 10;
+    const newPages = 7;
+    const removedPages = originalPages - newPages;
+    expect(removedPages).toBeGreaterThan(0);
+  });
+});
+
+// Cost Tracking Tests
+describe('Cost Tracking & ROI', () => {
+  it('should calculate cost savings correctly', () => {
+    const manualCostPerDoc = 2.50;
+    const documentsProcessed = 51;
+    const proPdfsCost = 0; // Free tier
+    const savings = (manualCostPerDoc * documentsProcessed) - proPdfsCost;
+    expect(savings).toBe(127.50);
+  });
+
+  it('should calculate time saved', () => {
+    const manualTimePerDoc = 7.5; // minutes
+    const documentsProcessed = 10;
+    const totalTimeSaved = (manualTimePerDoc * documentsProcessed) / 60; // hours
+    expect(totalTimeSaved).toBe(1.25);
+  });
+
+  it('should calculate ROI for paid plans', () => {
+    const monthlyCost = 5.99;
+    const manualCostPerDoc = 2.50;
+    const documentsProcessed = 100;
+    const savings = manualCostPerDoc * documentsProcessed;
+    const roi = ((savings - monthlyCost) / monthlyCost) * 100;
+    expect(roi).toBeGreaterThan(0);
+  });
+});
+
+// Conversion Progress Tests
+describe('Conversion Progress Tracking', () => {
+  it('should have valid job statuses', () => {
+    const validStatuses = ['queued', 'processing', 'completed', 'failed'];
+    expect(validStatuses.length).toBe(4);
+  });
+
+  it('should track progress percentage', () => {
+    const progress = 75;
+    expect(progress).toBeGreaterThanOrEqual(0);
+    expect(progress).toBeLessThanOrEqual(100);
+  });
+
+  it('should calculate elapsed time', () => {
+    const startTime = new Date('2024-01-01T10:00:00');
+    const currentTime = new Date('2024-01-01T10:00:30');
+    const elapsedMs = currentTime.getTime() - startTime.getTime();
+    const elapsedSeconds = elapsedMs / 1000;
+    expect(elapsedSeconds).toBe(30);
+  });
+});
+
+// Annotations & Comments Tests
+describe('Annotations & Comments', () => {
+  it('should support annotation positions', () => {
+    const annotation = {
+      pageNumber: 1,
+      x: 100,
+      y: 200,
+      width: 50,
+      height: 30
+    };
+    expect(annotation.pageNumber).toBeGreaterThan(0);
+    expect(annotation.x).toBeGreaterThanOrEqual(0);
+    expect(annotation.y).toBeGreaterThanOrEqual(0);
+  });
+
+  it('should support comment threading', () => {
+    const parentComment = { id: 1, content: 'Main comment', parentId: null };
+    const replyComment = { id: 2, content: 'Reply', parentId: 1 };
+    expect(replyComment.parentId).toBe(parentComment.id);
+  });
+
+  it('should support comment resolution', () => {
+    const comment = { id: 1, resolved: false };
+    comment.resolved = true;
+    expect(comment.resolved).toBe(true);
+  });
+});

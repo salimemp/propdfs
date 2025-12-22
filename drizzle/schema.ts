@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, boolean, bigint, json } from "drizzle-orm/mysql-core";
+import { bigint, boolean, decimal, int, json, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -433,3 +433,114 @@ export const cloudStorageConnections = mysqlTable("cloud_storage_connections", {
 
 export type CloudStorageConnection = typeof cloudStorageConnections.$inferSelect;
 export type InsertCloudStorageConnection = typeof cloudStorageConnections.$inferInsert;
+
+/**
+ * PDF annotations for editor
+ */
+export const annotations = mysqlTable("annotations", {
+  id: int("id").autoincrement().primaryKey(),
+  fileId: int("fileId").notNull(),
+  userId: int("userId").notNull(),
+  
+  type: mysqlEnum("type", ["highlight", "underline", "strikethrough", "text", "shape", "stamp", "signature", "comment", "drawing"]).notNull(),
+  pageNumber: int("pageNumber").notNull(),
+  
+  // Position and dimensions
+  positionX: int("positionX").notNull(),
+  positionY: int("positionY").notNull(),
+  width: int("width"),
+  height: int("height"),
+  
+  // Content
+  content: text("content"),
+  color: varchar("color", { length: 32 }),
+  
+  // For shapes
+  shapeType: varchar("shapeType", { length: 32 }),
+  strokeWidth: int("strokeWidth"),
+  
+  // For drawings
+  pathData: text("pathData"),
+  
+  // Metadata
+  isResolved: boolean("isResolved").default(false),
+  resolvedBy: int("resolvedBy"),
+  resolvedAt: timestamp("resolvedAt"),
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Annotation = typeof annotations.$inferSelect;
+export type InsertAnnotation = typeof annotations.$inferInsert;
+
+/**
+ * Cost tracking for ROI reporting
+ */
+export const costTracking = mysqlTable("cost_tracking", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId"),
+  teamId: int("teamId"),
+  
+  date: timestamp("date").notNull(),
+  
+  // Costs
+  computeCost: decimal("computeCost", { precision: 10, scale: 4 }).default("0").notNull(),
+  storageCost: decimal("storageCost", { precision: 10, scale: 4 }).default("0").notNull(),
+  bandwidthCost: decimal("bandwidthCost", { precision: 10, scale: 4 }).default("0").notNull(),
+  aiProcessingCost: decimal("aiProcessingCost", { precision: 10, scale: 4 }).default("0").notNull(),
+  totalCost: decimal("totalCost", { precision: 10, scale: 4 }).default("0").notNull(),
+  
+  // Usage metrics for cost calculation
+  conversionsCount: int("conversionsCount").default(0).notNull(),
+  ocrPagesProcessed: int("ocrPagesProcessed").default(0).notNull(),
+  transcriptionMinutes: int("transcriptionMinutes").default(0).notNull(),
+  aiChatTokens: int("aiChatTokens").default(0).notNull(),
+  storageGbHours: decimal("storageGbHours", { precision: 10, scale: 4 }).default("0").notNull(),
+  bandwidthGb: decimal("bandwidthGb", { precision: 10, scale: 4 }).default("0").notNull(),
+  
+  // Revenue (for ROI)
+  subscriptionRevenue: decimal("subscriptionRevenue", { precision: 10, scale: 4 }).default("0").notNull(),
+  adRevenue: decimal("adRevenue", { precision: 10, scale: 4 }).default("0").notNull(),
+  totalRevenue: decimal("totalRevenue", { precision: 10, scale: 4 }).default("0").notNull(),
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type CostTracking = typeof costTracking.$inferSelect;
+export type InsertCostTracking = typeof costTracking.$inferInsert;
+
+/**
+ * PDF comparison results
+ */
+export const pdfComparisons = mysqlTable("pdf_comparisons", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  
+  file1Id: int("file1Id").notNull(),
+  file2Id: int("file2Id").notNull(),
+  
+  // Results
+  totalPages: int("totalPages").notNull(),
+  changedPages: int("changedPages").notNull(),
+  addedPages: int("addedPages").default(0).notNull(),
+  removedPages: int("removedPages").default(0).notNull(),
+  
+  // Text diff summary
+  textAdditions: int("textAdditions").default(0).notNull(),
+  textDeletions: int("textDeletions").default(0).notNull(),
+  textModifications: int("textModifications").default(0).notNull(),
+  
+  // Result file
+  resultFileUrl: text("resultFileUrl"),
+  diffDataJson: json("diffDataJson"),
+  
+  status: mysqlEnum("status", ["pending", "processing", "completed", "failed"]).default("pending").notNull(),
+  errorMessage: text("errorMessage"),
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  completedAt: timestamp("completedAt"),
+});
+
+export type PdfComparison = typeof pdfComparisons.$inferSelect;
+export type InsertPdfComparison = typeof pdfComparisons.$inferInsert;

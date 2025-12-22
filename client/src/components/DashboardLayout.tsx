@@ -23,7 +23,7 @@ import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
 import { 
   LayoutDashboard, LogOut, PanelLeft, FileText, FolderOpen, 
-  Users, BarChart3, Settings, Upload, CreditCard
+  Users, BarChart3, Settings, Upload, CreditCard, Pencil, GitCompare
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -33,6 +33,8 @@ import { Button } from "./ui/button";
 const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
   { icon: Upload, label: "Convert", path: "/convert" },
+  { icon: Pencil, label: "PDF Editor", path: "/editor" },
+  { icon: GitCompare, label: "Compare", path: "/compare" },
   { icon: FolderOpen, label: "My Files", path: "/files" },
   { icon: Users, label: "Teams", path: "/teams" },
   { icon: BarChart3, label: "Analytics", path: "/analytics" },

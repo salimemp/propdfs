@@ -12,6 +12,8 @@ import Teams from "./pages/Teams";
 import Analytics from "./pages/Analytics";
 import Settings from "./pages/Settings";
 import Pricing from "./pages/Pricing";
+import Editor from "./pages/Editor";
+import Compare from "./pages/Compare";
 
 function Router() {
   return (
@@ -24,6 +26,8 @@ function Router() {
       <Route path="/analytics" component={Analytics} />
       <Route path="/settings" component={Settings} />
       <Route path="/pricing" component={Pricing} />
+      <Route path="/editor" component={Editor} />
+      <Route path="/compare" component={Compare} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

@@ -1491,6 +1491,212 @@ Be helpful, concise, and professional. If a user asks about a specific file oper
         });
       }),
   }),
+
+  // Annotations for PDF editor
+  annotations: router({
+    list: protectedProcedure
+      .input(z.object({
+        fileId: z.number(),
+      }))
+      .query(async ({ ctx, input }) => {
+        return await db.getAnnotations(input.fileId, ctx.user.id);
+      }),
+      
+    create: protectedProcedure
+      .input(z.object({
+        fileId: z.number(),
+        type: z.enum(["highlight", "underline", "strikethrough", "text", "shape", "stamp", "signature", "comment", "drawing"]),
+        pageNumber: z.number(),
+        positionX: z.number(),
+        positionY: z.number(),
+        width: z.number().optional(),
+        height: z.number().optional(),
+        content: z.string().optional(),
+        color: z.string().optional(),
+        shapeType: z.string().optional(),
+        strokeWidth: z.number().optional(),
+        pathData: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const annotation = await db.createAnnotation({
+          ...input,
+          userId: ctx.user.id,
+        });
+        return annotation;
+      }),
+      
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        content: z.string().optional(),
+        positionX: z.number().optional(),
+        positionY: z.number().optional(),
+        width: z.number().optional(),
+        height: z.number().optional(),
+        color: z.string().optional(),
+        isResolved: z.boolean().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const { id, ...data } = input;
+        return await db.updateAnnotation(id, ctx.user.id, data);
+      }),
+      
+    delete: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        await db.deleteAnnotation(input.id, ctx.user.id);
+        return { success: true };
+      }),
+      
+    resolve: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        return await db.resolveAnnotation(input.id, ctx.user.id);
+      }),
+  }),
+
+
+
+  // PDF Comparison
+  pdfComparison: router({
+    compare: protectedProcedure
+      .input(z.object({
+        file1Url: z.string().url(),
+        file2Url: z.string().url(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const user = await db.getUserById(ctx.user.id);
+        if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+        await checkConversionLimit(ctx.user.id, user.subscriptionTier);
+        
+        // Download both PDFs
+        const [response1, response2] = await Promise.all([
+          fetch(input.file1Url),
+          fetch(input.file2Url),
+        ]);
+        
+        const [buffer1, buffer2] = await Promise.all([
+          response1.arrayBuffer().then(ab => Buffer.from(ab)),
+          response2.arrayBuffer().then(ab => Buffer.from(ab)),
+        ]);
+        
+        // Compare PDFs using our service
+        const comparison = await pdfService.comparePdfs(buffer1, buffer2);
+        
+        await db.incrementUserConversions(ctx.user.id);
+        
+        return comparison;
+      }),
+      
+    getHistory: protectedProcedure
+      .input(z.object({
+        limit: z.number().default(20),
+      }))
+      .query(async ({ ctx, input }) => {
+        return await db.getPdfComparisons(ctx.user.id, input.limit);
+      }),
+  }),
+
+  // Cost tracking and ROI reporting
+  costs: router({
+    getDashboard: protectedProcedure
+      .input(z.object({
+        startDate: z.date().optional(),
+        endDate: z.date().optional(),
+      }))
+      .query(async ({ ctx, input }) => {
+        const startDate = input.startDate || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+        const endDate = input.endDate || new Date();
+        
+        const costs = await db.getCostTracking(ctx.user.id, startDate, endDate);
+        const user = await db.getUserById(ctx.user.id);
+        
+        // Calculate totals
+        const totalCost = costs.reduce((sum, c) => sum + parseFloat(c.totalCost), 0);
+        const totalRevenue = costs.reduce((sum, c) => sum + parseFloat(c.totalRevenue), 0);
+        const roi = totalCost > 0 ? ((totalRevenue - totalCost) / totalCost * 100).toFixed(2) : "0";
+        
+        return {
+          costs,
+          summary: {
+            totalCost: totalCost.toFixed(2),
+            totalRevenue: totalRevenue.toFixed(2),
+            roi: `${roi}%`,
+            period: { startDate, endDate },
+          },
+          breakdown: {
+            compute: costs.reduce((sum, c) => sum + parseFloat(c.computeCost), 0).toFixed(2),
+            storage: costs.reduce((sum, c) => sum + parseFloat(c.storageCost), 0).toFixed(2),
+            bandwidth: costs.reduce((sum, c) => sum + parseFloat(c.bandwidthCost), 0).toFixed(2),
+            aiProcessing: costs.reduce((sum, c) => sum + parseFloat(c.aiProcessingCost), 0).toFixed(2),
+          },
+        };
+      }),
+      
+    getUsageMetrics: protectedProcedure
+      .input(z.object({
+        startDate: z.date().optional(),
+        endDate: z.date().optional(),
+      }))
+      .query(async ({ ctx, input }) => {
+        const startDate = input.startDate || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+        const endDate = input.endDate || new Date();
+        
+        const costs = await db.getCostTracking(ctx.user.id, startDate, endDate);
+        
+        return {
+          conversions: costs.reduce((sum, c) => sum + c.conversionsCount, 0),
+          ocrPages: costs.reduce((sum, c) => sum + c.ocrPagesProcessed, 0),
+          transcriptionMinutes: costs.reduce((sum, c) => sum + c.transcriptionMinutes, 0),
+          aiTokens: costs.reduce((sum, c) => sum + c.aiChatTokens, 0),
+          storageGbHours: costs.reduce((sum, c) => sum + parseFloat(c.storageGbHours), 0).toFixed(2),
+          bandwidthGb: costs.reduce((sum, c) => sum + parseFloat(c.bandwidthGb), 0).toFixed(2),
+        };
+      }),
+  }),
+
+  // Text-to-speech for accessibility
+  tts: router({
+    synthesize: protectedProcedure
+      .input(z.object({
+        text: z.string().max(5000),
+        language: z.string().default("en"),
+        voice: z.enum(["male", "female"]).default("female"),
+        speed: z.number().min(0.5).max(2).default(1),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        // Use LLM to generate speech-optimized text
+        const response = await invokeLLM({
+          messages: [
+            {
+              role: "system",
+              content: "You are a text-to-speech preparation assistant. Clean and format the text for natural speech synthesis. Remove special characters, expand abbreviations, and add appropriate pauses.",
+            },
+            {
+              role: "user",
+              content: input.text,
+            },
+          ],
+        });
+        
+        const cleanedText = (response.choices[0]?.message?.content as string) || input.text;
+        
+        // In production, this would call a TTS API like Google Cloud TTS or AWS Polly
+        // For now, return the cleaned text that can be used with browser's SpeechSynthesis API
+        return {
+          text: cleanedText,
+          language: input.language,
+          voice: input.voice,
+          speed: input.speed,
+          // audioUrl would be populated by actual TTS service
+          audioUrl: null,
+        };
+      }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

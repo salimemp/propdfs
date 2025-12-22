@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { useState, useCallback, useRef } from "react";
 import { toast } from "sonner";
+import ConversionProgress, { useConversionJobs } from "@/components/ConversionProgress";
 
 type ConversionType = 
   | "pdf_to_word" | "pdf_to_excel" | "pdf_to_ppt"
@@ -92,6 +93,9 @@ export default function Convert() {
   
   // Cloud storage state
   const [showCloudPicker, setShowCloudPicker] = useState(false);
+  
+  // Conversion progress tracking
+  const conversionJobs = useConversionJobs();
 
   const uploadMutation = trpc.files.upload.useMutation();
   const createConversionMutation = trpc.conversions.create.useMutation();
@@ -569,6 +573,22 @@ export default function Convert() {
 
   const content = (
     <div className="space-y-6">
+      {/* Real-time Conversion Progress */}
+      {conversionJobs.jobs.length > 0 && (
+        <ConversionProgress
+          jobs={conversionJobs.jobs}
+          onDismiss={(id) => conversionJobs.removeJob(id)}
+          onDownload={(job) => {
+            if (job.outputUrl) {
+              window.open(job.outputUrl, '_blank');
+            }
+          }}
+          onRetry={(job) => {
+            toast.info('Retry functionality coming soon');
+          }}
+        />
+      )}
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-slate-900">Convert Files</h1>
