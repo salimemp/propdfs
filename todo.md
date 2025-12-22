@@ -181,10 +181,34 @@
 - [x] Implement PDF rotate functionality
 - [x] Implement PDF watermark functionality
 - [x] Implement PDF encrypt/decrypt functionality
-- [ ] Implement PDF to image conversion
+- [x] Implement PDF to image conversion
 - [x] Implement image to PDF conversion
 - [x] Implement HTML to PDF conversion
 - [x] Implement Markdown to PDF conversion
 - [x] Update conversion API to use real processing
 - [ ] Add progress tracking for conversions
 - [x] Store converted files in S3
+
+## OAuth Authentication Flows (New)
+- [x] Google Drive OAuth - Create OAuth service with authorization URL
+- [x] Google Drive OAuth - Implement callback handler and token exchange
+- [x] Google Drive OAuth - Add token refresh logic
+- [x] Dropbox OAuth - Create OAuth service with authorization URL
+- [x] Dropbox OAuth - Implement callback handler and token exchange
+- [x] Dropbox OAuth - Add token refresh logic
+- [x] OneDrive OAuth - Create OAuth service with authorization URL
+- [x] OneDrive OAuth - Implement callback handler and token exchange
+- [x] OneDrive OAuth - Add token refresh logic
+- [x] Add OAuth callback routes to server
+- [x] Update Settings UI with OAuth connect buttons
+- [ ] Request OAuth credentials from user (client IDs and secrets)
+
+## PDF to Image Conversion (New)
+- [x] Install poppler-utils for PDF rendering
+- [x] Implement PDF to PNG conversion
+- [x] Implement PDF to JPG conversion
+- [x] Implement PDF to WebP conversion
+- [x] Add page selection for conversion (all pages or specific)
+- [x] Add image quality/DPI settings (72-600 DPI)
+- [x] Update Convert page UI for PDF-to-image options
+- [x] Store converted images in S3

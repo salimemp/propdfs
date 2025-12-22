@@ -11,6 +11,7 @@ import { invokeLLM } from "./_core/llm";
 import { transcribeAudio } from "./_core/voiceTranscription";
 import * as pdfService from "./pdfService";
 import * as cloudStorage from "./cloudStorageService";
+import * as oauthService from "./oauthService";
 
 // Subscription tier limits
 const TIER_LIMITS = {
@@ -1038,6 +1039,79 @@ Be helpful, concise, and professional. If a user asks about a specific file oper
         return { url, size: encryptedPdf.length };
       }),
       
+    // PDF to Images conversion using poppler-utils
+    pdfToImages: protectedProcedure
+      .input(z.object({
+        fileUrl: z.string().url(),
+        format: z.enum(["png", "jpeg", "webp"]).default("png"),
+        quality: z.number().min(1).max(100).default(90),
+        dpi: z.number().min(72).max(600).default(150),
+        pageNumbers: z.array(z.number().min(1)).optional(), // Specific pages to convert
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const user = await db.getUserById(ctx.user.id);
+        if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+        await checkConversionLimit(ctx.user.id, user.subscriptionTier);
+        
+        // Download PDF
+        const response = await fetch(input.fileUrl);
+        const arrayBuffer = await response.arrayBuffer();
+        const pdfBuffer = Buffer.from(arrayBuffer);
+        
+        // Convert PDF to images
+        let images = await pdfService.pdfToImages({
+          pdfBuffer,
+          format: input.format,
+          quality: input.quality,
+          dpi: input.dpi,
+        });
+        
+        // Filter to specific pages if requested
+        if (input.pageNumbers && input.pageNumbers.length > 0) {
+          images = input.pageNumbers
+            .filter(p => p <= images.length)
+            .map(p => images[p - 1]);
+        }
+        
+        // Upload images to S3
+        const results: { url: string; page: number; size: number }[] = [];
+        const mimeType = input.format === "jpeg" ? "image/jpeg" : 
+                         input.format === "webp" ? "image/webp" : "image/png";
+        const extension = input.format === "jpeg" ? "jpg" : input.format;
+        
+        for (let i = 0; i < images.length; i++) {
+          const pageNum = input.pageNumbers ? input.pageNumbers[i] : i + 1;
+          const fileKey = `${ctx.user.id}/pdf-images/${nanoid()}_page${pageNum}.${extension}`;
+          const { url } = await storagePut(fileKey, images[i], mimeType);
+          results.push({
+            url,
+            page: pageNum,
+            size: images[i].length,
+          });
+        }
+        
+        await db.incrementUserConversions(ctx.user.id);
+        
+        // Create conversion record
+        await db.createConversion({
+          userId: ctx.user.id,
+          sourceFilename: "document.pdf",
+          sourceFormat: "pdf",
+          sourceSize: pdfBuffer.length,
+          outputFormat: input.format,
+          conversionType: "pdf_to_image",
+          status: "completed",
+          completedAt: new Date(),
+        });
+        
+        return {
+          images: results,
+          totalPages: images.length,
+          format: input.format,
+          dpi: input.dpi,
+        };
+      }),
+      
     imagesToPdf: protectedProcedure
       .input(z.object({
         imageUrls: z.array(z.string().url()),
@@ -1138,33 +1212,114 @@ Be helpful, concise, and professional. If a user asks about a specific file oper
 
   // Cloud Storage Integrations
   cloudStorage: router({
+    // Get OAuth authorization URL
     getAuthUrl: protectedProcedure
       .input(z.object({
         provider: z.enum(["google_drive", "dropbox", "onedrive"]),
-        redirectUri: z.string().url(),
-      }))
-      .query(async ({ ctx, input }) => {
-        // Get client ID from user's connected accounts or environment
-        // For demo, we'll return the auth URL structure
-        const clientId = process.env[`${input.provider.toUpperCase()}_CLIENT_ID`] || "demo_client_id";
-        const authUrl = cloudStorage.getAuthUrl(
-          input.provider,
-          clientId,
-          input.redirectUri,
-          ctx.user.id.toString()
-        );
-        return { authUrl };
-      }),
-      
-    exchangeToken: protectedProcedure
-      .input(z.object({
-        provider: z.enum(["google_drive", "dropbox", "onedrive"]),
-        code: z.string(),
-        redirectUri: z.string().url(),
       }))
       .mutation(async ({ ctx, input }) => {
-        const clientId = process.env[`${input.provider.toUpperCase()}_CLIENT_ID`];
-        const clientSecret = process.env[`${input.provider.toUpperCase()}_CLIENT_SECRET`];
+        const envPrefix = input.provider === "google_drive" ? "GOOGLE" : 
+                          input.provider === "dropbox" ? "DROPBOX" : "MICROSOFT";
+        const clientId = process.env[`${envPrefix}_CLIENT_ID`];
+        const clientSecret = process.env[`${envPrefix}_CLIENT_SECRET`];
+        
+        if (!clientId || !clientSecret) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `${input.provider} integration not configured. Please add OAuth credentials in Settings.`,
+          });
+        }
+        
+        // Generate state for CSRF protection
+        const state = oauthService.generateOAuthState(ctx.user.id, input.provider);
+        
+        // Create OAuth service and get auth URL
+        const oauth = oauthService.createOAuthService(input.provider, clientId, clientSecret);
+        const authUrl = oauth.getAuthorizationUrl(state);
+        
+        return { authUrl, state };
+      }),
+      
+    // Handle OAuth callback and exchange code for tokens
+    handleCallback: protectedProcedure
+      .input(z.object({
+        code: z.string(),
+        state: z.string(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        // Validate state
+        const stateData = oauthService.validateOAuthState(input.state);
+        if (!stateData) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Invalid or expired OAuth state",
+          });
+        }
+        
+        // Verify user matches
+        if (stateData.userId !== ctx.user.id) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "OAuth state user mismatch",
+          });
+        }
+        
+        const provider = stateData.provider;
+        const envPrefix = provider === "google_drive" ? "GOOGLE" : 
+                          provider === "dropbox" ? "DROPBOX" : "MICROSOFT";
+        const clientId = process.env[`${envPrefix}_CLIENT_ID`];
+        const clientSecret = process.env[`${envPrefix}_CLIENT_SECRET`];
+        
+        if (!clientId || !clientSecret) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `${provider} integration not configured`,
+          });
+        }
+        
+        // Exchange code for tokens
+        const oauth = oauthService.createOAuthService(provider, clientId, clientSecret);
+        const tokens = await oauth.exchangeCodeForTokens(input.code);
+        
+        // Get user info from provider
+        const userInfo = await oauth.getUserInfo(tokens.accessToken);
+        
+        // Store tokens in database
+        await db.saveCloudStorageConnection({
+          userId: ctx.user.id,
+          provider: provider,
+          accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken,
+          expiresAt: new Date(Date.now() + tokens.expiresIn * 1000),
+          accountEmail: userInfo.email,
+        });
+        
+        return { 
+          success: true, 
+          provider,
+          email: userInfo.email,
+          name: userInfo.name,
+        };
+      }),
+      
+    // Refresh access token
+    refreshToken: protectedProcedure
+      .input(z.object({
+        provider: z.enum(["google_drive", "dropbox", "onedrive"]),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const connection = await db.getCloudStorageConnection(ctx.user.id, input.provider);
+        if (!connection || !connection.refreshToken) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: `${input.provider} not connected or refresh token missing`,
+          });
+        }
+        
+        const envPrefix = input.provider === "google_drive" ? "GOOGLE" : 
+                          input.provider === "dropbox" ? "DROPBOX" : "MICROSOFT";
+        const clientId = process.env[`${envPrefix}_CLIENT_ID`];
+        const clientSecret = process.env[`${envPrefix}_CLIENT_SECRET`];
         
         if (!clientId || !clientSecret) {
           throw new TRPCError({
@@ -1173,21 +1328,16 @@ Be helpful, concise, and professional. If a user asks about a specific file oper
           });
         }
         
-        const tokens = await cloudStorage.exchangeCodeForToken(
-          input.provider,
-          input.code,
-          clientId,
-          clientSecret,
-          input.redirectUri
-        );
+        const oauth = oauthService.createOAuthService(input.provider, clientId, clientSecret);
+        const tokens = await oauth.refreshAccessToken(connection.refreshToken);
         
-        // Store tokens in database (encrypted in production)
+        // Update tokens in database
         await db.saveCloudStorageConnection({
           userId: ctx.user.id,
           provider: input.provider,
           accessToken: tokens.accessToken,
-          refreshToken: tokens.refreshToken,
-          expiresAt: tokens.expiresIn ? new Date(Date.now() + tokens.expiresIn * 1000) : undefined,
+          refreshToken: tokens.refreshToken || connection.refreshToken,
+          expiresAt: new Date(Date.now() + tokens.expiresIn * 1000),
         });
         
         return { success: true };

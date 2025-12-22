@@ -85,6 +85,11 @@ export default function Convert() {
   const [compressionQuality, setCompressionQuality] = useState<"low" | "medium" | "high">("medium");
   const [splitRanges, setSplitRanges] = useState("1-3, 4-6");
   
+  // PDF to Image states
+  const [imageFormat, setImageFormat] = useState<"png" | "jpeg" | "webp">("png");
+  const [imageQuality, setImageQuality] = useState([90]);
+  const [imageDpi, setImageDpi] = useState([150]);
+  
   // Cloud storage state
   const [showCloudPicker, setShowCloudPicker] = useState(false);
 
@@ -99,6 +104,7 @@ export default function Convert() {
   const watermarkMutation = trpc.pdf.watermark.useMutation();
   const encryptMutation = trpc.pdf.encrypt.useMutation();
   const imagesToPdfMutation = trpc.pdf.imagesToPdf.useMutation();
+  const pdfToImagesMutation = trpc.pdf.pdfToImages.useMutation();
   const htmlToPdfMutation = trpc.pdf.htmlToPdf.useMutation();
   const markdownToPdfMutation = trpc.pdf.markdownToPdf.useMutation();
   
@@ -289,6 +295,24 @@ export default function Convert() {
             imageUrls: uploadedUrls,
           });
           result = { url: imageToPdfResult.url, size: imageToPdfResult.size };
+          break;
+
+        case "pdf_to_image":
+          if (uploadedUrls.length !== 1) {
+            throw new Error("Please select exactly 1 PDF file to convert to images");
+          }
+          const pdfToImgResult = await pdfToImagesMutation.mutateAsync({ 
+            fileUrl: uploadedUrls[0],
+            format: imageFormat,
+            quality: imageQuality[0],
+            dpi: imageDpi[0],
+          });
+          // Show all generated images
+          for (let i = 0; i < pdfToImgResult.images.length; i++) {
+            const img = pdfToImgResult.images[i];
+            toast.success(`Page ${img.page} converted to ${imageFormat.toUpperCase()}`);
+          }
+          result = { url: pdfToImgResult.images[0]?.url || "", size: pdfToImgResult.images[0]?.size };
           break;
 
         case "html_to_pdf":
@@ -486,6 +510,54 @@ export default function Convert() {
               <p className="text-sm text-slate-500 mt-2">
                 Each range will create a separate PDF file
               </p>
+            </CardContent>
+          </Card>
+        );
+
+      case "pdf_to_image":
+        return (
+          <Card className="mt-4">
+            <CardHeader>
+              <CardTitle className="text-lg">PDF to Image Options</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label>Output Format</Label>
+                <Select value={imageFormat} onValueChange={(v) => setImageFormat(v as any)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="png">PNG (Best quality, larger files)</SelectItem>
+                    <SelectItem value="jpeg">JPEG (Smaller files, good quality)</SelectItem>
+                    <SelectItem value="webp">WebP (Modern format, best compression)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Quality: {imageQuality[0]}%</Label>
+                <Slider 
+                  value={imageQuality}
+                  onValueChange={setImageQuality}
+                  min={10}
+                  max={100}
+                  step={5}
+                  className="mt-2"
+                />
+                <p className="text-xs text-slate-500 mt-1">Higher quality = larger file size</p>
+              </div>
+              <div>
+                <Label>Resolution (DPI): {imageDpi[0]}</Label>
+                <Slider 
+                  value={imageDpi}
+                  onValueChange={setImageDpi}
+                  min={72}
+                  max={600}
+                  step={10}
+                  className="mt-2"
+                />
+                <p className="text-xs text-slate-500 mt-1">72 DPI (screen) to 600 DPI (print quality)</p>
+              </div>
             </CardContent>
           </Card>
         );

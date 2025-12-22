@@ -123,9 +123,43 @@ export default function Settings() {
     setLocation("/");
   };
 
-  const handleConnectCloud = (providerId: string) => {
-    // In production, this would redirect to OAuth flow
-    toast.info(`To connect ${providerId}, you'll need to configure OAuth credentials in the environment. Contact your administrator.`);
+  // OAuth connect mutation
+  const getAuthUrlMutation = trpc.cloudStorage.getAuthUrl.useMutation({
+    onSuccess: (data) => {
+      // Redirect to OAuth provider
+      window.location.href = data.authUrl;
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
+  // Handle OAuth callback
+  const handleCallbackMutation = trpc.cloudStorage.handleCallback.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Successfully connected to ${data.provider}!`);
+      refetchConnections();
+      // Clear URL params
+      window.history.replaceState({}, document.title, window.location.pathname);
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
+  // Check for OAuth callback on mount
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const code = urlParams.get('code');
+    const state = urlParams.get('state');
+    
+    if (code && state && isAuthenticated) {
+      handleCallbackMutation.mutate({ code, state });
+    }
+  }, [isAuthenticated]);
+
+  const handleConnectCloud = (providerId: "google_drive" | "dropbox" | "onedrive") => {
+    getAuthUrlMutation.mutate({ provider: providerId });
   };
 
   const handleDisconnectCloud = (providerId: "google_drive" | "dropbox" | "onedrive") => {
@@ -417,8 +451,13 @@ export default function Settings() {
                               variant="outline" 
                               size="sm"
                               onClick={() => handleConnectCloud(provider.id)}
+                              disabled={getAuthUrlMutation.isPending}
                             >
-                              <ExternalLink className="h-4 w-4 mr-1" />
+                              {getAuthUrlMutation.isPending ? (
+                                <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                              ) : (
+                                <ExternalLink className="h-4 w-4 mr-1" />
+                              )}
                               Connect
                             </Button>
                           )}

@@ -322,57 +322,113 @@ export async function imagesToPdf(options: ImageToPdfOptions): Promise<Buffer> {
 }
 
 /**
- * Convert PDF pages to images
- * Note: This requires additional setup with puppeteer or similar
- * For now, we'll return a placeholder implementation
+ * Convert PDF pages to images using poppler-utils (pdftoppm)
+ * This provides high-quality PDF rendering to images
  */
 export async function pdfToImages(options: PdfToImageOptions): Promise<Buffer[]> {
   const { pdfBuffer, format = 'png', quality = 90, dpi = 150 } = options;
   
-  // Load the PDF to get page count
-  const pdf = await PDFDocument.load(pdfBuffer);
-  const pageCount = pdf.getPageCount();
+  const { exec } = await import('child_process');
+  const { promisify } = await import('util');
+  const fs = await import('fs/promises');
+  const path = await import('path');
+  const os = await import('os');
   
-  // For each page, we would need to render it to an image
-  // This typically requires a rendering engine like puppeteer, pdf2image, or similar
-  // For now, we'll create placeholder images
+  const execAsync = promisify(exec);
   
-  const images: Buffer[] = [];
+  // Create temporary directory for processing
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'pdf-to-image-'));
+  const inputPath = path.join(tempDir, 'input.pdf');
+  const outputPrefix = path.join(tempDir, 'output');
   
-  for (let i = 0; i < pageCount; i++) {
-    // Create a placeholder image indicating the page number
-    const placeholderSvg = `
-      <svg width="612" height="792" xmlns="http://www.w3.org/2000/svg">
-        <rect width="100%" height="100%" fill="white"/>
-        <text x="50%" y="50%" font-family="Arial" font-size="24" fill="gray" text-anchor="middle">
-          Page ${i + 1} of ${pageCount}
-        </text>
-        <text x="50%" y="60%" font-family="Arial" font-size="14" fill="gray" text-anchor="middle">
-          PDF to Image conversion
-        </text>
-      </svg>
-    `;
+  try {
+    // Write PDF to temp file
+    await fs.writeFile(inputPath, pdfBuffer);
     
-    let imageBuffer: Buffer;
-    
+    // Determine output format flag for pdftoppm
+    let formatFlag = '-png';
     if (format === 'jpeg') {
-      imageBuffer = await sharp(Buffer.from(placeholderSvg))
-        .jpeg({ quality })
-        .toBuffer();
-    } else if (format === 'webp') {
-      imageBuffer = await sharp(Buffer.from(placeholderSvg))
-        .webp({ quality })
-        .toBuffer();
-    } else {
-      imageBuffer = await sharp(Buffer.from(placeholderSvg))
-        .png()
-        .toBuffer();
+      formatFlag = '-jpeg';
     }
     
-    images.push(imageBuffer);
+    // Run pdftoppm to convert PDF to images
+    // pdftoppm -png -r <dpi> input.pdf output
+    const command = `pdftoppm ${formatFlag} -r ${dpi} "${inputPath}" "${outputPrefix}"`;
+    
+    await execAsync(command);
+    
+    // Read all generated image files
+    const files = await fs.readdir(tempDir);
+    const imageFiles = files
+      .filter(f => f.startsWith('output-') && (f.endsWith('.png') || f.endsWith('.jpg')))
+      .sort((a, b) => {
+        // Sort by page number (output-1.png, output-2.png, etc.)
+        const numA = parseInt(a.match(/\d+/)?.[0] || '0');
+        const numB = parseInt(b.match(/\d+/)?.[0] || '0');
+        return numA - numB;
+      });
+    
+    const images: Buffer[] = [];
+    
+    for (const file of imageFiles) {
+      const imagePath = path.join(tempDir, file);
+      let imageBuffer = await fs.readFile(imagePath);
+      
+      // Apply quality settings and format conversion if needed
+      if (format === 'jpeg') {
+        imageBuffer = await sharp(imageBuffer)
+          .jpeg({ quality })
+          .toBuffer();
+      } else if (format === 'webp') {
+        imageBuffer = await sharp(imageBuffer)
+          .webp({ quality })
+          .toBuffer();
+      } else if (format === 'png') {
+        // PNG doesn't have quality setting, but we can optimize
+        imageBuffer = await sharp(imageBuffer)
+          .png({ compressionLevel: 9 })
+          .toBuffer();
+      }
+      
+      images.push(imageBuffer);
+    }
+    
+    // If no images were generated, fall back to getting page count and creating placeholders
+    if (images.length === 0) {
+      const pdf = await PDFDocument.load(pdfBuffer);
+      const pageCount = pdf.getPageCount();
+      
+      for (let i = 0; i < pageCount; i++) {
+        const placeholderSvg = `
+          <svg width="612" height="792" xmlns="http://www.w3.org/2000/svg">
+            <rect width="100%" height="100%" fill="white"/>
+            <text x="50%" y="50%" font-family="Arial" font-size="24" fill="gray" text-anchor="middle">
+              Page ${i + 1} of ${pageCount}
+            </text>
+          </svg>
+        `;
+        
+        const imageBuffer = await sharp(Buffer.from(placeholderSvg))
+          .png()
+          .toBuffer();
+        
+        images.push(imageBuffer);
+      }
+    }
+    
+    return images;
+  } finally {
+    // Clean up temp directory
+    try {
+      const files = await fs.readdir(tempDir);
+      for (const file of files) {
+        await fs.unlink(path.join(tempDir, file));
+      }
+      await fs.rmdir(tempDir);
+    } catch (e) {
+      // Ignore cleanup errors
+    }
   }
-  
-  return images;
 }
 
 /**
