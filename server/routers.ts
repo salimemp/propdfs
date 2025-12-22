@@ -17,6 +17,7 @@ import * as cadService from "./cadService";
 import * as batchService from "./batchService";
 import * as emailService from "./emailService";
 import * as pdfaService from "./pdfaService";
+import * as linearizationService from "./linearizationService";
 
 // Subscription tier limits
 const TIER_LIMITS = {
@@ -2240,6 +2241,112 @@ Be helpful, concise, and professional. If a user asks about a specific file oper
             pdfaService.getConformanceLevelDescription("3b"),
           ],
         };
+      }),
+  }),
+
+  // PDF Linearization / Web Optimization
+  linearization: router({
+    optimize: protectedProcedure
+      .input(z.object({
+        fileUrl: z.string().url(),
+        compressStreams: z.boolean().optional().default(true),
+        objectStreams: z.enum(["disable", "preserve", "generate"]).optional().default("preserve"),
+        aggressive: z.boolean().optional().default(false),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        // Fetch the PDF file
+        const response = await fetch(input.fileUrl);
+        if (!response.ok) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Failed to fetch PDF file" });
+        }
+        const pdfBuffer = Buffer.from(await response.arrayBuffer());
+
+        // Linearize the PDF
+        const result = await linearizationService.linearizePdf({
+          pdfBuffer,
+          compressStreams: input.compressStreams,
+          objectStreams: input.objectStreams,
+        });
+
+        if (!result.success) {
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: result.error || "Linearization failed" });
+        }
+
+        // Record the conversion
+        await db.createConversion({
+          userId: ctx.user.id,
+          conversionType: "web_optimize",
+          sourceFilename: "document.pdf",
+          sourceFormat: "pdf",
+          sourceSize: result.originalSize || 0,
+          outputFormat: "pdf",
+          outputSize: result.optimizedSize || 0,
+          outputFilename: "document-optimized.pdf",
+          status: "completed",
+        });
+
+        return result;
+      }),
+    check: protectedProcedure
+      .input(z.object({
+        fileUrl: z.string().url(),
+      }))
+      .mutation(async ({ input }) => {
+        const response = await fetch(input.fileUrl);
+        if (!response.ok) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Failed to fetch PDF file" });
+        }
+        const pdfBuffer = Buffer.from(await response.arrayBuffer());
+        return await linearizationService.checkLinearization(pdfBuffer);
+      }),
+    getInfo: protectedProcedure
+      .input(z.object({
+        fileUrl: z.string().url(),
+      }))
+      .mutation(async ({ input }) => {
+        const response = await fetch(input.fileUrl);
+        if (!response.ok) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Failed to fetch PDF file" });
+        }
+        const pdfBuffer = Buffer.from(await response.arrayBuffer());
+        return await linearizationService.getPdfOptimizationInfo(pdfBuffer);
+      }),
+    optimizeForWeb: protectedProcedure
+      .input(z.object({
+        fileUrl: z.string().url(),
+        aggressive: z.boolean().optional().default(false),
+        preserveQuality: z.boolean().optional().default(true),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const response = await fetch(input.fileUrl);
+        if (!response.ok) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Failed to fetch PDF file" });
+        }
+        const pdfBuffer = Buffer.from(await response.arrayBuffer());
+
+        const result = await linearizationService.optimizeForWeb(pdfBuffer, {
+          aggressive: input.aggressive,
+          preserveQuality: input.preserveQuality,
+        });
+
+        if (!result.success) {
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: result.error || "Web optimization failed" });
+        }
+
+        // Record the conversion
+        await db.createConversion({
+          userId: ctx.user.id,
+          conversionType: "web_optimize",
+          sourceFilename: "document.pdf",
+          sourceFormat: "pdf",
+          sourceSize: result.originalSize || 0,
+          outputFormat: "pdf",
+          outputSize: result.optimizedSize || 0,
+          outputFilename: "document-optimized.pdf",
+          status: "completed",
+        });
+
+        return result;
       }),
   }),
 });

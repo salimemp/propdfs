@@ -43,6 +43,13 @@
       "when": 1766394742122,
       "tag": "0005_sturdy_master_mold",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1766395388247,
+      "tag": "0006_bright_scorpion",
+      "breakpoints": true
     }
   ]
 }

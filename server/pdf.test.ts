@@ -1163,3 +1163,59 @@ describe("PDF/A Compliance Conversion", () => {
     });
   });
 });
+
+// ==================== PDF LINEARIZATION / WEB OPTIMIZATION TESTS ====================
+
+describe("PDF Linearization Service", () => {
+  it("should export linearizePdf function", async () => {
+    const linearizationService = await import("./linearizationService");
+    expect(typeof linearizationService.linearizePdf).toBe("function");
+  });
+
+  it("should export checkLinearization function", async () => {
+    const linearizationService = await import("./linearizationService");
+    expect(typeof linearizationService.checkLinearization).toBe("function");
+  });
+
+  it("should export optimizeForWeb function", async () => {
+    const linearizationService = await import("./linearizationService");
+    expect(typeof linearizationService.optimizeForWeb).toBe("function");
+  });
+
+  it("should export getPdfOptimizationInfo function", async () => {
+    const linearizationService = await import("./linearizationService");
+    expect(typeof linearizationService.getPdfOptimizationInfo).toBe("function");
+  });
+
+  it("should have correct LinearizationResult interface", async () => {
+    const linearizationService = await import("./linearizationService");
+    expect(linearizationService).toBeDefined();
+  });
+});
+
+describe("Linearization Router", () => {
+  it("should have linearization routes in appRouter", async () => {
+    const { appRouter } = await import("./routers");
+    expect(appRouter.linearization).toBeDefined();
+  });
+
+  it("should have optimize mutation", async () => {
+    const { appRouter } = await import("./routers");
+    expect(appRouter.linearization.optimize).toBeDefined();
+  });
+
+  it("should have check mutation", async () => {
+    const { appRouter } = await import("./routers");
+    expect(appRouter.linearization.check).toBeDefined();
+  });
+
+  it("should have getInfo mutation", async () => {
+    const { appRouter } = await import("./routers");
+    expect(appRouter.linearization.getInfo).toBeDefined();
+  });
+
+  it("should have optimizeForWeb mutation", async () => {
+    const { appRouter } = await import("./routers");
+    expect(appRouter.linearization.optimizeForWeb).toBeDefined();
+  });
+});

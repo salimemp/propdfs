@@ -193,7 +193,7 @@ export const conversions = mysqlTable("conversions", {
     "cad_to_pdf", "text_to_pdf", "pdf_to_text",
     "html_to_pdf", "pdf_to_html", "markdown_to_pdf",
     "merge", "split", "compress", "rotate", "watermark",
-    "encrypt", "decrypt", "ocr", "transcription", "pdf_to_pdfa"
+    "encrypt", "decrypt", "ocr", "transcription", "pdf_to_pdfa", "web_optimize"
   ]).notNull(),
   
   // Processing

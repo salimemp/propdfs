@@ -15,7 +15,7 @@ import {
   Upload, FileText, Image, FileSpreadsheet, Presentation,
   Loader2, CheckCircle, XCircle, Download, Trash2,
   Merge, Scissors, RotateCw, Droplets, Lock, FileArchive,
-  Mic, Sparkles, Cloud, FolderOpen, Plus, ExternalLink
+  Mic, Sparkles, Cloud, FolderOpen, Plus, ExternalLink, Globe
 } from "lucide-react";
 import { useState, useCallback, useRef } from "react";
 import { toast } from "sonner";
@@ -28,7 +28,7 @@ type ConversionType =
   | "html_to_pdf" | "markdown_to_pdf"
   | "epub_to_pdf" | "mobi_to_pdf" | "pdf_to_epub" | "pdf_to_mobi"
   | "dwg_to_pdf" | "dxf_to_pdf" | "dwg_to_svg" | "dxf_to_svg"
-  | "pdf_to_pdfa"
+  | "pdf_to_pdfa" | "web_optimize"
   | "merge" | "split" | "compress" | "rotate" | "watermark" | "encrypt";
 
 interface UploadedFile {
@@ -79,6 +79,7 @@ const pdfOperations = [
   { value: "watermark", label: "Add Watermark", icon: Droplets, description: "Add text or image watermark" },
   { value: "encrypt", label: "Encrypt PDF", icon: Lock, description: "Password protect your PDF" },
   { value: "pdf_to_pdfa", label: "Convert to PDF/A", icon: FileArchive, description: "Archive-ready PDF format" },
+  { value: "web_optimize", label: "Web Optimize", icon: Globe, description: "Optimize for fast web viewing" },
 ];
 
 const cloudProviders = [
@@ -116,6 +117,10 @@ export default function Convert() {
   const [pdfaSubject, setPdfaSubject] = useState("");
   const [pdfaEmbedFonts, setPdfaEmbedFonts] = useState(true);
   
+  // Web optimization states
+  const [webOptimizeAggressive, setWebOptimizeAggressive] = useState(false);
+  const [webOptimizeCompressStreams, setWebOptimizeCompressStreams] = useState(true);
+  
   // Cloud storage state
   const [showCloudPicker, setShowCloudPicker] = useState(false);
   
@@ -137,6 +142,7 @@ export default function Convert() {
   const htmlToPdfMutation = trpc.pdf.htmlToPdf.useMutation();
   const markdownToPdfMutation = trpc.pdf.markdownToPdf.useMutation();
   const pdfaConvertMutation = trpc.pdfa.convert.useMutation();
+  const webOptimizeMutation = trpc.linearization.optimizeForWeb.useMutation();
   
   // Cloud storage queries
   const cloudConnectionsQuery = trpc.cloudStorage.listConnections.useQuery(undefined, {
@@ -377,6 +383,19 @@ export default function Convert() {
           });
           result = { url: pdfaResult.url || "", size: pdfaResult.fileSize };
           toast.success(`Converted to PDF/A-${pdfaConformance} successfully!`);
+          break;
+
+        case "web_optimize":
+          if (uploadedUrls.length !== 1) {
+            throw new Error("Please select exactly 1 PDF file to optimize for web");
+          }
+          const webOptResult = await webOptimizeMutation.mutateAsync({
+            fileUrl: uploadedUrls[0],
+            aggressive: webOptimizeAggressive,
+            preserveQuality: !webOptimizeAggressive,
+          });
+          result = { url: webOptResult.url || "", size: webOptResult.optimizedSize };
+          toast.success(`PDF optimized for web! Size reduced by ${webOptResult.sizeReduction?.toFixed(1)}%`);
           break;
 
         default:
@@ -670,6 +689,46 @@ export default function Convert() {
                     />
                   </div>
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+        );
+
+      case "web_optimize":
+        return (
+          <Card className="mt-4">
+            <CardHeader>
+              <CardTitle className="text-lg">Web Optimization Options</CardTitle>
+              <CardDescription>Linearize PDF for fast web viewing and streaming delivery</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="compressStreams"
+                  checked={webOptimizeCompressStreams}
+                  onChange={(e) => setWebOptimizeCompressStreams(e.target.checked)}
+                  className="h-4 w-4 rounded border-slate-300"
+                />
+                <Label htmlFor="compressStreams">Compress internal streams</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="aggressiveOptimize"
+                  checked={webOptimizeAggressive}
+                  onChange={(e) => setWebOptimizeAggressive(e.target.checked)}
+                  className="h-4 w-4 rounded border-slate-300"
+                />
+                <Label htmlFor="aggressiveOptimize">Aggressive optimization (smaller file, may reduce quality)</Label>
+              </div>
+              <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-lg">
+                <h4 className="font-medium text-sm mb-2">What is PDF Linearization?</h4>
+                <p className="text-xs text-slate-600 dark:text-slate-400">
+                  Linearization (also called "Fast Web View") reorganizes the PDF structure so the first page 
+                  can be displayed immediately while the rest of the document downloads in the background. 
+                  This significantly improves perceived load time for web-based PDF viewing.
+                </p>
               </div>
             </CardContent>
           </Card>

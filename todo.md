@@ -36,7 +36,7 @@
 - [x] Bates numbering for legal documents
 - [x] PDF/A compliance conversion
 - [x] PDF comparison (text & visual diff)
-- [ ] Web optimization and linearization
+- [x] Web optimization and linearization
 
 ## Authentication & Security
 - [x] Manus OAuth authentication
@@ -354,3 +354,13 @@
 - [x] Support embedded fonts requirement
 - [x] Handle color profile embedding
 - [x] Add PDF/A conversion tests
+
+## PDF Web Optimization / Linearization (New)
+- [x] Install qpdf for PDF linearization
+- [x] Implement linearization service for fast web view
+- [x] Add page-at-a-time downloading support
+- [x] Optimize PDF structure for streaming
+- [x] Create linearization API routes
+- [x] Update Convert page UI with web optimization option
+- [x] Add linearization status indicator
+- [x] Add linearization tests
