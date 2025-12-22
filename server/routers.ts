@@ -18,6 +18,7 @@ import * as batchService from "./batchService";
 import * as emailService from "./emailService";
 import * as pdfaService from "./pdfaService";
 import * as linearizationService from "./linearizationService";
+import * as formService from "./formService";
 
 // Subscription tier limits
 const TIER_LIMITS = {
@@ -2346,6 +2347,122 @@ Be helpful, concise, and professional. If a user asks about a specific file oper
           status: "completed",
         });
 
+        return result;
+      }),
+  }),
+
+  // PDF Form Filling routes
+  forms: router({
+    // Detect form fields in a PDF
+    detectFields: protectedProcedure
+      .input(z.object({
+        fileUrl: z.string().url(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const response = await fetch(input.fileUrl);
+        if (!response.ok) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Failed to fetch PDF file" });
+        }
+        const pdfBuffer = Buffer.from(await response.arrayBuffer());
+        const schema = await formService.detectFormFields(pdfBuffer);
+        return schema;
+      }),
+
+    // Fill form fields in a PDF
+    fillFields: protectedProcedure
+      .input(z.object({
+        fileUrl: z.string().url(),
+        formData: z.record(z.string(), z.union([z.string(), z.boolean()])),
+        flatten: z.boolean().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const response = await fetch(input.fileUrl);
+        if (!response.ok) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Failed to fetch PDF file" });
+        }
+        const pdfBuffer = Buffer.from(await response.arrayBuffer());
+        const result = await formService.fillFormFields(pdfBuffer, input.formData, {
+          flatten: input.flatten,
+          userId: ctx.user.id,
+        });
+        return result;
+      }),
+
+    // Extract form data from a filled PDF
+    extractData: protectedProcedure
+      .input(z.object({
+        fileUrl: z.string().url(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const response = await fetch(input.fileUrl);
+        if (!response.ok) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Failed to fetch PDF file" });
+        }
+        const pdfBuffer = Buffer.from(await response.arrayBuffer());
+        const formData = await formService.extractFormData(pdfBuffer);
+        return formData;
+      }),
+
+    // Validate form data against schema
+    validateData: protectedProcedure
+      .input(z.object({
+        fileUrl: z.string().url(),
+        formData: z.record(z.string(), z.union([z.string(), z.boolean()])),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const response = await fetch(input.fileUrl);
+        if (!response.ok) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Failed to fetch PDF file" });
+        }
+        const pdfBuffer = Buffer.from(await response.arrayBuffer());
+        const schema = await formService.detectFormFields(pdfBuffer);
+        const validation = formService.validateFormData(schema, input.formData);
+        return validation;
+      }),
+
+    // Clear all form fields
+    clearFields: protectedProcedure
+      .input(z.object({
+        fileUrl: z.string().url(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const response = await fetch(input.fileUrl);
+        if (!response.ok) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Failed to fetch PDF file" });
+        }
+        const pdfBuffer = Buffer.from(await response.arrayBuffer());
+        const result = await formService.clearFormFields(pdfBuffer, {
+          userId: ctx.user.id,
+        });
+        return result;
+      }),
+
+    // Create a new PDF with form fields
+    createForm: protectedProcedure
+      .input(z.object({
+        fields: z.array(z.object({
+          name: z.string(),
+          type: z.enum(["text", "checkbox", "radio", "dropdown", "signature", "date", "unknown"]),
+          page: z.number(),
+          x: z.number(),
+          y: z.number(),
+          width: z.number(),
+          height: z.number(),
+          options: z.array(z.string()).optional(),
+          defaultValue: z.union([z.string(), z.boolean()]).optional(),
+        })),
+        pageSize: z.object({
+          width: z.number(),
+          height: z.number(),
+        }).optional(),
+        pageCount: z.number().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const result = await formService.createFormPdf(input.fields, {
+          pageSize: input.pageSize,
+          pageCount: input.pageCount,
+          userId: ctx.user.id,
+        });
         return result;
       }),
   }),

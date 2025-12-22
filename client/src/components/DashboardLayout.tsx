@@ -23,7 +23,7 @@ import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
 import { 
   LayoutDashboard, LogOut, PanelLeft, FileText, FolderOpen, 
-  Users, BarChart3, Settings, Upload, CreditCard, Pencil, GitCompare, Layers
+  Users, BarChart3, Settings, Upload, CreditCard, Pencil, GitCompare, Layers, FormInput
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -36,6 +36,7 @@ const menuItems = [
   { icon: Layers, label: "Batch Processing", path: "/batch" },
   { icon: Pencil, label: "PDF Editor", path: "/editor" },
   { icon: GitCompare, label: "Compare", path: "/compare" },
+  { icon: FormInput, label: "Form Filling", path: "/forms" },
   { icon: FolderOpen, label: "My Files", path: "/files" },
   { icon: Users, label: "Teams", path: "/teams" },
   { icon: BarChart3, label: "Analytics", path: "/analytics" },

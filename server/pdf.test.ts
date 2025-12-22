@@ -1219,3 +1219,130 @@ describe("Linearization Router", () => {
     expect(appRouter.linearization.optimizeForWeb).toBeDefined();
   });
 });
+
+
+// PDF Form Filling Service Tests
+describe("PDF Form Filling Service", () => {
+  describe("formService module", () => {
+    it("should export detectFormFields function", async () => {
+      const formService = await import("./formService");
+      expect(typeof formService.detectFormFields).toBe("function");
+    });
+
+    it("should export fillFormFields function", async () => {
+      const formService = await import("./formService");
+      expect(typeof formService.fillFormFields).toBe("function");
+    });
+
+    it("should export extractFormData function", async () => {
+      const formService = await import("./formService");
+      expect(typeof formService.extractFormData).toBe("function");
+    });
+
+    it("should export validateFormData function", async () => {
+      const formService = await import("./formService");
+      expect(typeof formService.validateFormData).toBe("function");
+    });
+
+    it("should export clearFormFields function", async () => {
+      const formService = await import("./formService");
+      expect(typeof formService.clearFormFields).toBe("function");
+    });
+
+    it("should export createFormPdf function", async () => {
+      const formService = await import("./formService");
+      expect(typeof formService.createFormPdf).toBe("function");
+    });
+  });
+
+  describe("Form Validation", () => {
+    it("should validate form data against schema", async () => {
+      const formService = await import("./formService");
+      
+      const schema = {
+        totalFields: 2,
+        fields: [
+          { name: "name", type: "text" as const, value: null, required: true },
+          { name: "agree", type: "checkbox" as const, value: false },
+        ],
+        hasSignatureFields: false,
+        pageCount: 1,
+        metadata: {},
+      };
+
+      const validData = { name: "John Doe", agree: true };
+      const result = formService.validateFormData(schema, validData);
+      expect(result.valid).toBe(true);
+      expect(result.errors).toHaveLength(0);
+    });
+
+    it("should detect missing required fields", async () => {
+      const formService = await import("./formService");
+      
+      const schema = {
+        totalFields: 1,
+        fields: [
+          { name: "email", type: "text" as const, value: null, required: true },
+        ],
+        hasSignatureFields: false,
+        pageCount: 1,
+        metadata: {},
+      };
+
+      const invalidData = { email: "" };
+      const result = formService.validateFormData(schema, invalidData);
+      expect(result.valid).toBe(false);
+      expect(result.errors.length).toBeGreaterThan(0);
+    });
+
+    it("should validate dropdown options", async () => {
+      const formService = await import("./formService");
+      
+      const schema = {
+        totalFields: 1,
+        fields: [
+          { name: "country", type: "dropdown" as const, value: null, options: ["USA", "Canada", "UK"] },
+        ],
+        hasSignatureFields: false,
+        pageCount: 1,
+        metadata: {},
+      };
+
+      const invalidData = { country: "InvalidCountry" };
+      const result = formService.validateFormData(schema, invalidData);
+      expect(result.valid).toBe(false);
+    });
+  });
+
+  describe("Forms Router", () => {
+    it("should have forms routes in appRouter", async () => {
+      const { appRouter } = await import("./routers");
+      expect(appRouter._def.procedures).toHaveProperty("forms.detectFields");
+    });
+
+    it("should have fillFields mutation", async () => {
+      const { appRouter } = await import("./routers");
+      expect(appRouter._def.procedures).toHaveProperty("forms.fillFields");
+    });
+
+    it("should have extractData mutation", async () => {
+      const { appRouter } = await import("./routers");
+      expect(appRouter._def.procedures).toHaveProperty("forms.extractData");
+    });
+
+    it("should have validateData mutation", async () => {
+      const { appRouter } = await import("./routers");
+      expect(appRouter._def.procedures).toHaveProperty("forms.validateData");
+    });
+
+    it("should have clearFields mutation", async () => {
+      const { appRouter } = await import("./routers");
+      expect(appRouter._def.procedures).toHaveProperty("forms.clearFields");
+    });
+
+    it("should have createForm mutation", async () => {
+      const { appRouter } = await import("./routers");
+      expect(appRouter._def.procedures).toHaveProperty("forms.createForm");
+    });
+  });
+});

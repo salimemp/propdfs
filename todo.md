@@ -364,3 +364,20 @@
 - [x] Update Convert page UI with web optimization option
 - [x] Add linearization status indicator
 - [x] Add linearization tests
+
+## PDF Form Filling (New)
+- [x] Implement PDF form field detection using pdf-lib
+- [x] Extract text fields, checkboxes, radio buttons, dropdowns
+- [x] Create form schema extraction API
+- [x] Build form filling service to populate fields
+- [x] Create form filling UI component
+- [x] Support text input fields
+- [x] Support checkbox fields
+- [x] Support radio button groups
+- [x] Support dropdown/select fields
+- [x] Support date picker fields
+- [x] Implement form validation
+- [x] Save filled PDF with embedded data
+- [x] Add form filling API routes
+- [x] Create form preview with field highlighting
+- [x] Add form filling tests
