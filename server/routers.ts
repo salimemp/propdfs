@@ -14,6 +14,8 @@ import * as cloudStorage from "./cloudStorageService";
 import * as oauthService from "./oauthService";
 import * as ebookService from "./ebookService";
 import * as cadService from "./cadService";
+import * as batchService from "./batchService";
+import * as emailService from "./emailService";
 
 // Subscription tier limits
 const TIER_LIMITS = {
@@ -445,6 +447,52 @@ export const appRouter = router({
           throw new TRPCError({ code: "NOT_FOUND" });
         }
         return batch;
+      }),
+
+    getProgress: protectedProcedure
+      .input(z.object({ batchId: z.string() }))
+      .query(async ({ input }) => {
+        return await batchService.getBatchProgress(input.batchId);
+      }),
+
+    cancel: protectedProcedure
+      .input(z.object({ batchId: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        return await batchService.cancelBatchJob(input.batchId, ctx.user.id);
+      }),
+
+    retryFailed: protectedProcedure
+      .input(z.object({ batchId: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        return await batchService.retryFailedItems(input.batchId, ctx.user.id);
+      }),
+
+    list: protectedProcedure
+      .input(z.object({
+        limit: z.number().min(1).max(100).optional(),
+        offset: z.number().min(0).optional(),
+      }).optional())
+      .query(async ({ ctx, input }) => {
+        return await batchService.getUserBatchJobs(
+          ctx.user.id,
+          input?.limit || 20,
+          input?.offset || 0
+        );
+      }),
+
+    delete: protectedProcedure
+      .input(z.object({ batchId: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        return await batchService.deleteBatchJob(input.batchId, ctx.user.id);
+      }),
+
+    stats: protectedProcedure
+      .input(z.object({
+        startDate: z.date(),
+        endDate: z.date(),
+      }))
+      .query(async ({ ctx, input }) => {
+        return await batchService.getBatchJobStats(ctx.user.id, input.startDate, input.endDate);
       }),
   }),
 
@@ -2051,7 +2099,58 @@ Be helpful, concise, and professional. If a user asks about a specific file oper
           audioUrl: null,
         };
       }),
+   }),
+
+  // Email preferences routes
+  email: router({
+    getPreferences: protectedProcedure
+      .query(async ({ ctx }) => {
+        let prefs = await emailService.getEmailPreferences(ctx.user.id);
+        if (!prefs) {
+          await emailService.createEmailPreferences(ctx.user.id);
+          prefs = await emailService.getEmailPreferences(ctx.user.id);
+        }
+        return prefs;
+      }),
+
+    updatePreferences: protectedProcedure
+      .input(z.object({
+        conversionComplete: z.boolean().optional(),
+        batchComplete: z.boolean().optional(),
+        weeklyDigest: z.boolean().optional(),
+        teamInvitations: z.boolean().optional(),
+        securityAlerts: z.boolean().optional(),
+        productUpdates: z.boolean().optional(),
+        usageLimitWarnings: z.boolean().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        return await emailService.updateEmailPreferences(ctx.user.id, input);
+      }),
+
+    sendTestEmail: protectedProcedure
+      .mutation(async ({ ctx }) => {
+        if (!ctx.user.email) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "No email address on file" });
+        }
+        const template = emailService.getWelcomeEmailTemplate(ctx.user.name || "there");
+        const result = await emailService.sendEmail({
+          to: ctx.user.email,
+          toName: ctx.user.name || undefined,
+          subject: "[Test] " + template.subject,
+          html: template.html,
+          text: template.text,
+        });
+        return result;
+      }),
+
+    processQueue: protectedProcedure
+      .mutation(async ({ ctx }) => {
+        // Only allow admins to process queue manually
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        return await emailService.processEmailQueue(10);
+      }),
   }),
 });
-
 export type AppRouter = typeof appRouter;

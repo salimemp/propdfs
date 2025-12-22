@@ -301,3 +301,42 @@
 - [x] Support layer visibility options
 - [x] Support scale and paper size settings
 - [x] Support paper orientation settings
+
+## OAuth Credentials Configuration (New)
+- [x] Request Google Drive OAuth credentials (Client ID & Secret)
+- [x] Request Dropbox OAuth credentials (App Key & Secret)
+- [x] Request Microsoft/OneDrive OAuth credentials (Client ID & Secret)
+- [x] Configure OAuth redirect URLs for each provider
+- [ ] Test OAuth flow end-to-end for Google Drive (pending credentials)
+- [ ] Test OAuth flow end-to-end for Dropbox (pending credentials)
+- [ ] Test OAuth flow end-to-end for OneDrive (pending credentials)
+- [x] Add cloud storage connection status indicators
+
+## Batch Processing Queue (New)
+- [x] Create batch jobs database table
+- [x] Create batch job items table for individual files
+- [x] Implement job queue service with priority levels
+- [x] Add parallel processing with configurable concurrency (up to 10)
+- [x] Implement job status tracking (queued, processing, completed, failed)
+- [x] Add progress percentage calculation
+- [x] Implement retry logic for failed items
+- [x] Add job cancellation support
+- [x] Create batch processing API routes
+- [x] Build batch upload UI component
+- [x] Add batch progress dashboard
+- [x] Implement job history and logs
+
+## Transactional Email with Resend (New)
+- [x] Request Resend API key
+- [x] Create email service with Resend integration
+- [x] Design welcome email template
+- [x] Design conversion complete email template
+- [x] Design batch processing complete email template
+- [x] Design password reset email template
+- [x] Design team invitation email template
+- [x] Design subscription upgrade email template
+- [x] Design usage limit warning email template
+- [x] Add email preferences in user settings
+- [x] Implement email queue for bulk sending
+- [x] Add email delivery tracking
+- [ ] Configure Resend API key (pending user input)

@@ -14,6 +14,7 @@ import Settings from "./pages/Settings";
 import Pricing from "./pages/Pricing";
 import Editor from "./pages/Editor";
 import Compare from "./pages/Compare";
+import BatchProcessing from "./pages/BatchProcessing";
 
 function Router() {
   return (
@@ -28,6 +29,7 @@ function Router() {
       <Route path="/pricing" component={Pricing} />
       <Route path="/editor" component={Editor} />
       <Route path="/compare" component={Compare} />
+      <Route path="/batch" component={BatchProcessing} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

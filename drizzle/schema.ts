@@ -544,3 +544,135 @@ export const pdfComparisons = mysqlTable("pdf_comparisons", {
 
 export type PdfComparison = typeof pdfComparisons.$inferSelect;
 export type InsertPdfComparison = typeof pdfComparisons.$inferInsert;
+
+
+/**
+ * Batch job items for individual files in a batch
+ */
+export const batchJobItems = mysqlTable("batch_job_items", {
+  id: int("id").autoincrement().primaryKey(),
+  batchJobId: int("batchJobId").notNull(),
+  conversionId: int("conversionId"),
+  
+  // Source file info
+  sourceFilename: varchar("sourceFilename", { length: 512 }).notNull(),
+  sourceFileKey: varchar("sourceFileKey", { length: 512 }).notNull(),
+  sourceFileSize: bigint("sourceFileSize", { mode: "number" }).notNull(),
+  sourceMimeType: varchar("sourceMimeType", { length: 128 }).notNull(),
+  
+  // Output file info
+  outputFilename: varchar("outputFilename", { length: 512 }),
+  outputFileKey: varchar("outputFileKey", { length: 512 }),
+  outputFileUrl: text("outputFileUrl"),
+  outputFileSize: bigint("outputFileSize", { mode: "number" }),
+  
+  // Processing
+  status: mysqlEnum("status", ["queued", "processing", "completed", "failed", "cancelled"]).default("queued").notNull(),
+  progress: int("progress").default(0).notNull(),
+  errorMessage: text("errorMessage"),
+  retryCount: int("retryCount").default(0).notNull(),
+  maxRetries: int("maxRetries").default(3).notNull(),
+  
+  // Timing
+  startedAt: timestamp("startedAt"),
+  completedAt: timestamp("completedAt"),
+  processingTimeMs: int("processingTimeMs"),
+  
+  // Order in batch
+  itemIndex: int("itemIndex").notNull(),
+  priority: int("priority").default(0).notNull(),
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type BatchJobItem = typeof batchJobItems.$inferSelect;
+export type InsertBatchJobItem = typeof batchJobItems.$inferInsert;
+
+/**
+ * Email templates for transactional emails
+ */
+export const emailTemplates = mysqlTable("email_templates", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 64 }).notNull().unique(),
+  subject: varchar("subject", { length: 255 }).notNull(),
+  htmlContent: text("htmlContent").notNull(),
+  textContent: text("textContent"),
+  variables: json("variables"), // List of variable names used in template
+  isActive: boolean("isActive").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type EmailTemplate = typeof emailTemplates.$inferSelect;
+export type InsertEmailTemplate = typeof emailTemplates.$inferInsert;
+
+/**
+ * Email sending queue and history
+ */
+export const emailQueue = mysqlTable("email_queue", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId"),
+  
+  // Recipient
+  toEmail: varchar("toEmail", { length: 320 }).notNull(),
+  toName: varchar("toName", { length: 255 }),
+  
+  // Email content
+  templateId: int("templateId"),
+  templateName: varchar("templateName", { length: 64 }),
+  subject: varchar("subject", { length: 255 }).notNull(),
+  htmlContent: text("htmlContent").notNull(),
+  textContent: text("textContent"),
+  
+  // Variables used
+  variables: json("variables"),
+  
+  // Delivery status
+  status: mysqlEnum("status", ["queued", "sending", "sent", "failed", "bounced"]).default("queued").notNull(),
+  errorMessage: text("errorMessage"),
+  
+  // Resend tracking
+  resendId: varchar("resendId", { length: 64 }),
+  
+  // Scheduling
+  scheduledFor: timestamp("scheduledFor"),
+  sentAt: timestamp("sentAt"),
+  
+  // Retry logic
+  retryCount: int("retryCount").default(0).notNull(),
+  maxRetries: int("maxRetries").default(3).notNull(),
+  lastRetryAt: timestamp("lastRetryAt"),
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type EmailQueueItem = typeof emailQueue.$inferSelect;
+export type InsertEmailQueueItem = typeof emailQueue.$inferInsert;
+
+/**
+ * User email preferences
+ */
+export const emailPreferences = mysqlTable("email_preferences", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  
+  // Notification preferences
+  conversionComplete: boolean("conversionComplete").default(true).notNull(),
+  batchComplete: boolean("batchComplete").default(true).notNull(),
+  weeklyDigest: boolean("weeklyDigest").default(true).notNull(),
+  teamInvitations: boolean("teamInvitations").default(true).notNull(),
+  securityAlerts: boolean("securityAlerts").default(true).notNull(),
+  productUpdates: boolean("productUpdates").default(false).notNull(),
+  usageLimitWarnings: boolean("usageLimitWarnings").default(true).notNull(),
+  
+  // Unsubscribe token for one-click unsubscribe
+  unsubscribeToken: varchar("unsubscribeToken", { length: 64 }).notNull(),
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type EmailPreferences = typeof emailPreferences.$inferSelect;
+export type InsertEmailPreferences = typeof emailPreferences.$inferInsert;

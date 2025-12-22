@@ -1,0 +1,81 @@
+CREATE TABLE `batch_job_items` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`batchJobId` int NOT NULL,
+	`conversionId` int,
+	`sourceFilename` varchar(512) NOT NULL,
+	`sourceFileKey` varchar(512) NOT NULL,
+	`sourceFileSize` bigint NOT NULL,
+	`sourceMimeType` varchar(128) NOT NULL,
+	`outputFilename` varchar(512),
+	`outputFileKey` varchar(512),
+	`outputFileUrl` text,
+	`outputFileSize` bigint,
+	`status` enum('queued','processing','completed','failed','cancelled') NOT NULL DEFAULT 'queued',
+	`progress` int NOT NULL DEFAULT 0,
+	`errorMessage` text,
+	`retryCount` int NOT NULL DEFAULT 0,
+	`maxRetries` int NOT NULL DEFAULT 3,
+	`startedAt` timestamp,
+	`completedAt` timestamp,
+	`processingTimeMs` int,
+	`itemIndex` int NOT NULL,
+	`priority` int NOT NULL DEFAULT 0,
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `batch_job_items_id` PRIMARY KEY(`id`)
+);
+--> statement-breakpoint
+CREATE TABLE `email_preferences` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`userId` int NOT NULL,
+	`conversionComplete` boolean NOT NULL DEFAULT true,
+	`batchComplete` boolean NOT NULL DEFAULT true,
+	`weeklyDigest` boolean NOT NULL DEFAULT true,
+	`teamInvitations` boolean NOT NULL DEFAULT true,
+	`securityAlerts` boolean NOT NULL DEFAULT true,
+	`productUpdates` boolean NOT NULL DEFAULT false,
+	`usageLimitWarnings` boolean NOT NULL DEFAULT true,
+	`unsubscribeToken` varchar(64) NOT NULL,
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `email_preferences_id` PRIMARY KEY(`id`),
+	CONSTRAINT `email_preferences_userId_unique` UNIQUE(`userId`)
+);
+--> statement-breakpoint
+CREATE TABLE `email_queue` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`userId` int,
+	`toEmail` varchar(320) NOT NULL,
+	`toName` varchar(255),
+	`templateId` int,
+	`templateName` varchar(64),
+	`subject` varchar(255) NOT NULL,
+	`htmlContent` text NOT NULL,
+	`textContent` text,
+	`variables` json,
+	`status` enum('queued','sending','sent','failed','bounced') NOT NULL DEFAULT 'queued',
+	`errorMessage` text,
+	`resendId` varchar(64),
+	`scheduledFor` timestamp,
+	`sentAt` timestamp,
+	`retryCount` int NOT NULL DEFAULT 0,
+	`maxRetries` int NOT NULL DEFAULT 3,
+	`lastRetryAt` timestamp,
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `email_queue_id` PRIMARY KEY(`id`)
+);
+--> statement-breakpoint
+CREATE TABLE `email_templates` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`name` varchar(64) NOT NULL,
+	`subject` varchar(255) NOT NULL,
+	`htmlContent` text NOT NULL,
+	`textContent` text,
+	`variables` json,
+	`isActive` boolean NOT NULL DEFAULT true,
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `email_templates_id` PRIMARY KEY(`id`),
+	CONSTRAINT `email_templates_name_unique` UNIQUE(`name`)
+);

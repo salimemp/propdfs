@@ -955,3 +955,142 @@ describe("Universal File Conversion", () => {
     expect(categories.operations.length).toBe(6);
   });
 });
+
+
+// ==================== BATCH PROCESSING TESTS ====================
+
+describe("batchService", () => {
+  it("should have createBatchJob function", async () => {
+    const { createBatchJob } = await import("./batchService");
+    expect(typeof createBatchJob).toBe("function");
+  });
+
+  it("should have getBatchProgress function", async () => {
+    const { getBatchProgress } = await import("./batchService");
+    expect(typeof getBatchProgress).toBe("function");
+  });
+
+  it("should have cancelBatchJob function", async () => {
+    const { cancelBatchJob } = await import("./batchService");
+    expect(typeof cancelBatchJob).toBe("function");
+  });
+
+  it("should have retryFailedItems function", async () => {
+    const { retryFailedItems } = await import("./batchService");
+    expect(typeof retryFailedItems).toBe("function");
+  });
+
+  it("should have getUserBatchJobs function", async () => {
+    const { getUserBatchJobs } = await import("./batchService");
+    expect(typeof getUserBatchJobs).toBe("function");
+  });
+
+  it("should have deleteBatchJob function", async () => {
+    const { deleteBatchJob } = await import("./batchService");
+    expect(typeof deleteBatchJob).toBe("function");
+  });
+
+  it("should have getBatchJobStats function", async () => {
+    const { getBatchJobStats } = await import("./batchService");
+    expect(typeof getBatchJobStats).toBe("function");
+  });
+
+  it("should have startBatchProcessing function", async () => {
+    const { startBatchProcessing } = await import("./batchService");
+    expect(typeof startBatchProcessing).toBe("function");
+  });
+});
+
+// ==================== EMAIL SERVICE TESTS ====================
+
+describe("emailService", () => {
+  it("should have sendEmail function", async () => {
+    const { sendEmail } = await import("./emailService");
+    expect(typeof sendEmail).toBe("function");
+  });
+
+  it("should have getWelcomeEmailTemplate function", async () => {
+    const { getWelcomeEmailTemplate } = await import("./emailService");
+    expect(typeof getWelcomeEmailTemplate).toBe("function");
+  });
+
+  it("should have getConversionCompleteTemplate function", async () => {
+    const { getConversionCompleteTemplate } = await import("./emailService");
+    expect(typeof getConversionCompleteTemplate).toBe("function");
+  });
+
+  it("should have getBatchCompleteTemplate function", async () => {
+    const { getBatchCompleteTemplate } = await import("./emailService");
+    expect(typeof getBatchCompleteTemplate).toBe("function");
+  });
+
+  it("should have getTeamInvitationTemplate function", async () => {
+    const { getTeamInvitationTemplate } = await import("./emailService");
+    expect(typeof getTeamInvitationTemplate).toBe("function");
+  });
+
+  it("should have getUsageLimitWarningTemplate function", async () => {
+    const { getUsageLimitWarningTemplate } = await import("./emailService");
+    expect(typeof getUsageLimitWarningTemplate).toBe("function");
+  });
+
+  it("should have getSubscriptionUpgradeTemplate function", async () => {
+    const { getSubscriptionUpgradeTemplate } = await import("./emailService");
+    expect(typeof getSubscriptionUpgradeTemplate).toBe("function");
+  });
+
+  it("should have queueEmail function", async () => {
+    const { queueEmail } = await import("./emailService");
+    expect(typeof queueEmail).toBe("function");
+  });
+
+  it("should have processEmailQueue function", async () => {
+    const { processEmailQueue } = await import("./emailService");
+    expect(typeof processEmailQueue).toBe("function");
+  });
+
+  it("should have getEmailPreferences function", async () => {
+    const { getEmailPreferences } = await import("./emailService");
+    expect(typeof getEmailPreferences).toBe("function");
+  });
+
+  it("should have createEmailPreferences function", async () => {
+    const { createEmailPreferences } = await import("./emailService");
+    expect(typeof createEmailPreferences).toBe("function");
+  });
+
+  it("should have updateEmailPreferences function", async () => {
+    const { updateEmailPreferences } = await import("./emailService");
+    expect(typeof updateEmailPreferences).toBe("function");
+  });
+
+  it("should generate valid welcome email template", async () => {
+    const { getWelcomeEmailTemplate } = await import("./emailService");
+    const template = getWelcomeEmailTemplate("John");
+    
+    expect(template.subject).toContain("Welcome");
+    expect(template.html).toContain("John");
+    expect(template.text).toContain("John");
+  });
+
+  it("should generate valid batch complete email template", async () => {
+    const { getBatchCompleteTemplate } = await import("./emailService");
+    const template = getBatchCompleteTemplate("John", "batch123", 10, 8, 2, "https://example.com/batch/batch123");
+    
+    expect(template.subject).toContain("Batch");
+    expect(template.html).toContain("batch123");
+    expect(template.html).toContain("10");
+    expect(template.html).toContain("8");
+    expect(template.text).toContain("batch123");
+  });
+
+  it("should generate valid team invitation email template", async () => {
+    const { getTeamInvitationTemplate } = await import("./emailService");
+    const template = getTeamInvitationTemplate("Jane", "Acme Corp", "editor", "https://example.com/invite/abc123");
+    
+    expect(template.subject).toContain("Acme Corp");
+    expect(template.html).toContain("Jane");
+    expect(template.html).toContain("editor");
+    expect(template.text).toContain("Acme Corp");
+  });
+});
