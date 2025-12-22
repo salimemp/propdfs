@@ -28,6 +28,7 @@ type ConversionType =
   | "html_to_pdf" | "markdown_to_pdf"
   | "epub_to_pdf" | "mobi_to_pdf" | "pdf_to_epub" | "pdf_to_mobi"
   | "dwg_to_pdf" | "dxf_to_pdf" | "dwg_to_svg" | "dxf_to_svg"
+  | "pdf_to_pdfa"
   | "merge" | "split" | "compress" | "rotate" | "watermark" | "encrypt";
 
 interface UploadedFile {
@@ -77,6 +78,7 @@ const pdfOperations = [
   { value: "rotate", label: "Rotate Pages", icon: RotateCw, description: "Rotate PDF pages" },
   { value: "watermark", label: "Add Watermark", icon: Droplets, description: "Add text or image watermark" },
   { value: "encrypt", label: "Encrypt PDF", icon: Lock, description: "Password protect your PDF" },
+  { value: "pdf_to_pdfa", label: "Convert to PDF/A", icon: FileArchive, description: "Archive-ready PDF format" },
 ];
 
 const cloudProviders = [
@@ -107,6 +109,13 @@ export default function Convert() {
   const [imageQuality, setImageQuality] = useState([90]);
   const [imageDpi, setImageDpi] = useState([150]);
   
+  // PDF/A conversion states
+  const [pdfaConformance, setPdfaConformance] = useState<"1b" | "2b" | "3b">("2b");
+  const [pdfaTitle, setPdfaTitle] = useState("");
+  const [pdfaAuthor, setPdfaAuthor] = useState("");
+  const [pdfaSubject, setPdfaSubject] = useState("");
+  const [pdfaEmbedFonts, setPdfaEmbedFonts] = useState(true);
+  
   // Cloud storage state
   const [showCloudPicker, setShowCloudPicker] = useState(false);
   
@@ -127,6 +136,7 @@ export default function Convert() {
   const pdfToImagesMutation = trpc.pdf.pdfToImages.useMutation();
   const htmlToPdfMutation = trpc.pdf.htmlToPdf.useMutation();
   const markdownToPdfMutation = trpc.pdf.markdownToPdf.useMutation();
+  const pdfaConvertMutation = trpc.pdfa.convert.useMutation();
   
   // Cloud storage queries
   const cloudConnectionsQuery = trpc.cloudStorage.listConnections.useQuery(undefined, {
@@ -353,6 +363,22 @@ export default function Convert() {
           result = { url: mdResult.url, size: mdResult.size };
           break;
 
+        case "pdf_to_pdfa":
+          if (uploadedUrls.length !== 1) {
+            throw new Error("Please select exactly 1 PDF file to convert to PDF/A");
+          }
+          const pdfaResult = await pdfaConvertMutation.mutateAsync({
+            fileUrl: uploadedUrls[0],
+            conformanceLevel: pdfaConformance,
+            embedFonts: pdfaEmbedFonts,
+            title: pdfaTitle || undefined,
+            author: pdfaAuthor || undefined,
+            subject: pdfaSubject || undefined,
+          });
+          result = { url: pdfaResult.url || "", size: pdfaResult.fileSize };
+          toast.success(`Converted to PDF/A-${pdfaConformance} successfully!`);
+          break;
+
         default:
           // Standard conversion - create conversion record
           for (const file of pendingFiles) {
@@ -577,6 +603,73 @@ export default function Convert() {
                   className="mt-2"
                 />
                 <p className="text-xs text-slate-500 mt-1">72 DPI (screen) to 600 DPI (print quality)</p>
+              </div>
+            </CardContent>
+          </Card>
+        );
+
+      case "pdf_to_pdfa":
+        return (
+          <Card className="mt-4">
+            <CardHeader>
+              <CardTitle className="text-lg">PDF/A Archival Options</CardTitle>
+              <CardDescription>Convert to ISO-standardized archival format for long-term preservation</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label>Conformance Level</Label>
+                <Select value={pdfaConformance} onValueChange={(v) => setPdfaConformance(v as any)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1b">PDF/A-1b (ISO 19005-1, Basic)</SelectItem>
+                    <SelectItem value="2b">PDF/A-2b (ISO 19005-2, Recommended)</SelectItem>
+                    <SelectItem value="3b">PDF/A-3b (ISO 19005-3, Latest)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-slate-500 mt-1">
+                  PDF/A-2b is recommended for most use cases
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="embedFonts"
+                  checked={pdfaEmbedFonts}
+                  onChange={(e) => setPdfaEmbedFonts(e.target.checked)}
+                  className="h-4 w-4 rounded border-slate-300"
+                />
+                <Label htmlFor="embedFonts">Embed all fonts (required for compliance)</Label>
+              </div>
+              <div className="border-t pt-4">
+                <p className="text-sm font-medium mb-3">Document Metadata (Optional)</p>
+                <div className="space-y-3">
+                  <div>
+                    <Label>Title</Label>
+                    <Input
+                      value={pdfaTitle}
+                      onChange={(e) => setPdfaTitle(e.target.value)}
+                      placeholder="Document title"
+                    />
+                  </div>
+                  <div>
+                    <Label>Author</Label>
+                    <Input
+                      value={pdfaAuthor}
+                      onChange={(e) => setPdfaAuthor(e.target.value)}
+                      placeholder="Author name"
+                    />
+                  </div>
+                  <div>
+                    <Label>Subject</Label>
+                    <Input
+                      value={pdfaSubject}
+                      onChange={(e) => setPdfaSubject(e.target.value)}
+                      placeholder="Document subject"
+                    />
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>

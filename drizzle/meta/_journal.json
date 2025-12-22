@@ -36,6 +36,13 @@
       "when": 1766393767332,
       "tag": "0004_breezy_maddog",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1766394742122,
+      "tag": "0005_sturdy_master_mold",
+      "breakpoints": true
     }
   ]
 }

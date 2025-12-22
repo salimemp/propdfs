@@ -16,6 +16,7 @@ import * as ebookService from "./ebookService";
 import * as cadService from "./cadService";
 import * as batchService from "./batchService";
 import * as emailService from "./emailService";
+import * as pdfaService from "./pdfaService";
 
 // Subscription tier limits
 const TIER_LIMITS = {
@@ -2150,6 +2151,95 @@ Be helpful, concise, and professional. If a user asks about a specific file oper
           throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
         }
         return await emailService.processEmailQueue(10);
+      }),
+  }),
+
+  // PDF/A Compliance Conversion
+  pdfa: router({
+    convert: protectedProcedure
+      .input(z.object({
+        fileUrl: z.string().url(),
+        conformanceLevel: z.enum(["1b", "2b", "3b"]),
+        embedFonts: z.boolean().optional().default(true),
+        title: z.string().optional(),
+        author: z.string().optional(),
+        subject: z.string().optional(),
+        keywords: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        // Fetch the PDF file
+        const response = await fetch(input.fileUrl);
+        if (!response.ok) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Failed to fetch PDF file" });
+        }
+        const pdfBuffer = Buffer.from(await response.arrayBuffer());
+
+        // Convert to PDF/A
+        const result = await pdfaService.convertToPDFA({
+          pdfBuffer,
+          conformanceLevel: input.conformanceLevel,
+          embedFonts: input.embedFonts,
+          title: input.title,
+          author: input.author || ctx.user.name || undefined,
+          subject: input.subject,
+          keywords: input.keywords,
+        });
+
+        if (!result.success) {
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: result.error || "PDF/A conversion failed" });
+        }
+
+        // Record conversion
+        await db.createConversion({
+          userId: ctx.user.id,
+          sourceFilename: "document.pdf",
+          sourceFormat: "pdf",
+          sourceSize: pdfBuffer.length,
+          outputFormat: `pdfa-${input.conformanceLevel}`,
+          outputFilename: `document-pdfa-${input.conformanceLevel}.pdf`,
+          conversionType: "pdf_to_pdfa",
+          status: "completed",
+          outputSize: result.fileSize,
+        });
+
+        return result;
+      }),
+
+    validate: protectedProcedure
+      .input(z.object({
+        fileUrl: z.string().url(),
+      }))
+      .mutation(async ({ input }) => {
+        const response = await fetch(input.fileUrl);
+        if (!response.ok) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Failed to fetch PDF file" });
+        }
+        const pdfBuffer = Buffer.from(await response.arrayBuffer());
+        return await pdfaService.validatePDFA(pdfBuffer);
+      }),
+
+    getInfo: protectedProcedure
+      .input(z.object({
+        fileUrl: z.string().url(),
+      }))
+      .mutation(async ({ input }) => {
+        const response = await fetch(input.fileUrl);
+        if (!response.ok) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Failed to fetch PDF file" });
+        }
+        const pdfBuffer = Buffer.from(await response.arrayBuffer());
+        return await pdfaService.getPDFAInfo(pdfBuffer);
+      }),
+
+    getConformanceLevels: publicProcedure
+      .query(() => {
+        return {
+          levels: [
+            pdfaService.getConformanceLevelDescription("1b"),
+            pdfaService.getConformanceLevelDescription("2b"),
+            pdfaService.getConformanceLevelDescription("3b"),
+          ],
+        };
       }),
   }),
 });

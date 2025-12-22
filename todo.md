@@ -34,8 +34,8 @@
 - [x] Digital signatures
 - [x] Text/image watermarking with positioning
 - [x] Bates numbering for legal documents
-- [ ] PDF/A compliance conversion
-- [ ] PDF comparison (text & visual diff)
+- [x] PDF/A compliance conversion
+- [x] PDF comparison (text & visual diff)
 - [ ] Web optimization and linearization
 
 ## Authentication & Security
@@ -58,7 +58,7 @@
 - [x] Shared workspaces with real-time updates
 - [x] Approval workflows
 - [x] Document version control with rollback
-- [ ] Comments and annotations
+- [x] Comments and annotations
 - [x] Team invitations via email
 
 ## Cloud Storage
@@ -78,7 +78,7 @@
 ## Batch Processing
 - [x] Multi-file upload (up to 500 files)
 - [x] Batch conversion queue
-- [ ] Parallel processing
+- [x] Parallel processing (up to 10 concurrent)
 - [x] Progress tracking for batch jobs
 - [x] Error handling and retry logic
 
@@ -107,7 +107,7 @@
 - [x] Per-team analytics
 - [x] Performance monitoring (API response times)
 - [x] Error rate tracking
-- [ ] Cost tracking and ROI reporting
+- [x] Cost tracking and ROI reporting
 - [x] Exportable custom reports
 
 ## Subscription & Billing
@@ -129,7 +129,7 @@
 ## Accessibility & Compliance
 - [x] WCAG 2.1 AA compliance
 - [x] Screen reader optimization
-- [ ] Text-to-speech for PDF content
+- [x] Text-to-speech for PDF content
 - [x] High contrast mode
 - [x] Complete keyboard navigation
 - [x] GDPR compliance features
@@ -144,7 +144,7 @@
 - [x] User dashboard
 - [x] File manager interface
 - [x] Conversion tool interface
-- [ ] PDF editor interface
+- [x] PDF editor interface
 - [x] Team management page
 - [x] Analytics dashboard page
 - [x] Settings and preferences page
@@ -340,3 +340,17 @@
 - [x] Implement email queue for bulk sending
 - [x] Add email delivery tracking
 - [ ] Configure Resend API key (pending user input)
+
+## PDF/A Compliance Conversion (New)
+- [x] Install Ghostscript for PDF/A conversion
+- [x] Implement PDF/A-1b conversion (basic conformance)
+- [x] Implement PDF/A-2b conversion (ISO 19005-2)
+- [x] Implement PDF/A-3b conversion (with attachments)
+- [x] Add PDF/A validation and verification
+- [x] Create PDF/A conversion API routes
+- [x] Update Convert page UI with PDF/A options
+- [x] Add conformance level selection (1b, 2b, 3b)
+- [x] Display PDF/A compliance status
+- [x] Support embedded fonts requirement
+- [x] Handle color profile embedding
+- [x] Add PDF/A conversion tests
