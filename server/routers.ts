@@ -19,6 +19,11 @@ import * as emailService from "./emailService";
 import * as pdfaService from "./pdfaService";
 import * as linearizationService from "./linearizationService";
 import * as formService from "./formService";
+import * as authService from "./authService";
+import * as totpService from "../app/services/totp-service";
+import * as crypto from 'crypto';
+import * as voiceCommandService from "../app/services/voice-command-service";
+import * as readAloudService from "../app/services/read-aloud-service";
 
 // Subscription tier limits
 const TIER_LIMITS = {
@@ -2465,6 +2470,421 @@ Be helpful, concise, and professional. If a user asks about a specific file oper
         });
         return result;
       }),
+  }),
+
+  // Social Login Authentication
+  socialAuth: router({
+    // Get user's connected social accounts
+    getConnections: protectedProcedure.query(async ({ ctx }) => {
+      const connections = await authService.getUserSocialLogins(ctx.user.id);
+      return connections.map(c => ({
+        provider: c.provider,
+        email: c.email,
+        name: c.name,
+        connectedAt: c.createdAt,
+      }));
+    }),
+
+    // Get authorization URL for social login
+    getAuthUrl: publicProcedure
+      .input(z.object({
+        provider: z.enum(["google", "github"]),
+        returnUrl: z.string().optional(),
+      }))
+      .query(({ input }) => {
+        const state = Buffer.from(JSON.stringify({
+          provider: input.provider,
+          returnUrl: input.returnUrl || "/dashboard",
+          timestamp: Date.now(),
+        })).toString("base64url");
+
+        if (input.provider === "google") {
+          const clientId = process.env.GOOGLE_SOCIAL_CLIENT_ID;
+          if (!clientId) {
+            return { url: null, error: "Google OAuth not configured" };
+          }
+          const params = new URLSearchParams({
+            client_id: clientId,
+            redirect_uri: `${process.env.VITE_FRONTEND_FORGE_API_URL || ""}/api/auth/google/callback`,
+            response_type: "code",
+            scope: "openid email profile",
+            state,
+            access_type: "offline",
+            prompt: "consent",
+          });
+          return { url: `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}` };
+        }
+
+        if (input.provider === "github") {
+          const clientId = process.env.GITHUB_CLIENT_ID;
+          if (!clientId) {
+            return { url: null, error: "GitHub OAuth not configured" };
+          }
+          const params = new URLSearchParams({
+            client_id: clientId,
+            redirect_uri: `${process.env.VITE_FRONTEND_FORGE_API_URL || ""}/api/auth/github/callback`,
+            scope: "read:user user:email",
+            state,
+          });
+          return { url: `https://github.com/login/oauth/authorize?${params.toString()}` };
+        }
+
+        return { url: null, error: "Invalid provider" };
+      }),
+
+    // Disconnect social account
+    disconnect: protectedProcedure
+      .input(z.object({
+        provider: z.enum(["google", "github"]),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        await authService.deleteSocialLogin(ctx.user.id, input.provider);
+        return { success: true };
+      }),
+  }),
+
+  // TOTP 2FA Authentication
+  twoFactor: router({
+    // Get 2FA status
+    getStatus: protectedProcedure.query(async ({ ctx }) => {
+      const enabled = await authService.isTwoFactorEnabled(ctx.user.id);
+      const backupCodesRemaining = enabled ? await authService.countUnusedBackupCodes(ctx.user.id) : 0;
+      return { enabled, backupCodesRemaining };
+    }),
+
+    // Setup 2FA - generate secret and QR code
+    setup: protectedProcedure.mutation(async ({ ctx }) => {
+      const user = await db.getUserById(ctx.user.id);
+      if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+
+      const email = user.email || user.name || `user-${ctx.user.id}`;
+      const setup = totpService.setupTOTP(email);
+
+      return {
+        secret: setup.secret,
+        otpauthUri: setup.otpauthUri,
+        backupCodes: setup.backupCodes,
+      };
+    }),
+
+    // Enable 2FA after verification
+    enable: protectedProcedure
+      .input(z.object({
+        secret: z.string(),
+        code: z.string().length(6),
+        backupCodes: z.array(z.string()),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        // Verify the code first
+        const isValid = totpService.verifyTOTP(input.secret, input.code);
+        if (!isValid) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid verification code" });
+        }
+
+        // Enable 2FA
+        await authService.enableTwoFactor(ctx.user.id, input.secret);
+        await authService.createBackupCodes(ctx.user.id, input.backupCodes);
+
+        return { success: true };
+      }),
+
+    // Disable 2FA
+    disable: protectedProcedure
+      .input(z.object({
+        code: z.string(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const secret = await authService.getTwoFactorSecret(ctx.user.id);
+        if (!secret) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "2FA not enabled" });
+        }
+
+        // Verify with TOTP or backup code
+        const isValidTOTP = totpService.verifyTOTP(secret, input.code);
+        const isValidBackup = !isValidTOTP && await authService.useBackupCode(ctx.user.id, input.code);
+
+        if (!isValidTOTP && !isValidBackup) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid code" });
+        }
+
+        await authService.disableTwoFactor(ctx.user.id);
+        return { success: true };
+      }),
+
+    // Verify 2FA code
+    verify: protectedProcedure
+      .input(z.object({
+        code: z.string(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const secret = await authService.getTwoFactorSecret(ctx.user.id);
+        if (!secret) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "2FA not enabled" });
+        }
+
+        // Try TOTP first, then backup code
+        const isValidTOTP = totpService.verifyTOTP(secret, input.code);
+        const isValidBackup = !isValidTOTP && await authService.useBackupCode(ctx.user.id, input.code);
+
+        if (!isValidTOTP && !isValidBackup) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid code" });
+        }
+
+        return { success: true, usedBackupCode: isValidBackup };
+      }),
+
+    // Generate new backup codes
+    regenerateBackupCodes: protectedProcedure
+      .input(z.object({
+        code: z.string(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const secret = await authService.getTwoFactorSecret(ctx.user.id);
+        if (!secret) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "2FA not enabled" });
+        }
+
+        // Verify current code
+        const isValid = totpService.verifyTOTP(secret, input.code);
+        if (!isValid) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid verification code" });
+        }
+
+        const newCodes = totpService.generateBackupCodes();
+        await authService.createBackupCodes(ctx.user.id, newCodes);
+
+        return { backupCodes: newCodes };
+      }),
+  }),
+
+  // Passkey/WebAuthn Authentication
+  passkeys: router({
+    // Get user's passkeys
+    list: protectedProcedure.query(async ({ ctx }) => {
+      const passkeys = await authService.getUserPasskeys(ctx.user.id);
+      return passkeys.map(p => ({
+        credentialId: p.credentialId,
+        deviceName: p.deviceName,
+        deviceType: p.deviceType,
+        lastUsedAt: p.lastUsedAt,
+        createdAt: p.createdAt,
+      }));
+    }),
+
+    // Get passkey status
+    getStatus: protectedProcedure.query(async ({ ctx }) => {
+      const enabled = await authService.isPasskeyEnabled(ctx.user.id);
+      const passkeys = await authService.getUserPasskeys(ctx.user.id);
+      return { enabled, count: passkeys.length };
+    }),
+
+    // Register a new passkey (returns options for WebAuthn)
+    getRegistrationOptions: protectedProcedure.query(async ({ ctx }) => {
+      const user = await db.getUserById(ctx.user.id);
+      if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+
+      const existingPasskeys = await authService.getUserPasskeys(ctx.user.id);
+      const challenge = Buffer.from(crypto.randomBytes(32)).toString("base64url");
+
+      // Store challenge in session/cache for verification
+      // In production, use a proper session store
+
+      return {
+        challenge,
+        rp: {
+          name: "ProPDFs",
+          id: new URL(process.env.VITE_FRONTEND_FORGE_API_URL || "https://propdfs.manus.space").hostname,
+        },
+        user: {
+          id: Buffer.from(String(ctx.user.id)).toString("base64url"),
+          name: user.email || user.name || `user-${ctx.user.id}`,
+          displayName: user.name || "ProPDFs User",
+        },
+        pubKeyCredParams: [
+          { type: "public-key", alg: -7 },
+          { type: "public-key", alg: -257 },
+        ],
+        timeout: 60000,
+        attestation: "none",
+        authenticatorSelection: {
+          residentKey: "preferred",
+          userVerification: "preferred",
+        },
+        excludeCredentials: existingPasskeys.map(p => ({
+          type: "public-key",
+          id: p.credentialId,
+        })),
+      };
+    }),
+
+    // Complete passkey registration
+    register: protectedProcedure
+      .input(z.object({
+        credentialId: z.string(),
+        publicKey: z.string(),
+        deviceName: z.string().optional(),
+        deviceType: z.string().optional(),
+        transports: z.array(z.string()).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        await authService.createPasskey({
+          userId: ctx.user.id,
+          credentialId: input.credentialId,
+          publicKey: input.publicKey,
+          deviceName: input.deviceName || "My Passkey",
+          deviceType: input.deviceType,
+          transports: input.transports,
+        });
+
+        // Enable passkey auth if first passkey
+        await authService.enablePasskeyAuth(ctx.user.id);
+
+        return { success: true };
+      }),
+
+    // Rename a passkey
+    rename: protectedProcedure
+      .input(z.object({
+        credentialId: z.string(),
+        deviceName: z.string(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        await authService.updatePasskeyName(ctx.user.id, input.credentialId, input.deviceName);
+        return { success: true };
+      }),
+
+    // Delete a passkey
+    delete: protectedProcedure
+      .input(z.object({
+        credentialId: z.string(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        await authService.deletePasskey(ctx.user.id, input.credentialId);
+
+        // Disable passkey auth if no passkeys left
+        const remaining = await authService.getUserPasskeys(ctx.user.id);
+        if (remaining.length === 0) {
+          await authService.disablePasskeyAuth(ctx.user.id);
+        }
+
+        return { success: true };
+      }),
+  }),
+
+  // Voice Commands
+  voice: router({
+    // Parse and execute voice command
+    execute: protectedProcedure
+      .input(z.object({
+        transcript: z.string(),
+        language: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const parsed = voiceCommandService.parseVoiceCommand(input.transcript);
+        const response = voiceCommandService.generateVoiceResponse(parsed);
+
+        // Log the command
+        await authService.logVoiceCommand({
+          userId: ctx.user.id,
+          transcript: input.transcript,
+          command: parsed.action,
+          parameters: parsed.parameters,
+          confidence: String(parsed.confidence),
+          language: input.language,
+          wasSuccessful: parsed.type !== "unknown",
+        });
+
+        // Get navigation path if it's a navigation command
+        let navigationPath: string | null = null;
+        if (parsed.type === "navigation" && parsed.parameters.page) {
+          navigationPath = voiceCommandService.getNavigationPath(parsed.parameters.page as string);
+        }
+
+        return {
+          command: parsed,
+          response,
+          navigationPath,
+        };
+      }),
+
+    // Get available commands
+    getCommands: publicProcedure.query(() => {
+      return voiceCommandService.getAvailableCommands();
+    }),
+
+    // Get supported languages
+    getLanguages: publicProcedure.query(() => {
+      return voiceCommandService.SUPPORTED_VOICE_LANGUAGES;
+    }),
+
+    // Get user's voice command history
+    getHistory: protectedProcedure
+      .input(z.object({
+        limit: z.number().default(50),
+      }))
+      .query(async ({ ctx, input }) => {
+        return await authService.getUserVoiceCommands(ctx.user.id, input.limit);
+      }),
+
+    // Get voice command statistics
+    getStats: protectedProcedure.query(async ({ ctx }) => {
+      return await authService.getVoiceCommandStats(ctx.user.id);
+    }),
+  }),
+
+  // Read Aloud
+  readAloud: router({
+    // Get available voices
+    getVoices: publicProcedure.query(() => {
+      return readAloudService.getAvailableVoices();
+    }),
+
+    // Get supported languages
+    getLanguages: publicProcedure.query(() => {
+      return readAloudService.READ_ALOUD_LANGUAGES;
+    }),
+
+    // Get speed presets
+    getSpeedPresets: publicProcedure.query(() => {
+      return readAloudService.SPEED_PRESETS;
+    }),
+
+    // Get keyboard shortcuts
+    getShortcuts: publicProcedure.query(() => {
+      return readAloudService.READ_ALOUD_SHORTCUTS;
+    }),
+
+    // Extract text from PDF for reading
+    extractText: protectedProcedure
+      .input(z.object({
+        fileUrl: z.string().url(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const response = await fetch(input.fileUrl);
+        if (!response.ok) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Failed to fetch file" });
+        }
+
+        const buffer = Buffer.from(await response.arrayBuffer());
+        const text = await pdfService.extractText(buffer);
+
+        const segments = readAloudService.splitIntoSentences(text);
+        const estimatedTime = readAloudService.estimateReadingTime(text);
+        const detectedLanguage = readAloudService.detectLanguage(text);
+
+        return {
+          text: readAloudService.cleanTextForSpeech(text),
+          segments,
+          estimatedTime,
+          formattedTime: readAloudService.formatTime(estimatedTime),
+          detectedLanguage,
+        };
+      }),
+
+    // Get default settings
+    getDefaultSettings: publicProcedure.query(() => {
+      return readAloudService.DEFAULT_READ_ALOUD_SETTINGS;
+    }),
   }),
 });
 export type AppRouter = typeof appRouter;

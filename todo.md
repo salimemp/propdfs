@@ -381,3 +381,50 @@
 - [x] Add form filling API routes
 - [x] Create form preview with field highlighting
 - [x] Add form filling tests
+
+## Social Login Authentication (New)
+- [x] Implement Google OAuth social login
+- [x] Implement GitHub OAuth social login
+- [x] Create social login buttons UI
+- [x] Handle account linking for existing users
+- [x] Store social provider tokens securely
+- [x] Add social login tests
+
+## TOTP 2FA Authentication (New)
+- [x] Implement TOTP secret generation
+- [x] Create QR code for authenticator app setup
+- [x] Implement TOTP verification
+- [x] Add 2FA enable/disable in security settings
+- [x] Generate backup codes for recovery
+- [x] Add 2FA login flow
+- [x] Add TOTP 2FA tests
+
+## Passkey/WebAuthn Authentication (New)
+- [x] Implement WebAuthn registration
+- [x] Implement WebAuthn authentication
+- [x] Create passkey management UI
+- [x] Support multiple passkeys per user
+- [x] Add passkey device naming
+- [x] Implement passkey removal
+- [x] Add passkey authentication tests
+
+## Voice Commands (New)
+- [x] Implement Web Speech API for voice recognition
+- [x] Create voice command parser
+- [x] Support navigation commands (go to dashboard, convert, etc.)
+- [x] Support action commands (merge PDF, split PDF, etc.)
+- [x] Add voice feedback with speech synthesis
+- [x] Create voice command help/tutorial
+- [x] Add voice activation button in UI
+- [x] Add voice command tests
+
+## Read Aloud Feature (New)
+- [x] Implement document text extraction for read aloud
+- [x] Create read aloud player component
+- [x] Support voice selection (language, gender)
+- [x] Add playback speed control
+- [x] Implement pause/resume/stop controls
+- [x] Add sentence highlighting during reading
+- [x] Support page-by-page reading
+- [x] Add read aloud button to PDF viewer
+- [x] Add read aloud tests

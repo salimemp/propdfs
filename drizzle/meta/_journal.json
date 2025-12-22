@@ -50,6 +50,13 @@
       "when": 1766395388247,
       "tag": "0006_bright_scorpion",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1766397405324,
+      "tag": "0007_strange_wallflower",
+      "breakpoints": true
     }
   ]
 }

@@ -676,3 +676,95 @@ export const emailPreferences = mysqlTable("email_preferences", {
 
 export type EmailPreferences = typeof emailPreferences.$inferSelect;
 export type InsertEmailPreferences = typeof emailPreferences.$inferInsert;
+
+
+/**
+ * Social login connections (Google, GitHub)
+ */
+export const socialLogins = mysqlTable("social_logins", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  
+  provider: mysqlEnum("provider", ["google", "github"]).notNull(),
+  providerUserId: varchar("providerUserId", { length: 255 }).notNull(),
+  email: varchar("email", { length: 320 }),
+  name: varchar("name", { length: 255 }),
+  avatarUrl: text("avatarUrl"),
+  
+  accessToken: text("accessToken"),
+  refreshToken: text("refreshToken"),
+  expiresAt: timestamp("expiresAt"),
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type SocialLogin = typeof socialLogins.$inferSelect;
+export type InsertSocialLogin = typeof socialLogins.$inferInsert;
+
+/**
+ * Passkeys/WebAuthn credentials
+ */
+export const passkeys = mysqlTable("passkeys", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  
+  credentialId: varchar("credentialId", { length: 512 }).notNull().unique(),
+  publicKey: text("publicKey").notNull(),
+  counter: bigint("counter", { mode: "number" }).default(0).notNull(),
+  
+  // Device info
+  deviceName: varchar("deviceName", { length: 255 }),
+  deviceType: varchar("deviceType", { length: 64 }), // platform, cross-platform
+  aaguid: varchar("aaguid", { length: 64 }),
+  
+  // Transports
+  transports: json("transports"), // ['usb', 'nfc', 'ble', 'internal']
+  
+  // Usage tracking
+  lastUsedAt: timestamp("lastUsedAt"),
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type Passkey = typeof passkeys.$inferSelect;
+export type InsertPasskey = typeof passkeys.$inferInsert;
+
+/**
+ * TOTP 2FA backup codes
+ */
+export const twoFactorBackupCodes = mysqlTable("two_factor_backup_codes", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  
+  code: varchar("code", { length: 32 }).notNull(),
+  usedAt: timestamp("usedAt"),
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type TwoFactorBackupCode = typeof twoFactorBackupCodes.$inferSelect;
+export type InsertTwoFactorBackupCode = typeof twoFactorBackupCodes.$inferInsert;
+
+/**
+ * Voice command history for analytics
+ */
+export const voiceCommands = mysqlTable("voice_commands", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  
+  transcript: text("transcript").notNull(),
+  command: varchar("command", { length: 64 }),
+  parameters: json("parameters"),
+  
+  confidence: decimal("confidence", { precision: 5, scale: 4 }),
+  language: varchar("language", { length: 10 }),
+  
+  wasSuccessful: boolean("wasSuccessful").default(false).notNull(),
+  errorMessage: text("errorMessage"),
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type VoiceCommand = typeof voiceCommands.$inferSelect;
+export type InsertVoiceCommand = typeof voiceCommands.$inferInsert;

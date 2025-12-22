@@ -16,6 +16,8 @@ import Editor from "./pages/Editor";
 import Compare from "./pages/Compare";
 import BatchProcessing from "./pages/BatchProcessing";
 import FormFilling from "./pages/FormFilling";
+import SecuritySettings from "./pages/SecuritySettings";
+import VoiceCommand from "./components/VoiceCommand";
 
 function Router() {
   return (
@@ -32,6 +34,7 @@ function Router() {
       <Route path="/compare" component={Compare} />
       <Route path="/batch" component={BatchProcessing} />
       <Route path="/forms" component={FormFilling} />
+      <Route path="/security" component={SecuritySettings} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
@@ -45,6 +48,7 @@ function App() {
         <TooltipProvider>
           <Toaster />
           <Router />
+          <VoiceCommand />
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>
