@@ -495,3 +495,50 @@
 - [x] Add handwriting recognition enhancement
 - [x] Create context-aware OCR API endpoint
 - [x] Add context-aware OCR tests
+
+
+## Devices Management UI (New)
+- [ ] Create DevicesSettings page component
+- [ ] Display list of synced devices with details
+- [ ] Add device rename functionality
+- [ ] Add device removal with confirmation
+- [ ] Show last sync time per device
+- [ ] Add current device indicator
+- [ ] Integrate into Settings navigation
+
+## File Version History UI (New)
+- [ ] Create FileVersionHistory component
+- [ ] Display visual timeline of snapshots
+- [ ] Show snapshot details (date, size, type)
+- [ ] Add restore from snapshot button
+- [ ] Add snapshot comparison view
+- [ ] Add snapshot protection toggle
+- [ ] Integrate into File Manager
+
+## Registration/Login Forms (New)
+- [ ] Create RegisterForm component
+- [ ] Create LoginForm component
+- [ ] Create MagicLinkForm component
+- [ ] Add form validation
+- [ ] Add password strength indicator
+- [ ] Add email verification status display
+- [ ] Create AuthPage with form switching
+- [ ] Add forgot password flow UI
+
+## Cloud Storage OAuth Configuration (New)
+- [x] Configure OneDrive/Microsoft OAuth credentials
+- [x] Configure Google Drive OAuth credentials
+- [x] Configure Dropbox OAuth credentials
+- [x] Configure Box OAuth credentials
+- [ ] Test OAuth flows end-to-end
+
+## GitHub Repository (New)
+- [ ] Initialize git repository
+- [ ] Configure remote origin
+- [ ] Commit all code
+- [ ] Push to GitHub
+
+
+## Bug Fixes (New)
+- [x] Fix input fields not working (verified working)
+- [x] Fix scroll not working (verified working)

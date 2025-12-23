@@ -7,4 +7,13 @@ export const ENV = {
   isProduction: process.env.NODE_ENV === "production",
   forgeApiUrl: process.env.BUILT_IN_FORGE_API_URL ?? "",
   forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
+  // Cloud Storage OAuth Credentials
+  oneDriveClientId: process.env.ONEDRIVE_CLIENT_ID ?? "",
+  oneDriveClientSecret: process.env.ONEDRIVE_CLIENT_SECRET ?? "",
+  googleDriveClientId: process.env.GOOGLE_DRIVE_CLIENT_ID ?? "",
+  googleDriveClientSecret: process.env.GOOGLE_DRIVE_CLIENT_SECRET ?? "",
+  dropboxAppKey: process.env.DROPBOX_APP_KEY ?? "",
+  dropboxAppSecret: process.env.DROPBOX_APP_SECRET ?? "",
+  boxClientId: process.env.BOX_CLIENT_ID ?? "",
+  boxClientSecret: process.env.BOX_CLIENT_SECRET ?? "",
 };

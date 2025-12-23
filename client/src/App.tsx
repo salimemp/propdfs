@@ -17,6 +17,8 @@ import Compare from "./pages/Compare";
 import BatchProcessing from "./pages/BatchProcessing";
 import FormFilling from "./pages/FormFilling";
 import SecuritySettings from "./pages/SecuritySettings";
+import DevicesSettings from "./pages/DevicesSettings";
+import Auth from "./pages/Auth";
 import VoiceCommand from "./components/VoiceCommand";
 
 function Router() {
@@ -35,6 +37,8 @@ function Router() {
       <Route path="/batch" component={BatchProcessing} />
       <Route path="/forms" component={FormFilling} />
       <Route path="/security" component={SecuritySettings} />
+      <Route path="/devices" component={DevicesSettings} />
+      <Route path="/auth" component={Auth} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

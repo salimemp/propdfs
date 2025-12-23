@@ -6,7 +6,7 @@
 import { ENV } from './_core/env';
 
 // Types for cloud storage providers
-export type CloudProvider = 'google_drive' | 'dropbox' | 'onedrive';
+export type CloudProvider = 'google_drive' | 'dropbox' | 'onedrive' | 'box';
 
 export interface CloudFile {
   id: string;
@@ -64,6 +64,12 @@ export const OAUTH_CONFIG = {
     tokenUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
     scope: 'Files.Read Files.ReadWrite',
     apiBase: 'https://graph.microsoft.com/v1.0',
+  },
+  box: {
+    authUrl: 'https://account.box.com/api/oauth2/authorize',
+    tokenUrl: 'https://api.box.com/oauth2/token',
+    scope: 'root_readwrite',
+    apiBase: 'https://api.box.com/2.0',
   },
 };
 
