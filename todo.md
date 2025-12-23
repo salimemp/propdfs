@@ -542,3 +542,37 @@
 ## Bug Fixes (New)
 - [x] Fix input fields not working (verified working)
 - [x] Fix scroll not working (verified working)
+
+
+## OAuth Redirect Handlers (New)
+- [x] Create OAuth callback route for Google Drive
+- [x] Create OAuth callback route for OneDrive
+- [x] Create OAuth callback route for Dropbox
+- [x] Create OAuth callback route for Box
+- [x] Store OAuth tokens in database
+- [x] Handle token refresh logic
+- [x] Add error handling for OAuth failures
+
+## File Manager Version History Integration (New)
+- [x] Add version history button to file items
+- [x] Create version history modal/panel
+- [x] Connect FileVersionHistory component to My Files
+- [x] Add restore functionality from file manager
+- [x] Show version count badge on files
+
+## Theme Toggle & Profile Dropdown (New)
+- [x] Add theme toggle (light/dark mode)
+- [x] Create profile dropdown menu
+- [x] Add Settings link in dropdown
+- [x] Add Logout function in dropdown
+- [x] Persist theme preference
+- [x] Add user avatar/initials in dropdown
+
+## README.md Documentation (New)
+- [x] Create project overview
+- [x] Document features list
+- [x] Add installation instructions
+- [x] Document environment variables
+- [x] Add usage examples
+- [x] Include API documentation
+- [x] Add contributing guidelines

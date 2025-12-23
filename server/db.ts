@@ -722,7 +722,7 @@ import { cloudStorageConnections, InsertCloudStorageConnection } from "../drizzl
 
 export async function saveCloudStorageConnection(data: {
   userId: number;
-  provider: "google_drive" | "dropbox" | "onedrive";
+  provider: "google_drive" | "dropbox" | "onedrive" | "box";
   accessToken: string;
   refreshToken?: string;
   expiresAt?: Date;
@@ -768,7 +768,7 @@ export async function saveCloudStorageConnection(data: {
   return result[0].insertId;
 }
 
-export async function getCloudStorageConnection(userId: number, provider: "google_drive" | "dropbox" | "onedrive") {
+export async function getCloudStorageConnection(userId: number, provider: "google_drive" | "dropbox" | "onedrive" | "box") {
   const db = await getDb();
   if (!db) return undefined;
   
@@ -794,7 +794,7 @@ export async function getCloudStorageConnections(userId: number) {
     ));
 }
 
-export async function deleteCloudStorageConnection(userId: number, provider: "google_drive" | "dropbox" | "onedrive") {
+export async function deleteCloudStorageConnection(userId: number, provider: "google_drive" | "dropbox" | "onedrive" | "box") {
   const db = await getDb();
   if (!db) return;
   
@@ -808,7 +808,7 @@ export async function deleteCloudStorageConnection(userId: number, provider: "go
 
 export async function updateCloudStorageToken(
   userId: number, 
-  provider: "google_drive" | "dropbox" | "onedrive",
+  provider: "google_drive" | "dropbox" | "onedrive" | "box",
   accessToken: string,
   expiresAt?: Date
 ) {

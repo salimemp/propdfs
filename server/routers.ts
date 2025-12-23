@@ -1408,11 +1408,12 @@ Be helpful, concise, and professional. If a user asks about a specific file oper
     // Get OAuth authorization URL
     getAuthUrl: protectedProcedure
       .input(z.object({
-        provider: z.enum(["google_drive", "dropbox", "onedrive"]),
+        provider: z.enum(["google_drive", "dropbox", "onedrive", "box"]),
       }))
       .mutation(async ({ ctx, input }) => {
-        const envPrefix = input.provider === "google_drive" ? "GOOGLE" : 
-                          input.provider === "dropbox" ? "DROPBOX" : "MICROSOFT";
+        const envPrefix = input.provider === "google_drive" ? "GOOGLE_DRIVE" : 
+                          input.provider === "dropbox" ? "DROPBOX" : 
+                          input.provider === "box" ? "BOX" : "ONEDRIVE";
         const clientId = process.env[`${envPrefix}_CLIENT_ID`];
         const clientSecret = process.env[`${envPrefix}_CLIENT_SECRET`];
         
@@ -1498,7 +1499,7 @@ Be helpful, concise, and professional. If a user asks about a specific file oper
     // Refresh access token
     refreshToken: protectedProcedure
       .input(z.object({
-        provider: z.enum(["google_drive", "dropbox", "onedrive"]),
+        provider: z.enum(["google_drive", "dropbox", "onedrive", "box"]),
       }))
       .mutation(async ({ ctx, input }) => {
         const connection = await db.getCloudStorageConnection(ctx.user.id, input.provider);
@@ -1509,8 +1510,9 @@ Be helpful, concise, and professional. If a user asks about a specific file oper
           });
         }
         
-        const envPrefix = input.provider === "google_drive" ? "GOOGLE" : 
-                          input.provider === "dropbox" ? "DROPBOX" : "MICROSOFT";
+        const envPrefix = input.provider === "google_drive" ? "GOOGLE_DRIVE" : 
+                          input.provider === "dropbox" ? "DROPBOX" : 
+                          input.provider === "box" ? "BOX" : "ONEDRIVE";
         const clientId = process.env[`${envPrefix}_CLIENT_ID`];
         const clientSecret = process.env[`${envPrefix}_CLIENT_SECRET`];
         
@@ -1542,7 +1544,7 @@ Be helpful, concise, and professional. If a user asks about a specific file oper
     
     disconnect: protectedProcedure
       .input(z.object({
-        provider: z.enum(["google_drive", "dropbox", "onedrive"]),
+        provider: z.enum(["google_drive", "dropbox", "onedrive", "box"]),
       }))
       .mutation(async ({ ctx, input }) => {
         await db.deleteCloudStorageConnection(ctx.user.id, input.provider);
@@ -1551,7 +1553,7 @@ Be helpful, concise, and professional. If a user asks about a specific file oper
       
     listFiles: protectedProcedure
       .input(z.object({
-        provider: z.enum(["google_drive", "dropbox", "onedrive"]),
+        provider: z.enum(["google_drive", "dropbox", "onedrive", "box"]),
         folderId: z.string().optional(),
         pageToken: z.string().optional(),
       }))
@@ -1573,7 +1575,7 @@ Be helpful, concise, and professional. If a user asks about a specific file oper
       
     importFile: protectedProcedure
       .input(z.object({
-        provider: z.enum(["google_drive", "dropbox", "onedrive"]),
+        provider: z.enum(["google_drive", "dropbox", "onedrive", "box"]),
         fileId: z.string(),
         filename: z.string(),
         mimeType: z.string(),
@@ -1595,6 +1597,8 @@ Be helpful, concise, and professional. If a user asks about a specific file oper
           fileBuffer = await (service as cloudStorage.GoogleDriveService).downloadFile(input.fileId);
         } else if (input.provider === "dropbox") {
           fileBuffer = await (service as cloudStorage.DropboxService).downloadFile(input.fileId);
+        } else if (input.provider === "box") {
+          fileBuffer = await (service as cloudStorage.BoxService).downloadFile(input.fileId);
         } else {
           fileBuffer = await (service as cloudStorage.OneDriveService).downloadFile(input.fileId);
         }
@@ -1619,7 +1623,7 @@ Be helpful, concise, and professional. If a user asks about a specific file oper
       
     exportFile: protectedProcedure
       .input(z.object({
-        provider: z.enum(["google_drive", "dropbox", "onedrive"]),
+        provider: z.enum(["google_drive", "dropbox", "onedrive", "box"]),
         fileId: z.number(),
         folderId: z.string().optional(),
       }))
@@ -1657,6 +1661,12 @@ Be helpful, concise, and professional. If a user asks about a specific file oper
         } else if (input.provider === "dropbox") {
           const path = input.folderId ? `${input.folderId}/${file.filename}` : `/${file.filename}`;
           cloudFile = await (service as cloudStorage.DropboxService).uploadFile(path, fileBuffer);
+        } else if (input.provider === "box") {
+          cloudFile = await (service as cloudStorage.BoxService).uploadFile(
+            file.filename,
+            fileBuffer,
+            input.folderId
+          );
         } else {
           cloudFile = await (service as cloudStorage.OneDriveService).uploadFile(
             file.filename,

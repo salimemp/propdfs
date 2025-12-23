@@ -19,6 +19,7 @@ import FormFilling from "./pages/FormFilling";
 import SecuritySettings from "./pages/SecuritySettings";
 import DevicesSettings from "./pages/DevicesSettings";
 import Auth from "./pages/Auth";
+import CloudOAuthCallback from "./pages/CloudOAuthCallback";
 import VoiceCommand from "./components/VoiceCommand";
 
 function Router() {
@@ -39,6 +40,7 @@ function Router() {
       <Route path="/security" component={SecuritySettings} />
       <Route path="/devices" component={DevicesSettings} />
       <Route path="/auth" component={Auth} />
+      <Route path="/oauth/callback/:provider" component={CloudOAuthCallback} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
@@ -48,7 +50,7 @@ function Router() {
 function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider defaultTheme="light">
+      <ThemeProvider defaultTheme="light" switchable={true}>
         <TooltipProvider>
           <Toaster />
           <Router />

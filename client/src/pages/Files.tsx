@@ -10,8 +10,9 @@ import { getLoginUrl } from "@/const";
 import { 
   FileText, FolderOpen, Upload, Search, Grid, List,
   MoreVertical, Download, Trash2, Tag, Share2, Eye,
-  Plus, FolderPlus, Loader2, Clock, Filter
+  Plus, FolderPlus, Loader2, Clock, Filter, History
 } from "lucide-react";
+import FileVersionHistory from "@/components/FileVersionHistory";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { Link, useLocation } from "wouter";
@@ -24,6 +25,8 @@ export default function Files() {
   const [currentFolderId, setCurrentFolderId] = useState<number | null>(null);
   const [newFolderName, setNewFolderName] = useState("");
   const [isCreateFolderOpen, setIsCreateFolderOpen] = useState(false);
+  const [selectedFileForHistory, setSelectedFileForHistory] = useState<number | null>(null);
+  const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -335,6 +338,13 @@ export default function Files() {
                                   <Tag className="h-4 w-4 mr-2" />
                                   Add Tag
                                 </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => {
+                                  setSelectedFileForHistory(file.id);
+                                  setIsVersionHistoryOpen(true);
+                                }}>
+                                  <History className="h-4 w-4 mr-2" />
+                                  Version History
+                                </DropdownMenuItem>
                                 <DropdownMenuItem 
                                   className="text-red-600"
                                   onClick={() => deleteFileMutation.mutate({ id: file.id })}
@@ -371,6 +381,28 @@ export default function Files() {
           </>
         )}
       </div>
+
+      {/* Version History Dialog */}
+      <Dialog open={isVersionHistoryOpen} onOpenChange={setIsVersionHistoryOpen}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Version History</DialogTitle>
+            <DialogDescription>
+              View and restore previous versions of this file
+            </DialogDescription>
+          </DialogHeader>
+          {selectedFileForHistory && (
+            <FileVersionHistory 
+              fileId={selectedFileForHistory} 
+              onRestore={() => {
+                setIsVersionHistoryOpen(false);
+                refetchFiles();
+                toast.success("File restored successfully");
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }

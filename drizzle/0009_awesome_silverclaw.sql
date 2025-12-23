@@ -1,0 +1,1 @@
+ALTER TABLE `cloud_storage_connections` MODIFY COLUMN `provider` enum('google_drive','dropbox','onedrive','box') NOT NULL;

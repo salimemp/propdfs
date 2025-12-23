@@ -608,12 +608,148 @@ export class OneDriveService {
 }
 
 /**
+ * Box API wrapper
+ */
+export class BoxService {
+  private accessToken: string;
+  private apiBase = OAUTH_CONFIG.box.apiBase;
+
+  constructor(accessToken: string) {
+    this.accessToken = accessToken;
+  }
+
+  async listFiles(options: ListFilesOptions = {}): Promise<ListFilesResult> {
+    const folderId = options.folderId || '0'; // 0 is root folder in Box
+    
+    const response = await fetch(`${this.apiBase}/folders/${folderId}/items?limit=${options.pageSize || 50}`, {
+      headers: {
+        Authorization: `Bearer ${this.accessToken}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Box API error: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+
+    const files: CloudFile[] = [];
+    const folders: CloudFolder[] = [];
+
+    for (const entry of data.entries || []) {
+      if (entry.type === 'folder') {
+        folders.push({
+          id: entry.id,
+          name: entry.name,
+        });
+      } else {
+        files.push({
+          id: entry.id,
+          name: entry.name,
+          mimeType: this.getMimeType(entry.name),
+          size: entry.size || 0,
+          modifiedTime: entry.modified_at,
+        });
+      }
+    }
+
+    return {
+      files,
+      folders,
+      nextPageToken: data.next_marker,
+    };
+  }
+
+  async downloadFile(fileId: string): Promise<Buffer> {
+    const response = await fetch(`${this.apiBase}/files/${fileId}/content`, {
+      headers: {
+        Authorization: `Bearer ${this.accessToken}`,
+      },
+      redirect: 'follow',
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to download file: ${response.statusText}`);
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    return Buffer.from(arrayBuffer);
+  }
+
+  async uploadFile(
+    name: string,
+    content: Buffer,
+    folderId?: string
+  ): Promise<CloudFile> {
+    const parentId = folderId || '0';
+    
+    // Box uses multipart form data for uploads
+    const boundary = '----BoxUploadBoundary' + Date.now();
+    const attributes = JSON.stringify({
+      name,
+      parent: { id: parentId },
+    });
+    
+    const body = Buffer.concat([
+      Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="attributes"\r\n\r\n${attributes}\r\n`),
+      Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${name}"\r\nContent-Type: application/octet-stream\r\n\r\n`),
+      content,
+      Buffer.from(`\r\n--${boundary}--\r\n`),
+    ]);
+
+    const response = await fetch('https://upload.box.com/api/2.0/files/content', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${this.accessToken}`,
+        'Content-Type': `multipart/form-data; boundary=${boundary}`,
+      },
+      body,
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Failed to upload file: ${error}`);
+    }
+
+    const data = await response.json();
+    const file = data.entries?.[0];
+
+    return {
+      id: file.id,
+      name: file.name,
+      mimeType: this.getMimeType(file.name),
+      size: file.size,
+      modifiedTime: file.modified_at,
+    };
+  }
+
+  private getMimeType(filename: string): string {
+    const ext = filename.split('.').pop()?.toLowerCase();
+    const mimeTypes: Record<string, string> = {
+      pdf: 'application/pdf',
+      doc: 'application/msword',
+      docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      xls: 'application/vnd.ms-excel',
+      xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      ppt: 'application/vnd.ms-powerpoint',
+      pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      jpg: 'image/jpeg',
+      jpeg: 'image/jpeg',
+      png: 'image/png',
+      gif: 'image/gif',
+      txt: 'text/plain',
+    };
+    return mimeTypes[ext || ''] || 'application/octet-stream';
+  }
+}
+
+/**
  * Factory function to create the appropriate cloud storage service
  */
 export function createCloudStorageService(
   provider: CloudProvider,
   accessToken: string
-): GoogleDriveService | DropboxService | OneDriveService {
+): GoogleDriveService | DropboxService | OneDriveService | BoxService {
   switch (provider) {
     case 'google_drive':
       return new GoogleDriveService(accessToken);
@@ -621,6 +757,8 @@ export function createCloudStorageService(
       return new DropboxService(accessToken);
     case 'onedrive':
       return new OneDriveService(accessToken);
+    case 'box':
+      return new BoxService(accessToken);
     default:
       throw new Error(`Unsupported cloud provider: ${provider}`);
   }

@@ -377,9 +377,111 @@ export class OneDriveOAuth {
   }
 }
 
+// ==================== BOX OAUTH ====================
+
+export class BoxOAuth {
+  private config: OAuthConfig;
+
+  constructor(clientId: string, clientSecret: string) {
+    this.config = {
+      clientId,
+      clientSecret,
+      authorizationUrl: "https://account.box.com/api/oauth2/authorize",
+      tokenUrl: "https://api.box.com/oauth2/token",
+      scopes: [], // Box doesn't use scopes in the same way
+      redirectUri: `${getBaseUrl()}/api/oauth/callback/box`,
+    };
+  }
+
+  getAuthorizationUrl(state: string): string {
+    const params = new URLSearchParams({
+      client_id: this.config.clientId,
+      redirect_uri: this.config.redirectUri,
+      response_type: "code",
+      state,
+    });
+    return `${this.config.authorizationUrl}?${params.toString()}`;
+  }
+
+  async exchangeCodeForTokens(code: string): Promise<TokenResponse> {
+    const response = await fetch(this.config.tokenUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({
+        client_id: this.config.clientId,
+        client_secret: this.config.clientSecret,
+        code,
+        grant_type: "authorization_code",
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Box token exchange failed: ${error}`);
+    }
+
+    const data = await response.json();
+    return {
+      accessToken: data.access_token,
+      refreshToken: data.refresh_token,
+      expiresIn: data.expires_in,
+      tokenType: data.token_type,
+    };
+  }
+
+  async refreshAccessToken(refreshToken: string): Promise<TokenResponse> {
+    const response = await fetch(this.config.tokenUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({
+        client_id: this.config.clientId,
+        client_secret: this.config.clientSecret,
+        refresh_token: refreshToken,
+        grant_type: "refresh_token",
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Box token refresh failed: ${error}`);
+    }
+
+    const data = await response.json();
+    return {
+      accessToken: data.access_token,
+      refreshToken: data.refresh_token || refreshToken,
+      expiresIn: data.expires_in,
+      tokenType: data.token_type,
+    };
+  }
+
+  async getUserInfo(accessToken: string): Promise<UserInfo> {
+    const response = await fetch("https://api.box.com/2.0/users/me", {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to get Box user info");
+    }
+
+    const data = await response.json();
+    return {
+      email: data.login,
+      name: data.name,
+      id: data.id,
+    };
+  }
+}
+
 // ==================== OAUTH FACTORY ====================
 
-export type CloudProvider = "google_drive" | "dropbox" | "onedrive";
+export type CloudProvider = "google_drive" | "dropbox" | "onedrive" | "box";
 
 export function createOAuthService(
   provider: CloudProvider,
@@ -393,6 +495,8 @@ export function createOAuthService(
       return new DropboxOAuth(clientId, clientSecret);
     case "onedrive":
       return new OneDriveOAuth(clientId, clientSecret);
+    case "box":
+      return new BoxOAuth(clientId, clientSecret);
     default:
       throw new Error(`Unsupported OAuth provider: ${provider}`);
   }

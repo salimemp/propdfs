@@ -23,8 +23,11 @@ import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
 import { 
   LayoutDashboard, LogOut, PanelLeft, FileText, FolderOpen, 
-  Users, BarChart3, Settings, Upload, CreditCard, Pencil, GitCompare, Layers, FormInput
+  Users, BarChart3, Settings, Upload, CreditCard, Pencil, GitCompare, Layers, FormInput,
+  Moon, Sun, Shield, Smartphone, User
 } from "lucide-react";
+import { useTheme } from "@/contexts/ThemeContext";
+import { DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
@@ -47,6 +50,35 @@ const SIDEBAR_WIDTH_KEY = "sidebar-width";
 const DEFAULT_WIDTH = 280;
 const MIN_WIDTH = 200;
 const MAX_WIDTH = 480;
+
+// Theme toggle dropdown item component
+function ThemeToggleItem() {
+  const { theme, toggleTheme, switchable } = useTheme();
+  
+  if (!switchable) return null;
+  
+  return (
+    <DropdownMenuItem
+      onClick={(e) => {
+        e.preventDefault();
+        toggleTheme?.();
+      }}
+      className="cursor-pointer"
+    >
+      {theme === "dark" ? (
+        <>
+          <Sun className="mr-2 h-4 w-4" />
+          <span>Light Mode</span>
+        </>
+      ) : (
+        <>
+          <Moon className="mr-2 h-4 w-4" />
+          <span>Dark Mode</span>
+        </>
+      )}
+    </DropdownMenuItem>
+  );
+}
 
 export default function DashboardLayout({
   children,
@@ -236,14 +268,36 @@ function DashboardLayoutContent({
                   </div>
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuContent align="end" className="w-56">
+                <div className="px-2 py-1.5">
+                  <p className="text-sm font-medium">{user?.name || "User"}</p>
+                  <p className="text-xs text-muted-foreground">{user?.email || ""}</p>
+                </div>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={() => setLocation("/settings")}
                   className="cursor-pointer"
                 >
-                  <Settings className="mr-2 h-4 w-4" />
-                  <span>Settings</span>
+                  <User className="mr-2 h-4 w-4" />
+                  <span>Profile Settings</span>
                 </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setLocation("/security")}
+                  className="cursor-pointer"
+                >
+                  <Shield className="mr-2 h-4 w-4" />
+                  <span>Security</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setLocation("/devices")}
+                  className="cursor-pointer"
+                >
+                  <Smartphone className="mr-2 h-4 w-4" />
+                  <span>Devices</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <ThemeToggleItem />
+                <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={() => setLocation("/pricing")}
                   className="cursor-pointer"
@@ -251,6 +305,7 @@ function DashboardLayoutContent({
                   <CreditCard className="mr-2 h-4 w-4" />
                   <span>Upgrade Plan</span>
                 </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={logout}
                   className="cursor-pointer text-destructive focus:text-destructive"

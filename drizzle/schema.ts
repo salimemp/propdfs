@@ -416,7 +416,7 @@ export const cloudStorageConnections = mysqlTable("cloud_storage_connections", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
   
-  provider: mysqlEnum("provider", ["google_drive", "dropbox", "onedrive"]).notNull(),
+  provider: mysqlEnum("provider", ["google_drive", "dropbox", "onedrive", "box"]).notNull(),
   accessToken: text("accessToken").notNull(),
   refreshToken: text("refreshToken"),
   expiresAt: timestamp("expiresAt"),

@@ -61,8 +61,9 @@ interface Snapshot {
 
 interface FileVersionHistoryProps {
   fileId: number;
-  fileName: string;
+  fileName?: string;
   onClose?: () => void;
+  onRestore?: () => void;
 }
 
 function formatFileSize(bytes: number | bigint): string {
@@ -113,7 +114,7 @@ function getSnapshotTypeLabel(type: string): { label: string; color: string } {
   }
 }
 
-export function FileVersionHistory({ fileId, fileName, onClose }: FileVersionHistoryProps) {
+export function FileVersionHistory({ fileId, fileName, onClose, onRestore }: FileVersionHistoryProps) {
   const [selectedSnapshot, setSelectedSnapshot] = useState<Snapshot | null>(null);
   const [snapshotToRestore, setSnapshotToRestore] = useState<Snapshot | null>(null);
   const [snapshotToDelete, setSnapshotToDelete] = useState<Snapshot | null>(null);
@@ -137,6 +138,7 @@ export function FileVersionHistory({ fileId, fileName, onClose }: FileVersionHis
       toast.success("File restored successfully");
       refetch();
       setSnapshotToRestore(null);
+      onRestore?.();
     },
     onError: (error) => {
       toast.error(error.message || "Failed to restore file");
