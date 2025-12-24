@@ -22,6 +22,8 @@ import Auth from "./pages/Auth";
 import CloudOAuthCallback from "./pages/CloudOAuthCallback";
 import CloudStorageSettings from "./pages/CloudStorageSettings";
 import ShareFile from "./pages/ShareFile";
+import AdminDashboard from "./pages/AdminDashboard";
+import SharedFilesManager from "./pages/SharedFilesManager";
 import VoiceCommand from "./components/VoiceCommand";
 
 function Router() {
@@ -45,6 +47,8 @@ function Router() {
       <Route path="/oauth/callback/:provider" component={CloudOAuthCallback} />
       <Route path="/cloud-storage" component={CloudStorageSettings} />
       <Route path="/share/:token" component={ShareFile} />
+      <Route path="/admin" component={AdminDashboard} />
+      <Route path="/shared" component={SharedFilesManager} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
