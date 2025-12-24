@@ -20,6 +20,8 @@ import SecuritySettings from "./pages/SecuritySettings";
 import DevicesSettings from "./pages/DevicesSettings";
 import Auth from "./pages/Auth";
 import CloudOAuthCallback from "./pages/CloudOAuthCallback";
+import CloudStorageSettings from "./pages/CloudStorageSettings";
+import ShareFile from "./pages/ShareFile";
 import VoiceCommand from "./components/VoiceCommand";
 
 function Router() {
@@ -41,6 +43,8 @@ function Router() {
       <Route path="/devices" component={DevicesSettings} />
       <Route path="/auth" component={Auth} />
       <Route path="/oauth/callback/:provider" component={CloudOAuthCallback} />
+      <Route path="/cloud-storage" component={CloudStorageSettings} />
+      <Route path="/share/:token" component={ShareFile} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

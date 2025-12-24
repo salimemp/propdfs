@@ -1,4 +1,9 @@
-# ProPDFs - Professional PDF Converter
+# ProPDFs
+
+[![CI](https://github.com/salimemp/propdfs/actions/workflows/ci.yml/badge.svg)](https://github.com/salimemp/propdfs/actions/workflows/ci.yml)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue.svg)](https://www.typescriptlang.org/)
+[![React](https://img.shields.io/badge/React-19-61dafb.svg)](https://react.dev/)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 A comprehensive, enterprise-grade PDF conversion and management platform built with React, TypeScript, and Node.js.
 

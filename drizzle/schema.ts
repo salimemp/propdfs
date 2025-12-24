@@ -952,3 +952,104 @@ export const ocrResults = mysqlTable("ocr_results", {
 
 export type OcrResult = typeof ocrResults.$inferSelect;
 export type InsertOcrResult = typeof ocrResults.$inferInsert;
+
+
+/**
+ * File sharing - share files via link or email
+ */
+export const fileShares = mysqlTable("file_shares", {
+  id: int("id").autoincrement().primaryKey(),
+  fileId: int("fileId").notNull(),
+  ownerId: int("ownerId").notNull(),
+  
+  // Share token for link sharing
+  shareToken: varchar("shareToken", { length: 64 }).notNull().unique(),
+  
+  // Share type
+  shareType: mysqlEnum("shareType", ["link", "email", "team"]).default("link").notNull(),
+  
+  // Permissions
+  permission: mysqlEnum("permission", ["view", "download", "edit", "comment"]).default("view").notNull(),
+  
+  // Link settings
+  isPublic: boolean("isPublic").default(true).notNull(), // public link vs specific recipients
+  requiresPassword: boolean("requiresPassword").default(false).notNull(),
+  passwordHash: varchar("passwordHash", { length: 255 }),
+  
+  // Expiration
+  expiresAt: timestamp("expiresAt"),
+  
+  // Usage limits
+  maxDownloads: int("maxDownloads"),
+  downloadCount: int("downloadCount").default(0).notNull(),
+  maxViews: int("maxViews"),
+  viewCount: int("viewCount").default(0).notNull(),
+  
+  // Notifications
+  notifyOnAccess: boolean("notifyOnAccess").default(false).notNull(),
+  
+  // Status
+  isActive: boolean("isActive").default(true).notNull(),
+  revokedAt: timestamp("revokedAt"),
+  revokedReason: varchar("revokedReason", { length: 255 }),
+  
+  // Metadata
+  customMessage: text("customMessage"),
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type FileShare = typeof fileShares.$inferSelect;
+export type InsertFileShare = typeof fileShares.$inferInsert;
+
+/**
+ * File share recipients - for email/user-specific shares
+ */
+export const fileShareRecipients = mysqlTable("file_share_recipients", {
+  id: int("id").autoincrement().primaryKey(),
+  shareId: int("shareId").notNull(),
+  
+  // Recipient info
+  recipientEmail: varchar("recipientEmail", { length: 320 }),
+  recipientUserId: int("recipientUserId"),
+  
+  // Invitation status
+  invitationSentAt: timestamp("invitationSentAt"),
+  invitationAcceptedAt: timestamp("invitationAcceptedAt"),
+  
+  // Access tracking
+  lastAccessedAt: timestamp("lastAccessedAt"),
+  accessCount: int("accessCount").default(0).notNull(),
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type FileShareRecipient = typeof fileShareRecipients.$inferSelect;
+export type InsertFileShareRecipient = typeof fileShareRecipients.$inferInsert;
+
+/**
+ * File share access logs
+ */
+export const fileShareAccessLogs = mysqlTable("file_share_access_logs", {
+  id: int("id").autoincrement().primaryKey(),
+  shareId: int("shareId").notNull(),
+  
+  // Access info
+  accessType: mysqlEnum("accessType", ["view", "download", "preview"]).notNull(),
+  
+  // Accessor info
+  accessorUserId: int("accessorUserId"),
+  accessorEmail: varchar("accessorEmail", { length: 320 }),
+  accessorIp: varchar("accessorIp", { length: 45 }),
+  accessorUserAgent: text("accessorUserAgent"),
+  
+  // Location (optional)
+  accessorCountry: varchar("accessorCountry", { length: 2 }),
+  accessorCity: varchar("accessorCity", { length: 128 }),
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type FileShareAccessLog = typeof fileShareAccessLogs.$inferSelect;
+export type InsertFileShareAccessLog = typeof fileShareAccessLogs.$inferInsert;

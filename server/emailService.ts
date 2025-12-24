@@ -865,3 +865,410 @@ export async function sendUsageLimitWarningEmail(
     text: template.text,
   });
 }
+
+
+// ==================== AUTHENTICATION EMAIL TEMPLATES ====================
+
+/**
+ * Email verification template
+ */
+export function getEmailVerificationTemplate(
+  verificationUrl: string
+): { subject: string; html: string; text: string } {
+  return {
+    subject: "Verify your email address - ProPDFs",
+    html: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f4f4f5;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+    <tr>
+      <td>
+        <div style="background-color: white; border-radius: 12px; padding: 40px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <h1 style="color: #2563eb; font-size: 24px; margin: 0;">📄 ProPDFs</h1>
+          </div>
+          
+          <h2 style="color: #18181b; font-size: 24px; margin: 0 0 16px; text-align: center;">Verify your email address</h2>
+          
+          <p style="color: #52525b; font-size: 16px; line-height: 1.6; margin: 0 0 24px; text-align: center;">
+            Thanks for signing up for ProPDFs! Please verify your email address by clicking the button below.
+          </p>
+          
+          <div style="text-align: center; margin-bottom: 24px;">
+            <a href="${verificationUrl}" style="display: inline-block; background-color: #2563eb; color: white; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">Verify Email Address</a>
+          </div>
+          
+          <p style="color: #71717a; font-size: 14px; text-align: center; margin: 0 0 16px;">
+            Or copy and paste this link into your browser:
+          </p>
+          <p style="color: #2563eb; font-size: 12px; word-break: break-all; text-align: center; margin: 0 0 24px;">
+            ${verificationUrl}
+          </p>
+          
+          <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px 16px; margin-bottom: 16px;">
+            <p style="color: #92400e; font-size: 14px; margin: 0;">
+              This link will expire in 24 hours. If you didn't create an account with ProPDFs, you can safely ignore this email.
+            </p>
+          </div>
+        </div>
+        
+        <div style="text-align: center; padding: 24px;">
+          <p style="color: #a1a1aa; font-size: 12px; margin: 0;">
+            © ${new Date().getFullYear()} ProPDFs. All rights reserved.
+          </p>
+        </div>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+    `,
+    text: `Verify your email address
+
+Thanks for signing up for ProPDFs! Please verify your email address by visiting:
+
+${verificationUrl}
+
+This link will expire in 24 hours. If you didn't create an account with ProPDFs, you can safely ignore this email.
+
+© ${new Date().getFullYear()} ProPDFs. All rights reserved.
+    `,
+  };
+}
+
+/**
+ * Magic link login template
+ */
+export function getMagicLinkTemplate(
+  magicLinkUrl: string
+): { subject: string; html: string; text: string } {
+  return {
+    subject: "Sign in to ProPDFs",
+    html: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f4f4f5;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+    <tr>
+      <td>
+        <div style="background-color: white; border-radius: 12px; padding: 40px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <h1 style="color: #2563eb; font-size: 24px; margin: 0;">📄 ProPDFs</h1>
+          </div>
+          
+          <h2 style="color: #18181b; font-size: 24px; margin: 0 0 16px; text-align: center;">Sign in to ProPDFs</h2>
+          
+          <p style="color: #52525b; font-size: 16px; line-height: 1.6; margin: 0 0 24px; text-align: center;">
+            Click the button below to sign in to your account. No password needed!
+          </p>
+          
+          <div style="text-align: center; margin-bottom: 24px;">
+            <a href="${magicLinkUrl}" style="display: inline-block; background-color: #2563eb; color: white; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">Sign In to ProPDFs</a>
+          </div>
+          
+          <p style="color: #71717a; font-size: 14px; text-align: center; margin: 0 0 16px;">
+            Or copy and paste this link into your browser:
+          </p>
+          <p style="color: #2563eb; font-size: 12px; word-break: break-all; text-align: center; margin: 0 0 24px;">
+            ${magicLinkUrl}
+          </p>
+          
+          <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px 16px; margin-bottom: 16px;">
+            <p style="color: #92400e; font-size: 14px; margin: 0;">
+              This link will expire in 15 minutes and can only be used once. If you didn't request this email, you can safely ignore it.
+            </p>
+          </div>
+        </div>
+        
+        <div style="text-align: center; padding: 24px;">
+          <p style="color: #a1a1aa; font-size: 12px; margin: 0;">
+            © ${new Date().getFullYear()} ProPDFs. All rights reserved.
+          </p>
+        </div>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+    `,
+    text: `Sign in to ProPDFs
+
+Click the link below to sign in to your account. No password needed!
+
+${magicLinkUrl}
+
+This link will expire in 15 minutes and can only be used once. If you didn't request this email, you can safely ignore it.
+
+© ${new Date().getFullYear()} ProPDFs. All rights reserved.
+    `,
+  };
+}
+
+/**
+ * Password reset template
+ */
+export function getPasswordResetTemplate(
+  resetUrl: string
+): { subject: string; html: string; text: string } {
+  return {
+    subject: "Reset your password - ProPDFs",
+    html: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f4f4f5;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+    <tr>
+      <td>
+        <div style="background-color: white; border-radius: 12px; padding: 40px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <h1 style="color: #2563eb; font-size: 24px; margin: 0;">📄 ProPDFs</h1>
+          </div>
+          
+          <h2 style="color: #18181b; font-size: 24px; margin: 0 0 16px; text-align: center;">Reset your password</h2>
+          
+          <p style="color: #52525b; font-size: 16px; line-height: 1.6; margin: 0 0 24px; text-align: center;">
+            We received a request to reset your password. Click the button below to create a new password.
+          </p>
+          
+          <div style="text-align: center; margin-bottom: 24px;">
+            <a href="${resetUrl}" style="display: inline-block; background-color: #2563eb; color: white; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">Reset Password</a>
+          </div>
+          
+          <p style="color: #71717a; font-size: 14px; text-align: center; margin: 0 0 16px;">
+            Or copy and paste this link into your browser:
+          </p>
+          <p style="color: #2563eb; font-size: 12px; word-break: break-all; text-align: center; margin: 0 0 24px;">
+            ${resetUrl}
+          </p>
+          
+          <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px 16px; margin-bottom: 16px;">
+            <p style="color: #92400e; font-size: 14px; margin: 0;">
+              This link will expire in 1 hour. If you didn't request a password reset, you can safely ignore this email. Your password will remain unchanged.
+            </p>
+          </div>
+        </div>
+        
+        <div style="text-align: center; padding: 24px;">
+          <p style="color: #a1a1aa; font-size: 12px; margin: 0;">
+            © ${new Date().getFullYear()} ProPDFs. All rights reserved.
+          </p>
+        </div>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+    `,
+    text: `Reset your password
+
+We received a request to reset your password. Visit the link below to create a new password:
+
+${resetUrl}
+
+This link will expire in 1 hour. If you didn't request a password reset, you can safely ignore this email. Your password will remain unchanged.
+
+© ${new Date().getFullYear()} ProPDFs. All rights reserved.
+    `,
+  };
+}
+
+/**
+ * File share invitation template
+ */
+export function getFileShareTemplate(
+  senderName: string,
+  fileName: string,
+  shareUrl: string,
+  message?: string
+): { subject: string; html: string; text: string } {
+  return {
+    subject: `${senderName} shared "${fileName}" with you - ProPDFs`,
+    html: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f4f4f5;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+    <tr>
+      <td>
+        <div style="background-color: white; border-radius: 12px; padding: 40px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <h1 style="color: #2563eb; font-size: 24px; margin: 0;">📄 ProPDFs</h1>
+          </div>
+          
+          <h2 style="color: #18181b; font-size: 24px; margin: 0 0 16px; text-align: center;">${senderName} shared a file with you</h2>
+          
+          <p style="color: #52525b; font-size: 16px; line-height: 1.6; margin: 0 0 24px; text-align: center;">
+            <strong>${senderName}</strong> has shared "<strong>${fileName}</strong>" with you on ProPDFs.
+          </p>
+          
+          ${message ? `
+          <div style="background-color: #f9fafb; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+            <p style="color: #52525b; font-size: 14px; font-style: italic; margin: 0;">"${message}"</p>
+          </div>
+          ` : ""}
+          
+          <div style="text-align: center; margin-bottom: 24px;">
+            <a href="${shareUrl}" style="display: inline-block; background-color: #2563eb; color: white; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">View File</a>
+          </div>
+          
+          <p style="color: #71717a; font-size: 14px; text-align: center; margin: 0 0 16px;">
+            Or copy and paste this link into your browser:
+          </p>
+          <p style="color: #2563eb; font-size: 12px; word-break: break-all; text-align: center; margin: 0;">
+            ${shareUrl}
+          </p>
+        </div>
+        
+        <div style="text-align: center; padding: 24px;">
+          <p style="color: #a1a1aa; font-size: 12px; margin: 0;">
+            © ${new Date().getFullYear()} ProPDFs. All rights reserved.
+          </p>
+        </div>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+    `,
+    text: `${senderName} shared a file with you
+
+${senderName} has shared "${fileName}" with you on ProPDFs.
+
+${message ? `Message: "${message}"` : ""}
+
+View the file: ${shareUrl}
+
+© ${new Date().getFullYear()} ProPDFs. All rights reserved.
+    `,
+  };
+}
+
+// ==================== AUTHENTICATION EMAIL HELPERS ====================
+
+/**
+ * Send email verification email
+ */
+export async function sendVerificationEmail(
+  email: string,
+  verificationToken: string,
+  baseUrl: string
+): Promise<{ success: boolean; error?: string }> {
+  const verificationUrl = `${baseUrl}/verify-email?token=${verificationToken}`;
+  const template = getEmailVerificationTemplate(verificationUrl);
+  
+  return sendEmail({
+    to: email,
+    subject: template.subject,
+    html: template.html,
+    text: template.text,
+  });
+}
+
+/**
+ * Send magic link login email
+ */
+export async function sendMagicLinkEmail(
+  email: string,
+  magicLinkToken: string,
+  baseUrl: string
+): Promise<{ success: boolean; error?: string }> {
+  const magicLinkUrl = `${baseUrl}/auth/magic-link?token=${magicLinkToken}`;
+  const template = getMagicLinkTemplate(magicLinkUrl);
+  
+  return sendEmail({
+    to: email,
+    subject: template.subject,
+    html: template.html,
+    text: template.text,
+  });
+}
+
+/**
+ * Send password reset email
+ */
+export async function sendPasswordResetEmail(
+  email: string,
+  resetToken: string,
+  baseUrl: string
+): Promise<{ success: boolean; error?: string }> {
+  const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
+  const template = getPasswordResetTemplate(resetUrl);
+  
+  return sendEmail({
+    to: email,
+    subject: template.subject,
+    html: template.html,
+    text: template.text,
+  });
+}
+
+/**
+ * Send file share invitation email
+ */
+export async function sendFileShareEmail(
+  email: string,
+  senderName: string,
+  fileName: string,
+  shareToken: string,
+  baseUrl: string,
+  message?: string
+): Promise<{ success: boolean; error?: string }> {
+  const shareUrl = `${baseUrl}/share/${shareToken}`;
+  const template = getFileShareTemplate(senderName, fileName, shareUrl, message);
+  
+  return sendEmail({
+    to: email,
+    subject: template.subject,
+    html: template.html,
+    text: template.text,
+  });
+}
+
+/**
+ * Validate Resend API key
+ */
+export async function validateResendApiKey(): Promise<{ valid: boolean; error?: string }> {
+  const apiKey = process.env.RESEND_API_KEY;
+  
+  if (!apiKey) {
+    return { valid: false, error: "RESEND_API_KEY not configured" };
+  }
+  
+  try {
+    const response = await fetch("https://api.resend.com/domains", {
+      method: "GET",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+      },
+    });
+    
+    if (response.ok) {
+      return { valid: true };
+    }
+    
+    if (response.status === 401) {
+      return { valid: false, error: "Invalid API key" };
+    }
+    
+    return { valid: false, error: `API returned status ${response.status}` };
+  } catch (error) {
+    return { valid: false, error: "Failed to connect to Resend API" };
+  }
+}

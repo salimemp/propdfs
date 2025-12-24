@@ -71,6 +71,13 @@
       "when": 1766457363473,
       "tag": "0009_awesome_silverclaw",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "5",
+      "when": 1766564206133,
+      "tag": "0010_nostalgic_wild_pack",
+      "breakpoints": true
     }
   ]
 }

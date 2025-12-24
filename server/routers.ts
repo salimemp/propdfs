@@ -28,6 +28,8 @@ import * as passwordAuthService from "./passwordAuthService";
 import * as syncService from "./syncService";
 import * as recoveryService from "./recoveryService";
 import * as ocrService from "./ocrService";
+import * as fileSharingService from "./fileSharingService";
+import * as monitoringService from "./monitoringService";
 
 // Subscription tier limits
 const TIER_LIMITS = {
@@ -3230,6 +3232,244 @@ Be helpful, concise, and professional. If a user asks about a specific file oper
       .query(({ input }) => {
         return ocrService.detectLanguage(input.text);
       }),
+  }),
+
+  // File Sharing
+  sharing: router({
+    // Create a share link
+    createLink: protectedProcedure
+      .input(z.object({
+        fileId: z.number(),
+        permission: z.enum(["view", "download", "edit", "comment"]).default("view"),
+        password: z.string().optional(),
+        expiresAt: z.date().optional(),
+        maxDownloads: z.number().optional(),
+        maxViews: z.number().optional(),
+        notifyOnAccess: z.boolean().optional(),
+        customMessage: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const result = await fileSharingService.createShare({
+          fileId: input.fileId,
+          ownerId: ctx.user.id,
+          shareType: "link",
+          permission: input.permission,
+          isPublic: true,
+          password: input.password,
+          expiresAt: input.expiresAt,
+          maxDownloads: input.maxDownloads,
+          maxViews: input.maxViews,
+          notifyOnAccess: input.notifyOnAccess,
+          customMessage: input.customMessage,
+        });
+
+        if (!result.success) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: result.error });
+        }
+
+        return result;
+      }),
+
+    // Share via email
+    shareViaEmail: protectedProcedure
+      .input(z.object({
+        fileId: z.number(),
+        recipientEmails: z.array(z.string().email()),
+        permission: z.enum(["view", "download", "edit", "comment"]).default("view"),
+        password: z.string().optional(),
+        expiresAt: z.date().optional(),
+        customMessage: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const user = await db.getUserById(ctx.user.id);
+        if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+
+        const baseUrl = process.env.VITE_APP_URL || "https://propdfs.com";
+        const result = await fileSharingService.shareWithEmails({
+          fileId: input.fileId,
+          ownerId: ctx.user.id,
+          shareType: "email",
+          permission: input.permission,
+          recipientEmails: input.recipientEmails,
+          senderName: user.name || "ProPDFs User",
+          baseUrl,
+          password: input.password,
+          expiresAt: input.expiresAt,
+          customMessage: input.customMessage,
+        });
+
+        if (!result.success) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: result.error });
+        }
+
+        return result;
+      }),
+
+    // Access a shared file (public endpoint)
+    access: publicProcedure
+      .input(z.object({
+        shareToken: z.string(),
+        password: z.string().optional(),
+      }))
+      .query(async ({ ctx, input }) => {
+        const result = await fileSharingService.accessShare({
+          shareToken: input.shareToken,
+          password: input.password,
+          accessorUserId: ctx.user?.id,
+          accessorIp: ctx.req.ip || (ctx.req.headers["x-forwarded-for"] as string),
+          accessorUserAgent: ctx.req.headers["user-agent"] as string,
+        });
+
+        if (!result.success) {
+          if (result.requiresPassword) {
+            return { requiresPassword: true, error: result.error };
+          }
+          throw new TRPCError({ code: "NOT_FOUND", message: result.error });
+        }
+
+        return result;
+      }),
+
+    // Track download
+    trackDownload: publicProcedure
+      .input(z.object({ shareToken: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        const result = await fileSharingService.trackDownload(input.shareToken, {
+          userId: ctx.user?.id,
+          ip: ctx.req.ip || (ctx.req.headers["x-forwarded-for"] as string),
+          userAgent: ctx.req.headers["user-agent"] as string,
+        });
+
+        if (!result.success) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: result.error });
+        }
+
+        return { success: true };
+      }),
+
+    // Get user's shares
+    list: protectedProcedure.query(async ({ ctx }) => {
+      const result = await fileSharingService.getUserShares(ctx.user.id);
+      if (!result.success) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: result.error });
+      }
+      return result.shares;
+    }),
+
+    // Revoke a share
+    revoke: protectedProcedure
+      .input(z.object({
+        shareId: z.number(),
+        reason: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const result = await fileSharingService.revokeShare(input.shareId, ctx.user.id, input.reason);
+        if (!result.success) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: result.error });
+        }
+        return { success: true };
+      }),
+
+    // Update share settings
+    update: protectedProcedure
+      .input(z.object({
+        shareId: z.number(),
+        permission: z.enum(["view", "download", "edit", "comment"]).optional(),
+        expiresAt: z.date().nullable().optional(),
+        maxDownloads: z.number().nullable().optional(),
+        maxViews: z.number().nullable().optional(),
+        password: z.string().nullable().optional(),
+        notifyOnAccess: z.boolean().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const { shareId, ...updates } = input;
+        const result = await fileSharingService.updateShare(shareId, ctx.user.id, updates);
+        if (!result.success) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: result.error });
+        }
+        return { success: true };
+      }),
+
+    // Get share analytics
+    getAnalytics: protectedProcedure
+      .input(z.object({ shareId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const result = await fileSharingService.getShareAnalytics(input.shareId, ctx.user.id);
+        if (!result.success) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: result.error });
+        }
+        return result.analytics;
+      }),
+  }),
+
+  // Monitoring & Health
+  monitoring: router({
+    // Health check (public endpoint)
+    health: publicProcedure.query(async () => {
+      return await monitoringService.getHealthStatus();
+    }),
+
+    // Get metrics (admin only)
+    metrics: protectedProcedure.query(async ({ ctx }) => {
+      const user = await db.getUserById(ctx.user.id);
+      if (!user || user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+      }
+      return await monitoringService.getMetrics();
+    }),
+
+    // Get recent errors (admin only)
+    errors: protectedProcedure
+      .input(z.object({ limit: z.number().optional() }))
+      .query(async ({ ctx, input }) => {
+        const user = await db.getUserById(ctx.user.id);
+        if (!user || user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        return monitoringService.getRecentErrors(input.limit);
+      }),
+
+    // Get error stats (admin only)
+    errorStats: protectedProcedure.query(async ({ ctx }) => {
+      const user = await db.getUserById(ctx.user.id);
+      if (!user || user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+      }
+      return monitoringService.getErrorStats();
+    }),
+
+    // Get active alerts (admin only)
+    alerts: protectedProcedure.query(async ({ ctx }) => {
+      const user = await db.getUserById(ctx.user.id);
+      if (!user || user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+      }
+      return monitoringService.getActiveAlerts();
+    }),
+
+    // Acknowledge alert (admin only)
+    acknowledgeAlert: protectedProcedure
+      .input(z.object({ alertId: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        const user = await db.getUserById(ctx.user.id);
+        if (!user || user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+        }
+        const success = monitoringService.acknowledgeAlert(input.alertId);
+        if (!success) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Alert not found" });
+        }
+        return { success: true };
+      }),
+
+    // Get uptime stats (admin only)
+    uptime: protectedProcedure.query(async ({ ctx }) => {
+      const user = await db.getUserById(ctx.user.id);
+      if (!user || user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+      }
+      return monitoringService.getUptimeStats();
+    }),
   }),
 });
 export type AppRouter = typeof appRouter;
