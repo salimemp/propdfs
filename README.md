@@ -1,115 +1,184 @@
-# PropPDFs
+# ProPDFs - Enterprise Document Processing Platform
 
-A full-stack starter template for **www.propdfs.com** — deployed on **Cloudflare Pages** (frontend) + **Railway** (backend API) + **Supabase** (database & authentication).
+A production-grade, cross-platform document management and manipulation SaaS built with **Flutter** (frontend) and **Python FastAPI** (backend).
 
----
-
-## Architecture Overview
-
-| Platform | Responsibility | Why |
-|----------|---------------|-----|
-| **Cloudflare** | DNS, SSL, CDN | Your domain www.propdfs.com is registered here. Cloudflare also provides fast global CDN. |
-| **Cloudflare Pages** | Frontend (React app) | Hosts your static website + serverless edge functions. Free, fast, and integrated with Cloudflare DNS. |
-| **Railway** | Backend API (Node.js/Express) | Hosts your server-side code that needs a real server (not just static files). Easy deploy from GitHub. |
-| **Supabase** | Database + Authentication | Managed PostgreSQL + ready-to-use Auth system. One dashboard for both. Free tier included. |
+> **Status:** MVP Phase 1 Active Development
+> **Platforms:** Web, Android, iOS, Windows, macOS, Linux
 
 ---
 
-## What Goes Where
-
-### Cloudflare Pages → Frontend Only
-- React + Vite static website
-- User interface (login, dashboard, forms)
-- Calls the Railway backend API for data
-- Uses Supabase Auth client for login/signup
-
-### Railway → Backend API Only
-- Express.js REST API
-- Business logic, file processing, integrations
-- Connects to Supabase PostgreSQL for data
-- Protected routes verify Supabase JWT tokens
-
-### Supabase → Database + Auth
-- **Database**: PostgreSQL (documents, users, properties tables)
-- **Auth**: User registration, login, email confirmation, password reset, JWT sessions
-- **Storage**: File uploads (PDFs) if needed
-- **Row Level Security (RLS)**: Database-level permission rules
-
----
-
-## Quick Start (Local Development)
+## Quick Start
 
 ### Prerequisites
-- Node.js 18+ installed
-- A Supabase account (free at https://supabase.com)
-- A Railway account (free at https://railway.app)
-- A Cloudflare account (you already have one for your domain)
+- Docker & Docker Compose
+- Flutter 3.24+ (for mobile/desktop builds)
+- Python 3.11+ (for local backend development)
 
-### 1. Clone & Setup
-```bash
-git clone https://github.com/salimemp/propdfs.git
-cd propdfs
-```
-
-### 2. Supabase Setup (Database + Auth)
-1. Go to https://supabase.com and create a new project
-2. Go to **Project Settings → API** — copy `Project URL` and `anon public` key
-3. Go to **Database → Connection String** — copy the PostgreSQL connection string (for backend)
-4. Go to **Authentication → Providers** — enable **Email** provider
-5. Run the migration in `supabase/migrations/001_initial.sql` via the SQL Editor
-
-### 3. Backend Setup
+### Backend (Docker)
 ```bash
 cd backend
 cp .env.example .env
-# Edit .env with your Supabase credentials
-npm install
-npm run dev
-# Backend runs on http://localhost:3001
+docker compose up -d
 ```
+Services started:
+- API → http://localhost:8000
+- PostgreSQL → localhost:5432
+- Redis → localhost:6379
+- Celery Worker → background processing
 
-### 4. Frontend Setup
+### Flutter (Local)
 ```bash
 cd frontend
-cp .env.example .env
-# Edit .env with your Supabase anon key and backend URL
-npm install
-npm run dev
-# Frontend runs on http://localhost:5173
+flutter pub get
+flutter run -d chrome        # Web
+flutter run -d macos         # macOS
+flutter run                  # Connected device
+```
+
+---
+
+## Architecture
+
+```
+ProPDFs/
+├── backend/
+│   ├── app/
+│   │   ├── api/           # FastAPI routers (auth, documents, process)
+│   │   ├── core/          # Config, security, exceptions
+│   │   ├── db/            # Database session & connection
+│   │   ├── models/        # SQLAlchemy ORM + Pydantic schemas
+│   │   └── services/      # PDF engine, storage, Celery tasks
+│   ├── Dockerfile
+│   ├── docker-compose.yml
+│   └── requirements.txt
+├── frontend/
+│   ├── lib/
+│   │   ├── core/          # Theme, API client, constants
+│   │   ├── router/        # GoRouter navigation
+│   │   └── presentation/  # Screens, widgets, providers
+│   └── pubspec.yaml
+└── ROADMAP.md
+```
+
+---
+
+## Features (MVP)
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| Auth (JWT) | ✅ | Register, login, logout, refresh tokens |
+| File Upload | ✅ | Chunked uploads to Cloudflare R2 |
+| Merge PDFs | ✅ | Combine multiple PDFs into one |
+| Split PDFs | ✅ | Extract pages by range |
+| Compress PDFs | ✅ | Reduce file size with image optimization |
+| Rotate PDFs | ✅ | 90°/180°/270° rotation |
+| Watermark | ✅ | Add text overlay |
+| Convert to Images | ✅ | PDF → PNG/JPG |
+| Document Manager | ✅ | List, download, delete files |
+| Material 3 UI | ✅ | Responsive, dark/light mode |
+
+## Phase 2+ (Pro & Enterprise)
+- Google/GitHub OAuth, Passkeys, MFA
+- Advanced editing (text, images, redaction)
+- OCR with Tesseract
+- AI features (summarize, translate, extract)
+- Cloud storage integrations (Drive, Dropbox, OneDrive)
+- Team workspaces & RBAC
+- Stripe billing & subscriptions
+- API keys for developers
+
+---
+
+## API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/v1/auth/register` | Create account |
+| POST | `/api/v1/auth/login` | Get tokens |
+| POST | `/api/v1/auth/refresh` | Refresh access token |
+| POST | `/api/v1/auth/logout` | Revoke session |
+| GET | `/api/v1/auth/me` | Current user profile |
+| POST | `/api/v1/documents/upload` | Upload a document |
+| GET | `/api/v1/documents/` | List documents |
+| GET | `/api/v1/documents/{id}` | Get document details |
+| GET | `/api/v1/documents/{id}/download` | Generate download URL |
+| DELETE | `/api/v1/documents/{id}` | Delete document |
+| POST | `/api/v1/process/` | Queue PDF processing task |
+| GET | `/api/v1/process/{task_id}` | Check task status |
+
+---
+
+## Tech Stack
+
+**Frontend**
+- Flutter 3.x + Riverpod (state management) + GoRouter (navigation)
+- Material 3 design system with responsive layouts
+- dio (HTTP), file_picker, pdfx (PDF viewer)
+
+**Backend**
+- Python 3.11 + FastAPI + SQLAlchemy 2.0 (async)
+- PostgreSQL + Redis + Celery (background workers)
+- PyMuPDF + LibreOffice + Pillow + Ghostscript (PDF engine)
+- JWT auth + bcrypt + OAuth2-ready architecture
+
+**Infrastructure**
+- Docker + Docker Compose (development)
+- Cloudflare R2 (document storage) + CDN
+- Cloudflare Pages (Flutter Web) + Railway (FastAPI backend)
+
+---
+
+## Environment Variables
+
+See `backend/.env.example` for all configuration options.
+
+Key variables:
+- `DATABASE_URL` — PostgreSQL connection string
+- `SECRET_KEY` — JWT signing key (32+ chars)
+- `STORAGE_*` — S3/R2 credentials for file storage
+- `STRIPE_*` — Payment processing keys
+- `OPENAI_API_KEY` — AI feature integration
+
+---
+
+## Development Commands
+
+```bash
+# Backend lint & format
+cd backend
+black app/
+ruff check app/
+mypy app/
+
+# Run tests
+pytest tests/ -v
+
+# Database migration (Alembic)
+alembic revision --autogenerate -m "migration name"
+alembic upgrade head
+
+# Flutter build
+flutter build web --release
+flutter build apk --release
+flutter build ios --release
 ```
 
 ---
 
 ## Deployment
 
-See `DEPLOYMENT_GUIDE.md` for detailed step-by-step instructions for each platform.
-
----
-
-## Project Structure
-
-```
-propdfs/
-├── frontend/          # React + Vite → Cloudflare Pages
-├── backend/           # Express.js → Railway
-├── supabase/          # Migrations & schema
-├── docs/              # Extra documentation
-├── DEPLOYMENT_GUIDE.md
-└── README.md
-```
-
----
-
-## Tech Stack
-
-- **Frontend**: React 18, TypeScript, Vite, Tailwind CSS
-- **Backend**: Express.js, TypeScript, CORS, Helmet
-- **Database**: PostgreSQL via Supabase
-- **Auth**: Supabase Auth (JWT-based)
-- **Deployment**: Cloudflare Pages + Railway
+See `DEPLOYMENT_GUIDE.md` for step-by-step deployment instructions for:
+- Railway (FastAPI backend + PostgreSQL + Redis)
+- Cloudflare Pages (Flutter Web)
+- Cloudflare R2 (File storage)
+- GitHub Actions (CI/CD)
 
 ---
 
 ## License
 
-MIT
+Proprietary - All Rights Reserved
+
+## Contact
+
+For support or enterprise inquiries, contact the development team.

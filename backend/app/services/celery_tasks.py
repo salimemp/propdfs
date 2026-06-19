@@ -1,0 +1,144 @@
+import uuid
+import os
+import tempfile
+from datetime import datetime, timezone
+from typing import List
+from pathlib import Path
+
+from celery import Celery
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+from app.services.pdf_service import PDFProcessingService
+from app.services.storage_service import storage_service
+from app.core.config import get_settings
+from app.models.database import Document, ProcessingTask, DocumentStatus, Base
+
+settings = get_settings()
+
+celery_app = Celery(
+    "propdfs",
+    broker=settings.CELERY_BROKER_URL,
+    backend=settings.CELERY_RESULT_BACKEND,
+    include=["app.services.celery_tasks"]
+)
+
+celery_app.conf.update(
+    task_serializer="json",
+    accept_content=["json"],
+    result_serializer="json",
+    timezone="UTC",
+    enable_utc=True,
+    task_track_started=True,
+    task_time_limit=600,  # 10 minutes
+    worker_prefetch_multiplier=1,
+)
+
+# Sync engine for Celery tasks (Celery doesn't support async well)
+sync_engine = create_engine(settings.DATABASE_URL.replace("+asyncpg", ""))
+SyncSessionLocal = sessionmaker(bind=sync_engine)
+
+
+def get_db_session():
+    return SyncSessionLocal()
+
+
+pdf_service = PDFProcessingService()
+
+
+@celery_app.task(bind=True, max_retries=3)
+def process_pdf_task(self, task_id: str, task_type: str, input_keys: List[str],
+                     user_id: str, params: dict):
+    """Background task for PDF processing."""
+    db = get_db_session()
+    task = db.query(ProcessingTask).filter(ProcessingTask.id == uuid.UUID(task_id)).first()
+    if not task:
+        return {"error": "Task not found"}
+
+    try:
+        task.status = "processing"
+        task.started_at = datetime.now(timezone.utc)
+        db.commit()
+
+        # Download input files
+        temp_paths = []
+        for key in input_keys:
+            temp_path = os.path.join(tempfile.gettempdir(), f"{uuid.uuid4().hex}.pdf")
+            storage_service.download_file(key, temp_path)
+            temp_paths.append(temp_path)
+
+        output_path = None
+
+        if task_type == "merge":
+            output_path = pdf_service.merge_pdfs(temp_paths)
+        elif task_type == "split":
+            page_ranges = params.get("page_ranges", [(1, 1)])
+            output_paths = pdf_service.split_pdf(temp_paths[0], page_ranges)
+            output_path = output_paths[0] if output_paths else None
+        elif task_type == "compress":
+            quality = params.get("image_quality", 75)
+            output_path = pdf_service.compress_pdf(temp_paths[0], image_quality=quality)
+        elif task_type == "rotate":
+            rotation = params.get("rotation", 90)
+            pages = params.get("pages")
+            output_path = pdf_service.rotate_pdf(temp_paths[0], rotation=rotation, pages=pages)
+        elif task_type == "extract":
+            pages = params.get("pages", [1])
+            output_path = pdf_service.extract_pages(temp_paths[0], pages=pages)
+        elif task_type == "watermark":
+            text = params.get("text", "ProPDFs")
+            output_path = pdf_service.add_watermark(temp_paths[0], text=text)
+        elif task_type == "convert_to_images":
+            output_paths = pdf_service.pdf_to_images(temp_paths[0])
+            output_path = output_paths[0] if output_paths else None
+        elif task_type == "images_to_pdf":
+            output_path = pdf_service.images_to_pdf(temp_paths)
+        else:
+            raise ValueError(f"Unknown task type: {task_type}")
+
+        if output_path and os.path.exists(output_path):
+            with open(output_path, "rb") as f:
+                output_data = f.read()
+            output_key = storage_service.upload_bytes(
+                user_id, output_data,
+                f"processed_{task_type}_{Path(output_path).name}"
+            )
+
+            task.status = "completed"
+            task.result_metadata = {"output_key": output_key, "output_size": len(output_data)}
+            task.completed_at = datetime.now(timezone.utc)
+            db.commit()
+
+            # Create output document record
+            output_doc = Document(
+                user_id=uuid.UUID(user_id),
+                filename=f"processed_{task_type}.pdf",
+                original_name=f"processed_{task_type}.pdf",
+                mime_type="application/pdf",
+                file_size=len(output_data),
+                storage_key=output_key,
+                status=DocumentStatus.COMPLETED,
+                metadata={"processed_from": input_keys, "task_type": task_type},
+            )
+            db.add(output_doc)
+            db.commit()
+
+            return {"status": "completed", "output_key": output_key, "task_id": task_id}
+        else:
+            raise Exception("Processing failed - no output file")
+
+    except Exception as exc:
+        task.status = "failed"
+        task.error_message = str(exc)
+        db.commit()
+        self.retry(exc=exc, countdown=60)
+        return {"status": "failed", "error": str(exc)}
+
+    finally:
+        # Cleanup temp files
+        for path in temp_paths:
+            if os.path.exists(path):
+                os.remove(path)
+        if output_path and os.path.exists(output_path):
+            os.remove(output_path)
+        db.close()
