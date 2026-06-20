@@ -1,4 +1,6 @@
-# Python
+# ProPDFs
+
+## Python
 __pycache__/
 *.py[cod]
 *$py.class
@@ -20,57 +22,66 @@ wheels/
 .installed.cfg
 *.egg
 
-# Virtual environments
+## Virtual Environments
+.env
+.venv
+env/
 venv/
 ENV/
-env/
-.venv/
+env.bak/
+venv.bak/
 
-# Environment files
-.env
-.env.local
-.env.*.local
-
-# IDE
-.idea/
+## IDE
 .vscode/
+.idea/
 *.swp
 *.swo
 *~
 
-# OS
+## OS
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
 
-# Flutter
-build/
+## Flutter / Dart
 .dart_tool/
 .flutter-plugins
 .flutter-plugins-dependencies
-.packages
-pubspec.lock
-ios/Pods/
-android/.gradle/
-android/app/debug/
-android/app/profile/
-android/app/release/
-macos/Pods/
-windows/flutter/ephemeral/
-linux/flutter/ephemeral/
-web/.dart_tool/
-web/build/
+.pub-cache/
+.pub/
+build/
+*.lock
 
-# Testing
-coverage/
-.coverage
-htmlcov/
-.pytest_cache/
+## Backend specific
+backend/.env
+backend/.venv
+backend/__pycache__/
+backend/app/__pycache__/
+backend/**/*.pyc
+backend/.mypy_cache/
+backend/.pytest_cache/
+backend/alembic/versions/*.pyc
 
-# Logs
+## Frontend specific
+frontend/build/
+frontend/.dart_tool/
+frontend/.packages
+frontend/pubspec.lock
+
+## Docker
 *.log
 
-# Docker
-postgres_data/
+## Testing
+.coverage
+htmlcov/
 
-# Node (if any)
+## Misc
+*.tmp
+*.temp
+*.bak
+*.orig
 node_modules/
