@@ -64,7 +64,6 @@ dependencies:
   # Auth
   firebase_auth: ^4.19.0
   google_sign_in: ^6.2.0
-  github_sign_in: ^0.0.6
   sign_in_with_apple: ^6.1.0
   local_auth: ^2.2.0
   
