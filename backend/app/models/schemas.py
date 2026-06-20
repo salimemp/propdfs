@@ -60,7 +60,7 @@ class DocumentResponse(BaseModel):
     file_size: int
     status: DocumentStatus
     page_count: Optional[int]
-    metadata: Optional[dict]
+    extra_data: Optional[dict]
     created_at: datetime
     updated_at: datetime
 

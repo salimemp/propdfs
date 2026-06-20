@@ -73,7 +73,7 @@ async def upload_document(
         storage_key=storage_key,
         status=DocumentStatus.COMPLETED,
         page_count=page_count,
-        metadata={"uploaded_via": "api"},
+        extra_data={"uploaded_via": "api"},
     )
     db.add(document)
     await db.commit()

@@ -55,7 +55,7 @@ async def ocr_pdf(
             file_size=len(output_data),
             storage_key=storage_key,
             status=DocumentStatus.COMPLETED,
-            metadata={"ocr": True, "language": language},
+            extra_data={"ocr": True, "language": language},
         )
         db.add(document)
         await db.commit()

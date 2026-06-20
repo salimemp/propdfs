@@ -118,7 +118,7 @@ def process_pdf_task(self, task_id: str, task_type: str, input_keys: List[str],
                 file_size=len(output_data),
                 storage_key=output_key,
                 status=DocumentStatus.COMPLETED,
-                metadata={"processed_from": input_keys, "task_type": task_type},
+                extra_data={"processed_from": input_keys, "task_type": task_type},
             )
             db.add(output_doc)
             db.commit()

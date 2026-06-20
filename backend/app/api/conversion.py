@@ -66,7 +66,7 @@ async def convert_document(
             file_size=len(output_data),
             storage_key=storage_key,
             status=DocumentStatus.COMPLETED,
-            metadata={"converted_from": input_ext, "converted_to": output_format},
+            extra_data={"converted_from": input_ext, "converted_to": output_format},
         )
         db.add(document)
         await db.commit()
