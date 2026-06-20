@@ -34,7 +34,10 @@ celery_app.conf.update(
     worker_prefetch_multiplier=1,
 )
 
-# Sync engine for Celery tasks (Celery doesn't support async well)
+# Sync engine for Celery tasks — LAZY creation (not at import time)
+_sync_engine = None
+_sync_session = None
+
 def _get_sync_db_url(url: str) -> str:
     """Strip asyncpg driver for sync SQLAlchemy engine (Celery, Alembic)."""
     if url.startswith("postgresql+asyncpg://"):
@@ -44,12 +47,17 @@ def _get_sync_db_url(url: str) -> str:
     return url
 
 
-sync_engine = create_engine(_get_sync_db_url(settings.DATABASE_URL))
-SyncSessionLocal = sessionmaker(bind=sync_engine)
+def _get_sync_session():
+    """Lazy init of sync engine — only called when a Celery task actually runs."""
+    global _sync_engine, _sync_session
+    if _sync_engine is None:
+        _sync_engine = create_engine(_get_sync_db_url(settings.DATABASE_URL))
+        _sync_session = sessionmaker(bind=_sync_engine)
+    return _sync_session
 
 
 def get_db_session():
-    return SyncSessionLocal()
+    return _get_sync_session()()
 
 
 pdf_service = PDFProcessingService()
