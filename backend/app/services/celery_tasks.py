@@ -35,7 +35,16 @@ celery_app.conf.update(
 )
 
 # Sync engine for Celery tasks (Celery doesn't support async well)
-sync_engine = create_engine(settings.DATABASE_URL.replace("+asyncpg", ""))
+def _get_sync_db_url(url: str) -> str:
+    """Strip asyncpg driver for sync SQLAlchemy engine (Celery, Alembic)."""
+    if url.startswith("postgresql+asyncpg://"):
+        return url.replace("postgresql+asyncpg://", "postgresql://", 1)
+    if url.startswith("postgres://"):
+        return url.replace("postgres://", "postgresql://", 1)
+    return url
+
+
+sync_engine = create_engine(_get_sync_db_url(settings.DATABASE_URL))
 SyncSessionLocal = sessionmaker(bind=sync_engine)
 
 

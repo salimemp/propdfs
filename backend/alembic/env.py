@@ -18,8 +18,17 @@ if config.config_file_name is not None:
 
 target_metadata = Base.metadata
 
+def _get_sync_db_url(url: str) -> str:
+    """Strip asyncpg driver for sync SQLAlchemy engine (Celery, Alembic)."""
+    if url.startswith("postgresql+asyncpg://"):
+        return url.replace("postgresql+asyncpg://", "postgresql://", 1)
+    if url.startswith("postgres://"):
+        return url.replace("postgres://", "postgresql://", 1)
+    return url
+
+
 # Override with env DATABASE_URL
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL.replace("+asyncpg", ""))
+config.set_main_option("sqlalchemy.url", _get_sync_db_url(settings.DATABASE_URL))
 
 
 def run_migrations_offline() -> None:
