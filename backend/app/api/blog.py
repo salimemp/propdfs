@@ -1,13 +1,8 @@
-import uuid
-from datetime import datetime, timezone
 from typing import Optional, List
-from fastapi import APIRouter, Depends, HTTPException, status, Query
-from pydantic import BaseModel, Field
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from fastapi import APIRouter, HTTPException, Query
+from pydantic import BaseModel
 import structlog
 
-from app.db.session import get_db
 
 logger = structlog.get_logger()
 router = APIRouter(prefix="/blog", tags=["Blog"])
@@ -19,7 +14,14 @@ BLOG_POSTS = [
         "slug": "best-pdf-tools-2025-comparison",
         "title": "Best PDF Tools in 2025: A Comprehensive Comparison",
         "meta_description": "Compare the top PDF tools of 2025 including ProPDFs, SmallPDF, ILovePDF, and PDFgear. Find the best tool for merging, splitting, converting, and editing PDFs.",
-        "keywords": ["pdf tools", "pdf editor", "pdf comparison", "best pdf software", "pdf merge", "pdf split"],
+        "keywords": [
+            "pdf tools",
+            "pdf editor",
+            "pdf comparison",
+            "best pdf software",
+            "pdf merge",
+            "pdf split",
+        ],
         "author": "ProPDFs Editorial Team",
         "published_at": "2025-01-01T00:00:00Z",
         "updated_at": "2025-01-01T00:00:00Z",
@@ -82,14 +84,20 @@ Adobe Acrobat remains the gold standard for enterprise PDF editing but comes at 
 For power users and professionals: **ProPDFs** offers the best value with AI features, comprehensive language support, and generous limits. For occasional use: ILovePDF or SmallPDF free tiers suffice. For enterprise: Adobe Acrobat or ProPDFs Business plan.
 
 *Data verified January 2025. Prices and features subject to change. Independent testing conducted on identical document sets.*
-"""
+""",
     },
     {
         "id": "2",
         "slug": "how-to-compress-pdf-without-losing-quality",
         "title": "How to Compress PDFs Without Losing Quality: A Complete Guide",
         "meta_description": "Learn how to reduce PDF file size by up to 90% without losing quality. Step-by-step guide with compression techniques, tools comparison, and best practices.",
-        "keywords": ["compress pdf", "reduce pdf size", "pdf compression", "optimize pdf", "small pdf"],
+        "keywords": [
+            "compress pdf",
+            "reduce pdf size",
+            "pdf compression",
+            "optimize pdf",
+            "small pdf",
+        ],
         "author": "Sarah Mitchell, Document Specialist",
         "published_at": "2025-01-05T00:00:00Z",
         "updated_at": "2025-01-05T00:00:00Z",
@@ -159,14 +167,20 @@ PDF files can quickly become bloated with high-resolution images, embedded fonts
 - **Monitor size**: Aim for 1-2 MB per 10 pages for web use
 
 *Research based on testing 500+ PDF documents across multiple platforms. Results may vary based on document content.*
-"""
+""",
     },
     {
         "id": "3",
         "slug": "pdf-security-best-practices-2025",
         "title": "PDF Security Best Practices in 2025: Protect Your Documents",
         "meta_description": "Essential PDF security practices for 2025. Learn about encryption, password protection, digital signatures, redaction, and compliance requirements (HIPAA, GDPR, SOC 2).",
-        "keywords": ["pdf security", "encrypt pdf", "password protect pdf", "pdf compliance", "secure pdf"],
+        "keywords": [
+            "pdf security",
+            "encrypt pdf",
+            "password protect pdf",
+            "pdf compliance",
+            "secure pdf",
+        ],
         "author": "James Chen, Security Analyst",
         "published_at": "2025-01-10T00:00:00Z",
         "updated_at": "2025-01-10T00:00:00Z",
@@ -276,14 +290,20 @@ With 3 trillion PDF documents created annually, PDF security is more critical th
 PDF security is not optional—it's essential. By following these best practices and using a security-first platform like ProPDFs, you can protect sensitive information while maintaining compliance with industry regulations.
 
 *Verified by independent security auditors. Compliance information current as of January 2025.*
-"""
+""",
     },
     {
         "id": "4",
         "slug": "ai-in-document-processing-2025",
         "title": "AI in Document Processing: 2025 Trends and Transformations",
         "meta_description": "Explore how AI is revolutionizing document processing in 2025. From intelligent OCR to automated summarization, learn about the latest AI-powered PDF tools and capabilities.",
-        "keywords": ["ai pdf", "artificial intelligence documents", "ai ocr", "smart pdf", "ai document processing"],
+        "keywords": [
+            "ai pdf",
+            "artificial intelligence documents",
+            "ai ocr",
+            "smart pdf",
+            "ai document processing",
+        ],
         "author": "Dr. Emily Watson, AI Research Director",
         "published_at": "2025-01-15T00:00:00Z",
         "updated_at": "2025-01-15T00:00:00Z",
@@ -402,14 +422,20 @@ ProPDFs leverages Google Gemini 1.5 Flash for its AI capabilities:
 AI is not just an add-on feature—it's becoming the core of document processing. Platforms that don't integrate AI will be left behind. ProPDFs is at the forefront, offering comprehensive AI tools that make document work faster, more accurate, and more accessible.
 
 *Data sources: Gartner, IDC, Adobe Digital Insights, internal ProPDFs analytics. Verified January 2025.*
-"""
+""",
     },
     {
         "id": "5",
         "slug": "propdfs-vs-competitors-fact-check",
         "title": "ProPDFs vs. Competitors: Fact-Checked Feature Comparison",
         "meta_description": "Unbiased, fact-checked comparison of ProPDFs vs SmallPDF, ILovePDF, PDFgear, and Adobe Acrobat. Real testing data, verified pricing, and honest pros/cons for each platform.",
-        "keywords": ["propdfs vs smallpdf", "propdfs vs ilovepdf", "pdf tool comparison", "best pdf editor", "pdf software review"],
+        "keywords": [
+            "propdfs vs smallpdf",
+            "propdfs vs ilovepdf",
+            "pdf tool comparison",
+            "best pdf editor",
+            "pdf software review",
+        ],
         "author": "ProPDFs Independent Review Team",
         "published_at": "2025-01-20T00:00:00Z",
         "updated_at": "2025-01-20T00:00:00Z",
@@ -604,9 +630,10 @@ This comparison is based on independent testing conducted in January 2025. We te
 - You don't need OCR or AI features
 
 *This review was independently conducted. All data verified through direct testing. Last updated: January 20, 2025.*
-"""
-    }
+""",
+    },
 ]
+
 
 class BlogPostSummary(BaseModel):
     id: str
@@ -619,6 +646,7 @@ class BlogPostSummary(BaseModel):
     tags: List[str]
     reading_time: int
     featured_image: str
+
 
 class BlogPostDetail(BaseModel):
     id: str
@@ -635,34 +663,39 @@ class BlogPostDetail(BaseModel):
     featured_image: str
     content: str
 
+
 @router.get("/posts", response_model=List[BlogPostSummary])
 async def list_blog_posts(
     category: Optional[str] = None,
     tag: Optional[str] = None,
     search: Optional[str] = None,
     page: int = Query(1, ge=1),
-    page_size: int = Query(10, ge=1, le=50)
+    page_size: int = Query(10, ge=1, le=50),
 ):
     """List all blog posts with optional filtering."""
     posts = BLOG_POSTS
-    
+
     if category:
         posts = [p for p in posts if p["category"] == category]
-    
+
     if tag:
         posts = [p for p in posts if tag in p["tags"]]
-    
+
     if search:
         search_lower = search.lower()
-        posts = [p for p in posts if 
-                 search_lower in p["title"].lower() or 
-                 search_lower in p["meta_description"].lower() or
-                 search_lower in " ".join(p["tags"]).lower()]
-    
+        posts = [
+            p
+            for p in posts
+            if search_lower in p["title"].lower()
+            or search_lower in p["meta_description"].lower()
+            or search_lower in " ".join(p["tags"]).lower()
+        ]
+
     start = (page - 1) * page_size
     end = start + page_size
-    
+
     return posts[start:end]
+
 
 @router.get("/posts/{slug}", response_model=BlogPostDetail)
 async def get_blog_post(slug: str):
@@ -671,6 +704,7 @@ async def get_blog_post(slug: str):
     if not post:
         raise HTTPException(status_code=404, detail="Blog post not found")
     return post
+
 
 @router.get("/categories")
 async def get_categories():
@@ -682,8 +716,9 @@ async def get_categories():
             categories[cat] = {"name": cat, "count": 0, "posts": []}
         categories[cat]["count"] += 1
         categories[cat]["posts"].append({"slug": post["slug"], "title": post["title"]})
-    
+
     return list(categories.values())
+
 
 @router.get("/tags")
 async def get_tags():
@@ -692,17 +727,20 @@ async def get_tags():
     for post in BLOG_POSTS:
         for tag in post["tags"]:
             tags[tag] = tags.get(tag, 0) + 1
-    return [{"name": k, "count": v} for k, v in sorted(tags.items(), key=lambda x: x[1], reverse=True)]
+    return [
+        {"name": k, "count": v}
+        for k, v in sorted(tags.items(), key=lambda x: x[1], reverse=True)
+    ]
+
 
 @router.get("/search")
 async def search_blog(
-    q: str = Query(..., min_length=1),
-    limit: int = Query(10, ge=1, le=50)
+    q: str = Query(..., min_length=1), limit: int = Query(10, ge=1, le=50)
 ):
     """Search blog posts."""
     search_lower = q.lower()
     results = []
-    
+
     for post in BLOG_POSTS:
         score = 0
         if search_lower in post["title"].lower():
@@ -715,9 +753,9 @@ async def search_blog(
             score += 2
         if search_lower in post["content"].lower():
             score += 1
-        
+
         if score > 0:
             results.append({"post": post, "score": score})
-    
+
     results.sort(key=lambda x: x["score"], reverse=True)
     return [r["post"] for r in results[:limit]]

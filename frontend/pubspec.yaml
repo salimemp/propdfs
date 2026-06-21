@@ -71,7 +71,10 @@ dependencies:
   # Utils
   freezed_annotation: ^2.4.1
   json_annotation: ^4.9.0
-  intl: ^0.20.2
+  # Pinned to ^0.19.0 to match the version flutter_localizations from the
+  # Flutter 3.24 SDK requires. Flutter 3.x pins intl via its SDK;
+  # overriding it to ^0.20.2 broke `flutter pub get` in CI.
+  intl: ^0.19.0
   uuid: ^4.4.0
   mime: ^1.0.0
   url_launcher: ^6.2.0

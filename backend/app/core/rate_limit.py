@@ -12,6 +12,7 @@ legitimate.
 
 Wire-up is in `app/main.py` — see `add_middleware(RateLimitMiddleware, ...)`.
 """
+
 import time
 from typing import Awaitable, Callable
 

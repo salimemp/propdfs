@@ -2,15 +2,11 @@ import os
 import io
 import tempfile
 import uuid
-from typing import List, Optional, BinaryIO
-from pathlib import Path
+from typing import List, Optional
 
 import fitz  # PyMuPDF
 import structlog
 from PIL import Image
-from pypdf import PdfReader, PdfWriter
-from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import A4
 
 from app.core.config import get_settings
 
@@ -26,8 +22,15 @@ class PDFProcessingService:
     """Core PDF processing engine using PyMuPDF and PyPDF."""
 
     SUPPORTED_TASKS = {
-        "merge", "split", "compress", "rotate", "extract", "watermark",
-        "add_page_numbers", "convert_to_images", "images_to_pdf",
+        "merge",
+        "split",
+        "compress",
+        "rotate",
+        "extract",
+        "watermark",
+        "add_page_numbers",
+        "convert_to_images",
+        "images_to_pdf",
     }
 
     def __init__(self, work_dir: Optional[str] = None):
@@ -37,7 +40,9 @@ class PDFProcessingService:
     def _get_temp_path(self, suffix: str = ".pdf") -> str:
         return os.path.join(self.work_dir, f"propdfs_{uuid.uuid4().hex}{suffix}")
 
-    def merge_pdfs(self, file_paths: List[str], output_path: Optional[str] = None) -> str:
+    def merge_pdfs(
+        self, file_paths: List[str], output_path: Optional[str] = None
+    ) -> str:
         """Merge multiple PDFs into a single file."""
         if len(file_paths) < 2:
             raise PDFServiceError("Need at least 2 files to merge")
@@ -60,7 +65,7 @@ class PDFProcessingService:
 
     def split_pdf(self, file_path: str, page_ranges: List[tuple]) -> List[str]:
         """Split a PDF into multiple files by page ranges.
-        
+
         page_ranges: list of (start, end) tuples, 1-indexed, inclusive.
         """
         if not os.path.exists(file_path):
@@ -86,8 +91,13 @@ class PDFProcessingService:
         finally:
             doc.close()
 
-    def compress_pdf(self, file_path: str, output_path: Optional[str] = None, 
-                     image_quality: int = 75, dpi: int = 150) -> str:
+    def compress_pdf(
+        self,
+        file_path: str,
+        output_path: Optional[str] = None,
+        image_quality: int = 75,
+        dpi: int = 150,
+    ) -> str:
         """Compress PDF by reducing image quality and removing redundant data."""
         if not os.path.exists(file_path):
             raise PDFServiceError(f"File not found: {file_path}")
@@ -110,12 +120,16 @@ class PDFProcessingService:
                             if pil_img.mode in ("RGBA", "P"):
                                 pil_img = pil_img.convert("RGB")
                             out = io.BytesIO()
-                            pil_img.save(out, format="JPEG", quality=image_quality, optimize=True)
+                            pil_img.save(
+                                out, format="JPEG", quality=image_quality, optimize=True
+                            )
                             doc.update_image(xref, stream=out.getvalue())
                         elif ext == "jpeg":
                             pil_img = Image.open(io.BytesIO(image_bytes))
                             out = io.BytesIO()
-                            pil_img.save(out, format="JPEG", quality=image_quality, optimize=True)
+                            pil_img.save(
+                                out, format="JPEG", quality=image_quality, optimize=True
+                            )
                             doc.update_image(xref, stream=out.getvalue())
 
             doc.save(output_path, garbage=4, deflate=True, clean=True)
@@ -132,9 +146,13 @@ class PDFProcessingService:
         finally:
             doc.close()
 
-    def rotate_pdf(self, file_path: str, rotation: int = 90,
-                   pages: Optional[List[int]] = None,
-                   output_path: Optional[str] = None) -> str:
+    def rotate_pdf(
+        self,
+        file_path: str,
+        rotation: int = 90,
+        pages: Optional[List[int]] = None,
+        output_path: Optional[str] = None,
+    ) -> str:
         """Rotate PDF pages. rotation must be 90, 180, or 270."""
         if rotation not in (90, 180, 270):
             raise PDFServiceError("Rotation must be 90, 180, or 270")
@@ -155,8 +173,9 @@ class PDFProcessingService:
         finally:
             doc.close()
 
-    def extract_pages(self, file_path: str, pages: List[int],
-                      output_path: Optional[str] = None) -> str:
+    def extract_pages(
+        self, file_path: str, pages: List[int], output_path: Optional[str] = None
+    ) -> str:
         """Extract specific pages from a PDF."""
         if not os.path.exists(file_path):
             raise PDFServiceError(f"File not found: {file_path}")
@@ -175,11 +194,15 @@ class PDFProcessingService:
         finally:
             doc.close()
 
-    def add_watermark(self, file_path: str, text: str,
-                      output_path: Optional[str] = None,
-                      opacity: float = 0.3,
-                      font_size: int = 48,
-                      color: tuple = (0.5, 0.5, 0.5)) -> str:
+    def add_watermark(
+        self,
+        file_path: str,
+        text: str,
+        output_path: Optional[str] = None,
+        opacity: float = 0.3,
+        font_size: int = 48,
+        color: tuple = (0.5, 0.5, 0.5),
+    ) -> str:
         """Add text watermark to all pages."""
         if not os.path.exists(file_path):
             raise PDFServiceError(f"File not found: {file_path}")
@@ -205,9 +228,13 @@ class PDFProcessingService:
         finally:
             doc.close()
 
-    def add_page_numbers(self, file_path: str, output_path: Optional[str] = None,
-                         start_number: int = 1,
-                         position: str = "bottom-center") -> str:
+    def add_page_numbers(
+        self,
+        file_path: str,
+        output_path: Optional[str] = None,
+        start_number: int = 1,
+        position: str = "bottom-center",
+    ) -> str:
         """Add page numbers to PDF."""
         if not os.path.exists(file_path):
             raise PDFServiceError(f"File not found: {file_path}")
@@ -222,17 +249,21 @@ class PDFProcessingService:
                 x = rect.width / 2
                 y = rect.height - 30
                 page.insert_text(
-                    (x, y), str(page_num),
-                    fontsize=12, color=(0, 0, 0),
-                    fontname="helv", overlay=True,
+                    (x, y),
+                    str(page_num),
+                    fontsize=12,
+                    color=(0, 0, 0),
+                    fontname="helv",
+                    overlay=True,
                 )
             doc.save(output_path, garbage=4, deflate=True)
             return output_path
         finally:
             doc.close()
 
-    def pdf_to_images(self, file_path: str, format: str = "png",
-                      dpi: int = 200) -> List[str]:
+    def pdf_to_images(
+        self, file_path: str, format: str = "png", dpi: int = 200
+    ) -> List[str]:
         """Convert PDF pages to images."""
         if not os.path.exists(file_path):
             raise PDFServiceError(f"File not found: {file_path}")
@@ -254,7 +285,9 @@ class PDFProcessingService:
         finally:
             doc.close()
 
-    def images_to_pdf(self, image_paths: List[str], output_path: Optional[str] = None) -> str:
+    def images_to_pdf(
+        self, image_paths: List[str], output_path: Optional[str] = None
+    ) -> str:
         """Convert images to a single PDF."""
         output_path = output_path or self._get_temp_path()
         doc = fitz.open()
@@ -264,7 +297,11 @@ class PDFProcessingService:
                 if not os.path.exists(path):
                     raise PDFServiceError(f"Image not found: {path}")
                 img = fitz.open(path)
-                rect = img[0].rect
+                # `rect` would be the page bounds — kept for future use,
+                # e.g. imposing a max page size on the merged output.
+                # For now we just convert_to_pdf() which uses the source
+                # page size directly.
+                _rect = img[0].rect  # noqa: F841
                 pdfbytes = img.convert_to_pdf()
                 img_pdf = fitz.open("pdf", pdfbytes)
                 doc.insert_pdf(img_pdf)

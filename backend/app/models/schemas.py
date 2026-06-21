@@ -3,7 +3,7 @@ from typing import Optional, List
 from uuid import UUID
 from pydantic import BaseModel, EmailStr, Field, ConfigDict
 
-from app.models.database import PlanTier, UserStatus, DocumentStatus
+from app.models.database import PlanTier, DocumentStatus
 
 
 # ─── Auth Schemas ───
@@ -74,7 +74,9 @@ class DocumentListResponse(BaseModel):
 
 # ─── Processing Task Schemas ───
 class ProcessingRequest(BaseModel):
-    task_type: str = Field(..., pattern="^(merge|split|compress|convert|rotate|extract|watermark|ocr)$")
+    task_type: str = Field(
+        ..., pattern="^(merge|split|compress|convert|rotate|extract|watermark|ocr)$"
+    )
     input_document_ids: List[UUID]
     output_format: Optional[str] = None
     params: Optional[dict] = Field(None, description="Task-specific parameters")

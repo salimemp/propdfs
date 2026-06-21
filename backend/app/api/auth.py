@@ -1,8 +1,13 @@
 import uuid
 from datetime import datetime, timezone
-from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status, Header, Request, File, UploadFile
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    status,
+    Request,
+)
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
@@ -10,14 +15,23 @@ from sqlalchemy import select, update
 import structlog
 from app.core.config import get_settings
 from app.core.security import (
-    authenticate_user, create_access_token, create_refresh_token, decode_token,
-    create_user_session, revoke_user_session, is_session_valid, hash_password
+    authenticate_user,
+    create_access_token,
+    create_refresh_token,
+    decode_token,
+    create_user_session,
+    revoke_user_session,
+    is_session_valid,
+    hash_password,
 )
 from app.db.session import get_db
 from app.models.database import User, UserStatus, PlanTier
 from app.models.schemas import (
-    UserRegisterRequest, UserLoginRequest, TokenResponse, UserResponse,
-    RefreshTokenRequest
+    UserRegisterRequest,
+    UserLoginRequest,
+    TokenResponse,
+    UserResponse,
+    RefreshTokenRequest,
 )
 
 logger = structlog.get_logger()
@@ -28,8 +42,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
 
 async def get_current_user(
-    token: str = Depends(oauth2_scheme),
-    db: AsyncSession = Depends(get_db)
+    token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)
 ) -> User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -51,18 +64,18 @@ async def get_current_user(
 
 
 async def get_current_active_user(
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ) -> User:
     if current_user.status != UserStatus.ACTIVE:
         raise HTTPException(status_code=403, detail="User account is not active")
     return current_user
 
 
-@router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED
+)
 async def register(
-    request: Request,
-    data: UserRegisterRequest,
-    db: AsyncSession = Depends(get_db)
+    request: Request, data: UserRegisterRequest, db: AsyncSession = Depends(get_db)
 ):
     # Check if user exists
     result = await db.execute(select(User).where(User.email == data.email.lower()))
@@ -82,10 +95,14 @@ async def register(
     await db.refresh(user)
 
     jti = str(uuid.uuid4())
-    access_token = create_access_token({"sub": str(user.id), "jti": jti, "email": user.email})
+    access_token = create_access_token(
+        {"sub": str(user.id), "jti": jti, "email": user.email}
+    )
     refresh_token = create_refresh_token({"sub": str(user.id), "jti": jti})
     await create_user_session(
-        db, user.id, jti,
+        db,
+        user.id,
+        jti,
         device_info=str(request.headers.get("user-agent")),
         ip_address=request.client.host if request.client else None,
     )
@@ -100,24 +117,28 @@ async def register(
 
 @router.post("/login", response_model=TokenResponse)
 async def login(
-    request: Request,
-    data: UserLoginRequest,
-    db: AsyncSession = Depends(get_db)
+    request: Request, data: UserLoginRequest, db: AsyncSession = Depends(get_db)
 ):
     user = await authenticate_user(db, data.email, data.password)
     if not user:
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
     await db.execute(
-        update(User).where(User.id == user.id).values(last_login_at=datetime.now(timezone.utc))
+        update(User)
+        .where(User.id == user.id)
+        .values(last_login_at=datetime.now(timezone.utc))
     )
     await db.commit()
 
     jti = str(uuid.uuid4())
-    access_token = create_access_token({"sub": str(user.id), "jti": jti, "email": user.email})
+    access_token = create_access_token(
+        {"sub": str(user.id), "jti": jti, "email": user.email}
+    )
     refresh_token = create_refresh_token({"sub": str(user.id), "jti": jti})
     await create_user_session(
-        db, user.id, jti,
+        db,
+        user.id,
+        jti,
         device_info=str(request.headers.get("user-agent")),
         ip_address=request.client.host if request.client else None,
     )
@@ -131,10 +152,7 @@ async def login(
 
 
 @router.post("/refresh", response_model=TokenResponse)
-async def refresh_token(
-    data: RefreshTokenRequest,
-    db: AsyncSession = Depends(get_db)
-):
+async def refresh_token(data: RefreshTokenRequest, db: AsyncSession = Depends(get_db)):
     payload = decode_token(data.refresh_token)
     if not payload or payload.get("type") != "refresh":
         raise HTTPException(status_code=401, detail="Invalid refresh token")
@@ -150,7 +168,9 @@ async def refresh_token(
         raise HTTPException(status_code=401, detail="User not found or inactive")
 
     new_jti = str(uuid.uuid4())
-    access_token = create_access_token({"sub": str(user.id), "jti": new_jti, "email": user.email})
+    access_token = create_access_token(
+        {"sub": str(user.id), "jti": new_jti, "email": user.email}
+    )
     refresh_token = create_refresh_token({"sub": str(user.id), "jti": new_jti})
     await revoke_user_session(db, jti)
     await create_user_session(db, user.id, new_jti)
@@ -164,8 +184,7 @@ async def refresh_token(
 
 @router.post("/logout")
 async def logout(
-    token: str = Depends(oauth2_scheme),
-    db: AsyncSession = Depends(get_db)
+    token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)
 ):
     payload = decode_token(token)
     if payload and payload.get("jti"):

@@ -12,7 +12,7 @@ from sqlalchemy.orm import sessionmaker
 from app.services.pdf_service import PDFProcessingService
 from app.services.storage_service import storage_service
 from app.core.config import get_settings
-from app.models.database import Document, ProcessingTask, DocumentStatus, Base
+from app.models.database import Document, ProcessingTask, DocumentStatus
 
 settings = get_settings()
 
@@ -20,7 +20,7 @@ celery_app = Celery(
     "propdfs",
     broker=settings.CELERY_BROKER_URL,
     backend=settings.CELERY_RESULT_BACKEND,
-    include=["app.services.celery_tasks"]
+    include=["app.services.celery_tasks"],
 )
 
 celery_app.conf.update(
@@ -37,6 +37,7 @@ celery_app.conf.update(
 # Sync engine for Celery tasks — LAZY creation (not at import time)
 _sync_engine = None
 _sync_session = None
+
 
 def _get_sync_db_url(url: str) -> str:
     """Strip asyncpg driver for sync SQLAlchemy engine (Celery, Alembic)."""
@@ -64,11 +65,19 @@ pdf_service = PDFProcessingService()
 
 
 @celery_app.task(bind=True, max_retries=3)
-def process_pdf_task(self, task_id: str, task_type: str, input_keys: List[str],
-                     user_id: str, params: dict):
+def process_pdf_task(
+    self,
+    task_id: str,
+    task_type: str,
+    input_keys: List[str],
+    user_id: str,
+    params: dict,
+):
     """Background task for PDF processing."""
     db = get_db_session()
-    task = db.query(ProcessingTask).filter(ProcessingTask.id == uuid.UUID(task_id)).first()
+    task = (
+        db.query(ProcessingTask).filter(ProcessingTask.id == uuid.UUID(task_id)).first()
+    )
     if not task:
         return {"error": "Task not found"}
 
@@ -98,7 +107,9 @@ def process_pdf_task(self, task_id: str, task_type: str, input_keys: List[str],
         elif task_type == "rotate":
             rotation = params.get("rotation", 90)
             pages = params.get("pages")
-            output_path = pdf_service.rotate_pdf(temp_paths[0], rotation=rotation, pages=pages)
+            output_path = pdf_service.rotate_pdf(
+                temp_paths[0], rotation=rotation, pages=pages
+            )
         elif task_type == "extract":
             pages = params.get("pages", [1])
             output_path = pdf_service.extract_pages(temp_paths[0], pages=pages)
@@ -117,12 +128,14 @@ def process_pdf_task(self, task_id: str, task_type: str, input_keys: List[str],
             with open(output_path, "rb") as f:
                 output_data = f.read()
             output_key = storage_service.upload_bytes(
-                user_id, output_data,
-                f"processed_{task_type}_{Path(output_path).name}"
+                user_id, output_data, f"processed_{task_type}_{Path(output_path).name}"
             )
 
             task.status = "completed"
-            task.result_metadata = {"output_key": output_key, "output_size": len(output_data)}
+            task.result_metadata = {
+                "output_key": output_key,
+                "output_size": len(output_data),
+            }
             task.completed_at = datetime.now(timezone.utc)
             db.commit()
 

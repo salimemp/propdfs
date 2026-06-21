@@ -1,5 +1,4 @@
 import uuid
-from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,7 +8,7 @@ from sqlalchemy.orm import selectinload
 import structlog
 from app.api.auth import get_current_active_user
 from app.db.session import get_db
-from app.models.database import User, Document, ProcessingTask, DocumentStatus
+from app.models.database import User, Document, ProcessingTask
 from app.models.schemas import ProcessingRequest, ProcessingResponse
 from app.services.celery_tasks import process_pdf_task
 from app.services.storage_service import storage_service
@@ -20,17 +19,21 @@ router = APIRouter(prefix="/process", tags=["Processing"])
 settings = get_settings()
 
 
-@router.post("/", response_model=ProcessingResponse, status_code=status.HTTP_202_ACCEPTED)
+@router.post(
+    "/", response_model=ProcessingResponse, status_code=status.HTTP_202_ACCEPTED
+)
 async def create_processing_task(
     request: ProcessingRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
 ):
     # Validate documents
     documents = []
     for doc_id in request.input_document_ids:
         result = await db.execute(
-            select(Document).where(Document.id == doc_id, Document.user_id == current_user.id)
+            select(Document).where(
+                Document.id == doc_id, Document.user_id == current_user.id
+            )
         )
         doc = result.scalar_one_or_none()
         if not doc:
@@ -55,7 +58,7 @@ async def create_processing_task(
         task_type=request.task_type,
         input_keys=input_keys,
         user_id=str(current_user.id),
-        params=request.params or {}
+        params=request.params or {},
     )
 
     # Update task with celery ID
@@ -66,7 +69,7 @@ async def create_processing_task(
         "processing_task_queued",
         task_id=str(task.id),
         task_type=request.task_type,
-        user_id=str(current_user.id)
+        user_id=str(current_user.id),
     )
 
     return ProcessingResponse(
@@ -84,7 +87,7 @@ async def create_processing_task(
 async def get_task_status(
     task_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
 ):
     result = await db.execute(
         select(ProcessingTask)

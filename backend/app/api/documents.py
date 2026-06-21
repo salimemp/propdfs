@@ -1,22 +1,30 @@
 import uuid
-from datetime import datetime, timezone
-from typing import List, Optional
+from typing import Optional
 from pathlib import Path
 import os
 import tempfile
 
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Query, BackgroundTasks
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    status,
+    UploadFile,
+    File,
+    Query,
+    BackgroundTasks,
+)
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc
-from sqlalchemy.orm import selectinload
 
 import structlog
 from app.api.auth import get_current_active_user
 from app.db.session import get_db
-from app.models.database import Document, DocumentStatus, User, ProcessingTask
+from app.models.database import Document, DocumentStatus, User
 from app.models.schemas import (
-    DocumentResponse, DocumentListResponse, DocumentUploadResponse,
-    ProcessingRequest, ProcessingResponse
+    DocumentResponse,
+    DocumentListResponse,
+    DocumentUploadResponse,
 )
 from app.services.storage_service import storage_service
 from app.services.pdf_service import pdf_service
@@ -27,24 +35,38 @@ router = APIRouter(prefix="/documents", tags=["Documents"])
 settings = get_settings()
 
 
-@router.post("/upload", response_model=DocumentUploadResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/upload",
+    response_model=DocumentUploadResponse,
+    status_code=status.HTTP_201_CREATED,
+)
 async def upload_document(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
 ):
     # Validate file
     max_size = settings.MAX_FILE_SIZE_MB * 1024 * 1024
     content = await file.read()
     await file.seek(0)
     if len(content) > max_size:
-        raise HTTPException(status_code=413, detail=f"File exceeds {settings.MAX_FILE_SIZE_MB}MB limit")
+        raise HTTPException(
+            status_code=413, detail=f"File exceeds {settings.MAX_FILE_SIZE_MB}MB limit"
+        )
 
     # Validate mime type
-    allowed_types = {"application/pdf", "image/png", "image/jpeg", "image/jpg", "image/webp",
-                     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                     "application/msword", "text/plain", "application/rtf"}
+    allowed_types = {
+        "application/pdf",
+        "image/png",
+        "image/jpeg",
+        "image/jpg",
+        "image/webp",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/msword",
+        "text/plain",
+        "application/rtf",
+    }
     if file.content_type not in allowed_types:
         raise HTTPException(status_code=415, detail="Unsupported file type")
 
@@ -79,9 +101,13 @@ async def upload_document(
     await db.commit()
     await db.refresh(document)
 
-    download_url = storage_service.get_presigned_url(storage_key, expires_in=3600, download=True)
+    download_url = storage_service.get_presigned_url(
+        storage_key, expires_in=3600, download=True
+    )
 
-    logger.info("document_uploaded", doc_id=str(document.id), user_id=str(current_user.id))
+    logger.info(
+        "document_uploaded", doc_id=str(document.id), user_id=str(current_user.id)
+    )
     return DocumentUploadResponse(
         id=document.id,
         filename=document.filename,
@@ -98,7 +124,7 @@ async def list_documents(
     page_size: int = Query(20, ge=1, le=100),
     status: Optional[DocumentStatus] = None,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
 ):
     query = select(Document).where(Document.user_id == current_user.id)
     if status:
@@ -124,10 +150,12 @@ async def list_documents(
 async def get_document(
     document_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
 ):
     result = await db.execute(
-        select(Document).where(Document.id == document_id, Document.user_id == current_user.id)
+        select(Document).where(
+            Document.id == document_id, Document.user_id == current_user.id
+        )
     )
     document = result.scalar_one_or_none()
     if not document:
@@ -139,16 +167,20 @@ async def get_document(
 async def download_document(
     document_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
 ):
     result = await db.execute(
-        select(Document).where(Document.id == document_id, Document.user_id == current_user.id)
+        select(Document).where(
+            Document.id == document_id, Document.user_id == current_user.id
+        )
     )
     document = result.scalar_one_or_none()
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    url = storage_service.get_presigned_url(document.storage_key, expires_in=3600, download=True)
+    url = storage_service.get_presigned_url(
+        document.storage_key, expires_in=3600, download=True
+    )
     return {"download_url": url, "expires_in": 3600}
 
 
@@ -156,10 +188,12 @@ async def download_document(
 async def delete_document(
     document_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
 ):
     result = await db.execute(
-        select(Document).where(Document.id == document_id, Document.user_id == current_user.id)
+        select(Document).where(
+            Document.id == document_id, Document.user_id == current_user.id
+        )
     )
     document = result.scalar_one_or_none()
     if not document:
@@ -172,5 +206,7 @@ async def delete_document(
 
     await db.delete(document)
     await db.commit()
-    logger.info("document_deleted", doc_id=str(document_id), user_id=str(current_user.id))
+    logger.info(
+        "document_deleted", doc_id=str(document_id), user_id=str(current_user.id)
+    )
     return None
