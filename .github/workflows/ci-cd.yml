@@ -95,7 +95,12 @@ jobs:
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_PRODUCTION_TOKEN }}
 
-      # Deploy frontend to Cloudflare Pages (Production)
+      # Deploy frontend to Cloudflare Pages (Production).
+      # The flutter-action step installs the same Flutter version used by
+      # the lint job so `flutter build web` is available here too.
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.24.0"
       - name: Build Flutter Web for Production
         run: |
           cd frontend
