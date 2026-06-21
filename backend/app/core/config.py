@@ -34,7 +34,9 @@ class Settings(BaseSettings):
     STORAGE_REGION: str = "auto"
     MAX_FILE_SIZE_MB: int = 500
 
-    # Payments (Stripe)
+    # Payments (Stripe) — infrastructure-only. Subscription UI + checkout
+    # flow intentionally not implemented yet; see Stripe references in
+    # .env.example. Wire up via `app/api/billing.py` when ready.
     STRIPE_SECRET_KEY: str = ""
     STRIPE_WEBHOOK_SECRET: str = ""
     STRIPE_PRICE_FREE: str = ""
@@ -51,6 +53,9 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_SECRET: str = ""
     GITHUB_CLIENT_ID: str = ""
     GITHUB_CLIENT_SECRET: str = ""
+
+    # Observability — leave SENTRY_DSN empty to disable Sentry.
+    SENTRY_DSN: str = ""
 
     # Frontend URL
     FRONTEND_URL: str = "http://localhost:3000"
