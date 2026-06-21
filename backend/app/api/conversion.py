@@ -84,7 +84,11 @@ async def convert_document(
         return DocumentResponse.model_validate(document)
 
     except Exception as e:
-        logger.error("conversion_failed", error=str(e))
+        import traceback
+
+        logger.error(
+            "conversion_failed", error=str(e), traceback=traceback.format_exc()
+        )
         raise HTTPException(status_code=500, detail=f"Conversion failed: {str(e)}")
     finally:
         # Cleanup

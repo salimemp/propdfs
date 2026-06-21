@@ -52,6 +52,29 @@ class ConversionService:
         "heic",
     }
 
+    # LibreOffice export filters. The short form `--convert-to docx` is
+    # unreliable in LibreOffice 7+ (fails with "no export filter found").
+    # Use the explicit "format:filter_name" form for the MS-Office formats
+    # so the conversion actually produces .docx / .xlsx / .pptx.
+    EXPORT_FILTERS = {
+        "docx": "MS Word 2007 XML",
+        "xlsx": "Calc Office Open XML",
+        "pptx": "Impress Office Open XML",
+        # LibreOffice can also load a PDF as a Writer document via
+        # `writer_pdf_import`, which is the only way to get the
+        # PDF -> {odt, docx, rtf, html} round-trip working (the
+        # default Draw pipeline can only emit images/SVG).
+        "odt": "writer8",
+        "rtf": "Rich Text Format",
+    }
+
+    # When the source is a PDF and the target is a Writer format, this
+    # import filter forces LibreOffice to treat the PDF as a Writer
+    # document (instead of routing it through Draw), which unlocks
+    # docx/odt/rtf/html export. Without it, `soffice --convert-to odt`
+    # on a PDF fails with "no export filter found".
+    PDF_IMPORT_FILTER = "writer_pdf_import"
+
     # MIME type mapping
     MIME_TYPES = {
         "doc": "application/msword",
@@ -118,28 +141,68 @@ class ConversionService:
     def _get_extension(self, filename: str) -> str:
         return Path(filename).suffix.lower().lstrip(".")
 
-    def convert_with_libreoffice(self, input_path: str, output_format: str) -> str:
-        """Convert document using LibreOffice headless."""
+    def convert_with_libreoffice(
+        self,
+        input_path: str,
+        output_format: str,
+        input_format: Optional[str] = None,
+    ) -> str:
+        """Convert document using LibreOffice headless.
+
+        Args:
+            input_path: Path to source file.
+            output_format: Target format (e.g. "pdf", "docx", "odt").
+            input_format: When the file extension doesn't match the actual
+                format (e.g. a PDF that should be loaded as a Writer
+                document), pass the desired import filter name here.
+        """
         if not os.path.exists(input_path):
             raise ConversionError(f"Input file not found: {input_path}")
 
         output_dir = tempfile.mkdtemp(prefix="propdfs_lo_")
 
+        # LibreOffice 7+ doesn't auto-discover the correct export filter
+        # for some MS-Office formats from the short name. When we know
+        # the explicit filter, pass it as "format:filter_name"; otherwise
+        # just the format name.
+        convert_target = output_format
+        explicit_filter = self.EXPORT_FILTERS.get(output_format.lower())
+        if explicit_filter:
+            convert_target = f"{output_format}:{explicit_filter}"
+
+        # Use a unique LibreOffice user profile per invocation so
+        # concurrent calls don't race on the shared profile lock. This
+        # is the workaround for "no export filter found" errors that
+        # appear sporadically under load (LibreOffice's single-instance
+        # background process gets confused when another invocation
+        # interrupts its filter discovery).
+        user_profile = f"-env:UserInstallation=file://{tempfile.mkdtemp(prefix='propdfs_lo_profile_')}"
+
         try:
             cmd = [
                 self.libreoffice_path,
+                user_profile,
                 "--headless",
                 "--nologo",
                 "--nolockcheck",
                 "--nofirststartwizard",
                 "--norestore",
                 "--convert-to",
-                output_format,
-                "--outdir",
-                output_dir,
-                input_path,
+                convert_target,
             ]
-
+            if input_format:
+                # Use the `key=value` form: this LibreOffice build
+                # rejects the space-separated form (`--infilter value`)
+                # and prints the help text. The single-arg form below
+                # works for both old and new builds.
+                cmd.append(f"--infilter={input_format}")
+            cmd.extend(
+                [
+                    "--outdir",
+                    output_dir,
+                    input_path,
+                ]
+            )
             logger.info(
                 "libreoffice_conversion_started",
                 input=input_path,
@@ -222,13 +285,30 @@ class ConversionService:
                 return pdf_path
             input_path = pdf_path
 
+        # If we are routing through a PDF intermediate, the second hop
+        # is PDF -> X. For Writer-format targets (odt/docx/rtf/html),
+        # LibreOffice has to load the PDF through `writer_pdf_import`
+        # (the default routes PDF through Draw, which can only emit
+        # image/SVG — not Word/ODT). When the source is genuinely a
+        # PDF (e.g. user uploaded a PDF directly), the same infilter
+        # applies.
+        input_is_pdf = self._get_extension(input_path) == "pdf"
+        writer_targets = ("odt", "doc", "docx", "rtf", "html")
+        needs_pdf_import = input_is_pdf and output_format in writer_targets
+        infilter = self.PDF_IMPORT_FILTER if needs_pdf_import else None
+
         # From PDF to target format
         if output_format in ("jpg", "jpeg", "png", "webp", "tiff", "bmp"):
             return self._pdf_to_images(input_path, output_format)
         elif output_format in ("txt", "md"):
             return self._pdf_to_text(input_path, output_format)
-        elif output_format in ("docx", "doc", "odt", "rtf", "html", "xlsx", "pptx"):
-            return self.convert_with_libreoffice(input_path, output_format)
+        elif output_format in writer_targets or output_format in (
+            "xlsx",
+            "pptx",
+        ):
+            return self.convert_with_libreoffice(
+                input_path, output_format, input_format=infilter
+            )
         elif output_format in ("epub", "mobi"):
             return self._pdf_to_ebook(input_path, output_format)
         else:
