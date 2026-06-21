@@ -79,7 +79,7 @@ jobs:
             --dart-define=APP_VERSION=propdfs@${{ github.sha }} \
             --dart-define=ENVIRONMENT=staging
       - name: Upload Sentry source maps (Staging)
-        if: ${{ vars.SENTRY_SOURCE_MAPS_ENABLED == 'true' }}
+        if: false  # temporarily disabled pending project slug fix
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
@@ -132,7 +132,7 @@ jobs:
             --dart-define=APP_VERSION=propdfs@${{ github.sha }} \
             --dart-define=ENVIRONMENT=production
       - name: Upload Sentry source maps (Production)
-        if: ${{ vars.SENTRY_SOURCE_MAPS_ENABLED == 'true' }}
+        if: false  # temporarily disabled pending project slug fix
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
