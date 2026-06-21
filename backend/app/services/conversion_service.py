@@ -176,9 +176,7 @@ class ConversionService:
         # appear sporadically under load (LibreOffice's single-instance
         # background process gets confused when another invocation
         # interrupts its filter discovery).
-        user_profile = (
-            f"-env:UserInstallation=file://{tempfile.mkdtemp(prefix='propdfs_lo_profile_')}"
-        )
+        user_profile = f"-env:UserInstallation=file://{tempfile.mkdtemp(prefix='propdfs_lo_profile_')}"
 
         try:
             cmd = [
@@ -198,12 +196,13 @@ class ConversionService:
                 # and prints the help text. The single-arg form below
                 # works for both old and new builds.
                 cmd.append(f"--infilter={input_format}")
-            cmd.extend([
-                "--outdir",
-                output_dir,
-                input_path,
-            ])\
-
+            cmd.extend(
+                [
+                    "--outdir",
+                    output_dir,
+                    input_path,
+                ]
+            )
             logger.info(
                 "libreoffice_conversion_started",
                 input=input_path,
@@ -295,9 +294,7 @@ class ConversionService:
         # applies.
         input_is_pdf = self._get_extension(input_path) == "pdf"
         writer_targets = ("odt", "doc", "docx", "rtf", "html")
-        needs_pdf_import = (
-            input_is_pdf and output_format in writer_targets
-        )
+        needs_pdf_import = input_is_pdf and output_format in writer_targets
         infilter = self.PDF_IMPORT_FILTER if needs_pdf_import else None
 
         # From PDF to target format

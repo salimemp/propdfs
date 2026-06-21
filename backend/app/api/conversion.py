@@ -86,7 +86,9 @@ async def convert_document(
     except Exception as e:
         import traceback
 
-        logger.error("conversion_failed", error=str(e), traceback=traceback.format_exc())
+        logger.error(
+            "conversion_failed", error=str(e), traceback=traceback.format_exc()
+        )
         raise HTTPException(status_code=500, detail=f"Conversion failed: {str(e)}")
     finally:
         # Cleanup
