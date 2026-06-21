@@ -1,6 +1,7 @@
+import threading
 import uuid
-from typing import Optional
 from pathlib import Path
+from typing import Optional
 
 import boto3
 import structlog
@@ -14,20 +15,38 @@ settings = get_settings()
 
 
 class StorageService:
-    """S3-compatible storage service (Cloudflare R2 / AWS S3)."""
+    """S3-compatible storage service (Cloudflare R2 / AWS S3).
 
-    def __init__(self):
-        self.client = boto3.client(
-            "s3",
-            endpoint_url=settings.STORAGE_ENDPOINT or None,
-            aws_access_key_id=settings.STORAGE_ACCESS_KEY or None,
-            aws_secret_access_key=settings.STORAGE_SECRET_KEY or None,
-            region_name=settings.STORAGE_REGION,
-        )
+    The boto3 client is built lazily on first use so that the API can boot
+    even when storage credentials aren't configured yet (e.g. local dev
+    without an R2 bucket, or CI smoke tests that don't touch /upload).
+    """
+
+    def __init__(self) -> None:
         self.bucket = settings.STORAGE_BUCKET
-        self._ensure_bucket()
+        self._client = None
+        self._lock = threading.Lock()
 
-    def _ensure_bucket(self):
+    @property
+    def client(self):
+        """Lazily build the boto3 S3 client on first access.
+
+        Thread-safe via a single-shot lock so concurrent requests don't
+        each create their own client.
+        """
+        if self._client is None:
+            with self._lock:
+                if self._client is None:
+                    self._client = boto3.client(
+                        "s3",
+                        endpoint_url=settings.STORAGE_ENDPOINT or None,
+                        aws_access_key_id=settings.STORAGE_ACCESS_KEY or None,
+                        aws_secret_access_key=settings.STORAGE_SECRET_KEY or None,
+                        region_name=settings.STORAGE_REGION,
+                    )
+        return self._client
+
+    def _ensure_bucket(self) -> None:
         try:
             self.client.head_bucket(Bucket=self.bucket)
         except ClientError as e:
