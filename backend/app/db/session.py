@@ -20,13 +20,22 @@ def _get_async_db_url(url: str) -> str:
     return url
 
 
+# NullPool and pool_size/max_overflow are mutually exclusive in SQLAlchemy 2.0:
+# pool_size / max_overflow only apply to QueuePool. In dev/test we use NullPool
+# (every connection is fresh, no pooling) so we must skip those kwargs there.
+_engine_kwargs: dict = {
+    "pool_pre_ping": True,
+    "echo": settings.DEBUG,
+}
+if settings.ENVIRONMENT == "production":
+    _engine_kwargs["pool_size"] = settings.DATABASE_POOL_SIZE
+    _engine_kwargs["max_overflow"] = 20
+else:
+    _engine_kwargs["poolclass"] = NullPool
+
 engine = create_async_engine(
     _get_async_db_url(settings.DATABASE_URL),
-    pool_size=settings.DATABASE_POOL_SIZE,
-    max_overflow=20,
-    pool_pre_ping=True,
-    echo=settings.DEBUG,
-    poolclass=None if settings.ENVIRONMENT == "production" else NullPool,
+    **_engine_kwargs,
 )
 
 AsyncSessionLocal = async_sessionmaker(

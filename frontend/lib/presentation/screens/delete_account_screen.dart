@@ -19,7 +19,6 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
   final _reasonController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
-  bool _hasConfirmed = false;
   bool _agreeToDelete = false;
   int _step = 1;
 

@@ -18,7 +18,6 @@ import '../presentation/screens/legal_screens.dart';
 import '../presentation/screens/blog_screen.dart';
 import '../presentation/screens/delete_account_screen.dart';
 import '../presentation/screens/my_data_screen.dart';
-import '../presentation/widgets/cookie_consent_banner.dart';
 import '../presentation/providers/auth_provider.dart';
 
 import 'dart:async';

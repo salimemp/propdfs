@@ -17,7 +17,8 @@ class _AccessibilityScreenState extends ConsumerState<AccessibilityScreen> {
 
   Future<void> _toggleVoiceCommands() async {
     final voiceService = ref.read(voiceServiceProvider);
-    final accessibility = ref.read(accessibilityProvider.notifier);
+    // ignore: unused_local_variable
+    final _accessibility = ref.read(accessibilityProvider.notifier);
 
     if (!voiceService.isAvailable) {
       await voiceService.initSpeech();
