@@ -65,6 +65,11 @@ async def ocr_pdf(
         return DocumentResponse.model_validate(document)
 
     except Exception as e:
+        try:
+            import sentry_sdk
+            sentry_sdk.capture_exception(e)
+        except Exception:
+            pass
         logger.error("ocr_failed", error=str(e))
         raise HTTPException(status_code=500, detail=f"OCR failed: {str(e)}")
     finally:
@@ -90,6 +95,12 @@ async def ocr_image(
         result = ocr_service.ocr_image(temp_input, language=language)
         return result
     except Exception as e:
+        # Forward to Sentry (see conversion.py for the same pattern).
+        try:
+            import sentry_sdk
+            sentry_sdk.capture_exception(e)
+        except Exception:
+            pass
         logger.error("ocr_image_failed", error=str(e))
         raise HTTPException(status_code=500, detail=f"OCR failed: {str(e)}")
     finally:

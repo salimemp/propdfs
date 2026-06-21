@@ -86,6 +86,16 @@ async def convert_document(
     except Exception as e:
         import traceback
 
+        # Forward to Sentry so 5xx errors are visible in the issues feed
+        # alongside any unhandled exceptions. Without this, our try/except
+        # would swallow the exception before FastApiIntegration sees it.
+        try:
+            import sentry_sdk
+
+            sentry_sdk.capture_exception(e)
+        except Exception:  # never let Sentry errors break the response
+            pass
+
         logger.error(
             "conversion_failed", error=str(e), traceback=traceback.format_exc()
         )
