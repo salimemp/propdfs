@@ -65,10 +65,29 @@ jobs:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_STAGING_TOKEN }}
 
       # Deploy frontend to Cloudflare Pages (Staging)
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.24.0"
       - name: Build Flutter Web for Staging
         run: |
           cd frontend
-          flutter build web --release
+          flutter build web --release \
+            --dart-define=SENTRY_DSN=${{ secrets.SENTRY_DSN_STAGING }} \
+            --dart-define=APP_VERSION=propdfs@${{ github.sha }} \
+            --dart-define=ENVIRONMENT=staging
+      - name: Upload Sentry source maps (Staging)
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: propdfs-flutter
+        run: |
+          cd frontend
+          npx --yes @sentry/cli@latest releases new "propdfs@${{ github.sha }}"
+          npx --yes @sentry/cli@latest releases files "propdfs@${{ github.sha }}" \
+            upload-sourcemaps \
+            --ext dart --ext js --ext map \
+            --url-prefix "~/main.dart.js" \
+            build/web
       - name: Deploy to Cloudflare Pages (Staging)
         uses: cloudflare/pages-action@v1
         with:
@@ -104,7 +123,23 @@ jobs:
       - name: Build Flutter Web for Production
         run: |
           cd frontend
-          flutter build web --release
+          flutter build web --release \
+            --dart-define=SENTRY_DSN=${{ secrets.SENTRY_DSN_PRODUCTION }} \
+            --dart-define=APP_VERSION=propdfs@${{ github.sha }} \
+            --dart-define=ENVIRONMENT=production
+      - name: Upload Sentry source maps (Production)
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: propdfs-flutter
+        run: |
+          cd frontend
+          npx --yes @sentry/cli@latest releases new "propdfs@${{ github.sha }}"
+          npx --yes @sentry/cli@latest releases files "propdfs@${{ github.sha }}" \
+            upload-sourcemaps \
+            --ext dart --ext js --ext map \
+            --url-prefix "~/main.dart.js" \
+            build/web
       - name: Deploy to Cloudflare Pages (Production)
         uses: cloudflare/pages-action@v1
         with:

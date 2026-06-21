@@ -67,14 +67,20 @@ dependencies:
   
   # Payments
   flutter_stripe: ^10.1.0
-  
+
+  # Observability — captures unhandled exceptions, Dio HTTP errors, and
+  # route transitions as breadcrumbs. DSN is supplied at build time via
+  # `--dart-define=SENTRY_DSN=...` (leave empty in dev to disable).
+  sentry_flutter: ^7.14.0
+  sentry_dio: ^7.14.0
+
   # Utils
   freezed_annotation: ^2.4.1
   json_annotation: ^4.9.0
-  # Pinned to ^0.19.0 to match the version flutter_localizations from the
-  # Flutter 3.24 SDK requires. Flutter 3.x pins intl via its SDK;
-  # overriding it to ^0.20.2 broke `flutter pub get` in CI.
-  intl: ^0.19.0
+  # Pinned to ^0.20.2 because flutter_localizations from the current Flutter
+  # SDK (3.44 here) requires intl >=0.20.2. The 0.19.0 pin only worked for
+  # Flutter 3.24; bump with care and rerun `flutter analyze`.
+  intl: ^0.20.2
   uuid: ^4.4.0
   mime: ^1.0.0
   url_launcher: ^6.2.0

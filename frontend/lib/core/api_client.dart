@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sentry_dio/sentry_dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 const String _baseUrl = String.fromEnvironment(
@@ -38,6 +39,11 @@ final apiClientProvider = Provider<Dio>((ref) {
     requestBody: true,
     responseBody: true,
   ));
+
+  // Sentry interceptor — adds request/response breadcrumbs and captures
+  // 5xx + network errors as events. addSentry() is a no-op when Sentry
+  // isn't initialised (i.e. dev builds without SENTRY_DSN).
+  dio.addSentry();
 
   dio.interceptors.add(InterceptorsWrapper(
     onError: (DioException e, handler) async {

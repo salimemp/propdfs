@@ -117,7 +117,6 @@ class _DocumentScannerScreenState extends State<DocumentScannerScreen> {
           ),
         ],
       ),
-      bottomNavigationBar: const AppFooter(),
       body: _isInitialized
           ? Stack(
               fit: StackFit.expand,
@@ -179,19 +178,25 @@ class _DocumentScannerScreenState extends State<DocumentScannerScreen> {
               ],
             )
           : const Center(child: CircularProgressIndicator()),
-      bottomNavigationBar: Container(
-        padding: const EdgeInsets.all(24),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            _isProcessing
-                ? const CircularProgressIndicator()
-                : FloatingActionButton.large(
-                    onPressed: _captureDocument,
-                    child: const Icon(Icons.camera_alt, size: 32),
-                  ),
-          ],
-        ),
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(24),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _isProcessing
+                    ? const CircularProgressIndicator()
+                    : FloatingActionButton.large(
+                        onPressed: _captureDocument,
+                        child: const Icon(Icons.camera_alt, size: 32),
+                      ),
+              ],
+            ),
+          ),
+          const AppFooter(),
+        ],
       ),
     );
   }
@@ -224,9 +229,6 @@ class _DocumentScannerScreenState extends State<DocumentScannerScreen> {
               );
             },
           ),
-        ],
-      ),
-      bottomNavigationBar: const AppFooter(),
         ],
       ),
       body: SingleChildScrollView(
@@ -267,27 +269,33 @@ class _DocumentScannerScreenState extends State<DocumentScannerScreen> {
           ],
         ),
       ),
-      bottomNavigationBar: Container(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: _reset,
-                icon: const Icon(Icons.camera_alt),
-                label: const Text('Scan Again'),
-              ),
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _reset,
+                    icon: const Icon(Icons.camera_alt),
+                    label: const Text('Scan Again'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: _extractedText.isNotEmpty ? () {} : null,
+                    icon: const Icon(Icons.save),
+                    label: const Text('Save as PDF'),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: FilledButton.icon(
-                onPressed: _extractedText.isNotEmpty ? () {} : null,
-                icon: const Icon(Icons.save),
-                label: const Text('Save as PDF'),
-              ),
-            ),
-          ],
-        ),
+          ),
+          const AppFooter(),
+        ],
       ),
     );
   }

@@ -365,7 +365,7 @@ See `DEPLOYMENT_GUIDE.md` for the full step-by-step. Quick summary:
 - **Backend** → Railway (auto-deploys from `main` via GitHub integration, or via the included GitHub Actions workflow)
 - **Frontend** → Cloudflare Pages (`flutter build web --release` then upload `build/web/`)
 - **Storage** → Cloudflare R2 bucket + access keys
-- **Secrets** → GitHub Actions secrets: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `RAILWAY_PRODUCTION_TOKEN`
+- **Secrets** → GitHub Actions secrets: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `RAILWAY_PRODUCTION_TOKEN`, `SENTRY_DSN_PRODUCTION`, `SENTRY_DSN_STAGING`, `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`
 
 The CI/CD pipeline runs lint + Docker build + Cloudflare Pages deploy on every push to `main`.
 

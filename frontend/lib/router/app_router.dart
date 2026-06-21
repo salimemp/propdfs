@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 
 import '../presentation/screens/splash_screen.dart';
 import '../presentation/screens/login_screen.dart';
@@ -27,6 +28,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
   return GoRouter(
     initialLocation: '/',
+    // SentryNavigatorObserver emits a breadcrumb on every route push/replace,
+    // so when an error fires you can see the exact navigation path the user
+    // took to reach it. No-op when Sentry isn't initialised.
+    observers: [SentryNavigatorObserver()],
     redirect: (context, state) {
       final isAuthenticated = authState.value?.user != null;
       final isAuthRoute = state.matchedLocation == '/login' || 

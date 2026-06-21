@@ -40,7 +40,7 @@ class ProPDFsTheme {
           color: Colors.black87,
         ),
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         elevation: 2,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
@@ -110,7 +110,7 @@ class ProPDFsTheme {
           color: Colors.white,
         ),
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         elevation: 0,
         color: darkSurface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
