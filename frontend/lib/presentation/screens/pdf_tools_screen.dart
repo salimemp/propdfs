@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_client.dart';
+import '../widgets/app_footer.dart';
 
 /// Tool → task_type that the backend `PDFProcessingService` understands.
 /// Keep this in sync with `app/services/celery_tasks.py`.
@@ -213,6 +214,7 @@ class _PdfToolsScreenState extends ConsumerState<PdfToolsScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('PDF Tools')),
+      bottomNavigationBar: const AppFooter(),
       body: Column(
         children: [
           // Tool Selector

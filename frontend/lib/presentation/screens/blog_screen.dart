@@ -5,6 +5,7 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/api_client.dart';
+import '../widgets/app_footer.dart';
 
 class BlogScreen extends ConsumerStatefulWidget {
   const BlogScreen({super.key});
@@ -109,6 +110,7 @@ class _BlogScreenState extends ConsumerState<BlogScreen> {
           ),
         ],
       ),
+      bottomNavigationBar: const AppFooter(),
       body: Column(
         children: [
           // Search bar
@@ -339,6 +341,7 @@ class _BlogDetailScreenState extends ConsumerState<BlogDetailScreen> {
       appBar: AppBar(
         title: Text(_post?.title ?? 'Article'),
       ),
+      bottomNavigationBar: const AppFooter(),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _error != null

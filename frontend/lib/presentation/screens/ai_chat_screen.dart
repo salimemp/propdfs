@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api_client.dart';
 import '../../core/localization/app_localizations.dart';
 import '../../core/accessibility/voice_service.dart';
+import '../widgets/app_footer.dart';
 
 class AIChatScreen extends ConsumerStatefulWidget {
   final String? documentId;
@@ -168,6 +169,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
           ),
         ],
       ),
+      bottomNavigationBar: const AppFooter(),
       body: Column(
         children: [
           // Document header (chosen document)

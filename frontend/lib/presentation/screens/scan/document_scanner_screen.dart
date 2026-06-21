@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:camera/camera.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
+import '../../widgets/app_footer.dart';
 
 class DocumentScannerScreen extends StatefulWidget {
   const DocumentScannerScreen({super.key});
@@ -116,6 +117,7 @@ class _DocumentScannerScreenState extends State<DocumentScannerScreen> {
           ),
         ],
       ),
+      bottomNavigationBar: const AppFooter(),
       body: _isInitialized
           ? Stack(
               fit: StackFit.expand,
@@ -222,6 +224,9 @@ class _DocumentScannerScreenState extends State<DocumentScannerScreen> {
               );
             },
           ),
+        ],
+      ),
+      bottomNavigationBar: const AppFooter(),
         ],
       ),
       body: SingleChildScrollView(

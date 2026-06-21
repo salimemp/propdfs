@@ -68,6 +68,22 @@ class AppFooter extends ConsumerWidget {
                       color: Colors.grey[500],
                     ),
                   ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '·',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey[500],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Powered by Elixio Digital',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey[500],
+                    ),
+                  ),
                 ],
               ),
               // Links

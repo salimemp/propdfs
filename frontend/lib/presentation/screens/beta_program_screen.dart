@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/api_client.dart';
 import '../../core/localization/app_localizations.dart';
 import '../providers/auth_provider.dart';
+import '../widgets/app_footer.dart';
 
 class BetaProgramScreen extends ConsumerStatefulWidget {
   const BetaProgramScreen({super.key});
@@ -189,6 +190,7 @@ class _BetaProgramScreenState extends ConsumerState<BetaProgramScreen> {
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.get('beta_program'))),
+      bottomNavigationBar: const AppFooter(),
       body: _isEnrolled
           ? _buildEnrolledView(l10n)
           : _buildEnrollView(l10n, isAuthenticated),

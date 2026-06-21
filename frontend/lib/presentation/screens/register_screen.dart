@@ -57,6 +57,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFF0a0a0f),
       appBar: const AppHeader(showSignIn: false),
+      bottomNavigationBar: const AppFooter(),
       body: Column(
         children: [
           Expanded(
@@ -233,7 +234,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         ),
       ),
       ),
-      const AppFooter(),
     ],
   ),
 );

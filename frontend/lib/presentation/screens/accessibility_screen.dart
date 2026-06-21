@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/localization/app_localizations.dart';
 import '../../core/accessibility/accessibility_provider.dart';
 import '../../core/accessibility/voice_service.dart';
+import '../widgets/app_footer.dart';
 
 class AccessibilityScreen extends ConsumerStatefulWidget {
   const AccessibilityScreen({super.key});
@@ -52,6 +53,7 @@ class _AccessibilityScreenState extends ConsumerState<AccessibilityScreen> {
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.get('accessibility'))),
+      bottomNavigationBar: const AppFooter(),
       body: ListView(
         children: [
           // Voice Commands Section

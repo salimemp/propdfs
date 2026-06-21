@@ -64,6 +64,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFF0a0a0f),
       appBar: const AppHeader(showSignIn: false),
+      bottomNavigationBar: const AppFooter(),
       body: Column(
         children: [
           Expanded(
@@ -300,7 +301,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ),
             ),
           ),
-          const AppFooter(),
         ],
       ),
     );
