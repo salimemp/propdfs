@@ -1,7 +1,5 @@
-import os
 import uuid
-from datetime import datetime, timezone
-from typing import List, Optional
+from typing import Optional
 from pathlib import Path
 
 import boto3
@@ -56,12 +54,17 @@ class StorageService:
             Key=key,
             Body=content,
             ContentType=file.content_type or "application/octet-stream",
-            Metadata={"uploaded_by": user_id, "original_name": file.filename or "unknown"},
+            Metadata={
+                "uploaded_by": user_id,
+                "original_name": file.filename or "unknown",
+            },
         )
         logger.info("file_uploaded", key=key, user_id=user_id, size=len(content))
         return key
 
-    def upload_bytes(self, user_id: str, data: bytes, filename: str, key: Optional[str] = None) -> str:
+    def upload_bytes(
+        self, user_id: str, data: bytes, filename: str, key: Optional[str] = None
+    ) -> str:
         key = key or self._generate_key(user_id, filename)
         self.client.put_object(
             Bucket=self.bucket,
@@ -73,10 +76,14 @@ class StorageService:
         logger.info("bytes_uploaded", key=key, user_id=user_id, size=len(data))
         return key
 
-    def get_presigned_url(self, key: str, expires_in: int = 3600, download: bool = False) -> str:
+    def get_presigned_url(
+        self, key: str, expires_in: int = 3600, download: bool = False
+    ) -> str:
         params = {"Bucket": self.bucket, "Key": key}
         if download:
-            params["ResponseContentDisposition"] = f"attachment; filename={Path(key).name}"
+            params["ResponseContentDisposition"] = (
+                f"attachment; filename={Path(key).name}"
+            )
         return self.client.generate_presigned_url(
             "get_object", Params=params, ExpiresIn=expires_in
         )

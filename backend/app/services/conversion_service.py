@@ -4,7 +4,7 @@ import subprocess
 import tempfile
 import uuid
 from pathlib import Path
-from typing import List, Optional, Dict
+from typing import Optional, Dict
 import structlog
 import fitz
 
@@ -23,12 +23,33 @@ class ConversionService:
 
     SUPPORTED_FORMATS = {
         # Office formats
-        "doc", "docx", "odt", "rtf", "txt", "html", "md",
-        "xls", "xlsx", "ods", "csv",
-        "ppt", "pptx", "odp",
-        "epub", "mobi",
+        "doc",
+        "docx",
+        "odt",
+        "rtf",
+        "txt",
+        "html",
+        "md",
+        "xls",
+        "xlsx",
+        "ods",
+        "csv",
+        "ppt",
+        "pptx",
+        "odp",
+        "epub",
+        "mobi",
         # PDF & images
-        "pdf", "jpg", "jpeg", "png", "webp", "svg", "tiff", "bmp", "gif", "heic",
+        "pdf",
+        "jpg",
+        "jpeg",
+        "png",
+        "webp",
+        "svg",
+        "tiff",
+        "bmp",
+        "gif",
+        "heic",
     }
 
     # MIME type mapping
@@ -50,10 +71,14 @@ class ConversionService:
         "epub": "application/epub+zip",
         "mobi": "application/x-mobipocket-ebook",
         "pdf": "application/pdf",
-        "jpg": "image/jpeg", "jpeg": "image/jpeg",
-        "png": "image/png", "webp": "image/webp",
-        "svg": "image/svg+xml", "tiff": "image/tiff",
-        "bmp": "image/bmp", "gif": "image/gif",
+        "jpg": "image/jpeg",
+        "jpeg": "image/jpeg",
+        "png": "image/png",
+        "webp": "image/webp",
+        "svg": "image/svg+xml",
+        "tiff": "image/tiff",
+        "bmp": "image/bmp",
+        "gif": "image/gif",
         "heic": "image/heic",
     }
 
@@ -72,18 +97,18 @@ class ConversionService:
             "/usr/lib/libreoffice/program/soffice",
             "/Applications/LibreOffice.app/Contents/MacOS/soffice",
         ]
-        
+
         # Check explicit paths first
         for path in candidate_paths:
             if os.path.exists(path) and os.access(path, os.X_OK):
                 return path
-        
+
         # Use shutil.which for PATH-based resolution
         for name in candidate_names:
             resolved = shutil.which(name)
             if resolved:
                 return resolved
-        
+
         logger.warning("libreoffice_not_found_in_path", fallback="soffice")
         return "soffice"  # Fallback — will fail at runtime if not installed
 
@@ -91,15 +116,15 @@ class ConversionService:
         return os.path.join(self.work_dir, f"propdfs_conv_{uuid.uuid4().hex}{suffix}")
 
     def _get_extension(self, filename: str) -> str:
-        return Path(filename).suffix.lower().lstrip('.')
+        return Path(filename).suffix.lower().lstrip(".")
 
     def convert_with_libreoffice(self, input_path: str, output_format: str) -> str:
         """Convert document using LibreOffice headless."""
         if not os.path.exists(input_path):
             raise ConversionError(f"Input file not found: {input_path}")
-        
+
         output_dir = tempfile.mkdtemp(prefix="propdfs_lo_")
-        
+
         try:
             cmd = [
                 self.libreoffice_path,
@@ -108,56 +133,70 @@ class ConversionService:
                 "--nolockcheck",
                 "--nofirststartwizard",
                 "--norestore",
-                "--convert-to", output_format,
-                "--outdir", output_dir,
+                "--convert-to",
+                output_format,
+                "--outdir",
+                output_dir,
                 input_path,
             ]
-            
-            logger.info("libreoffice_conversion_started", 
-                       input=input_path, 
-                       output_format=output_format,
-                       cmd=" ".join(cmd))
-            
-            result = subprocess.run(
-                cmd, capture_output=True, text=True, timeout=300
+
+            logger.info(
+                "libreoffice_conversion_started",
+                input=input_path,
+                output_format=output_format,
+                cmd=" ".join(cmd),
             )
-            
-            logger.info("libreoffice_conversion_completed",
-                       returncode=result.returncode,
-                       stdout=result.stdout[:500] if result.stdout else None,
-                       stderr=result.stderr[:500] if result.stderr else None)
-            
+
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+
+            logger.info(
+                "libreoffice_conversion_completed",
+                returncode=result.returncode,
+                stdout=result.stdout[:500] if result.stdout else None,
+                stderr=result.stderr[:500] if result.stderr else None,
+            )
+
             if result.returncode != 0:
                 raise ConversionError(
                     f"LibreOffice conversion failed (exit code {result.returncode}): {result.stderr}"
                 )
-            
+
             input_name = Path(input_path).stem
             output_path = os.path.join(output_dir, f"{input_name}.{output_format}")
-            
+
             if not os.path.exists(output_path):
                 # Try finding any file in output dir (LibreOffice sometimes renames)
-                files = [f for f in os.listdir(output_dir) if os.path.isfile(os.path.join(output_dir, f))]
+                files = [
+                    f
+                    for f in os.listdir(output_dir)
+                    if os.path.isfile(os.path.join(output_dir, f))
+                ]
                 if files:
                     output_path = os.path.join(output_dir, files[0])
-                    logger.info("libreoffice_output_renamed", 
-                               expected=f"{input_name}.{output_format}", 
-                               actual=files[0])
+                    logger.info(
+                        "libreoffice_output_renamed",
+                        expected=f"{input_name}.{output_format}",
+                        actual=files[0],
+                    )
                 else:
                     raise ConversionError("LibreOffice produced no output file")
-            
+
             # Move to final location using shutil.move (handles cross-device moves)
             final_path = self._get_temp_path(f".{output_format}")
             shutil.move(output_path, final_path)
-            
-            logger.info("libreoffice_conversion_success", 
-                       input=input_path, 
-                       output=final_path,
-                       output_size=os.path.getsize(final_path))
+
+            logger.info(
+                "libreoffice_conversion_success",
+                input=input_path,
+                output=final_path,
+                output_size=os.path.getsize(final_path),
+            )
             return final_path
-            
+
         except subprocess.TimeoutExpired:
-            logger.error("libreoffice_conversion_timeout", input=input_path, timeout=300)
+            logger.error(
+                "libreoffice_conversion_timeout", input=input_path, timeout=300
+            )
             raise ConversionError("LibreOffice conversion timed out (300s)")
         finally:
             # Cleanup temp dir
@@ -167,14 +206,14 @@ class ConversionService:
     def convert_document(self, input_path: str, output_format: str) -> str:
         """Convert any document to target format."""
         input_ext = self._get_extension(input_path)
-        output_format = output_format.lower().lstrip('.')
-        
+        output_format = output_format.lower().lstrip(".")
+
         if input_ext == output_format:
             return input_path  # No conversion needed
-        
+
         if output_format not in self.SUPPORTED_FORMATS:
             raise ConversionError(f"Unsupported output format: {output_format}")
-        
+
         # PDF as intermediate format for most conversions
         if input_ext != "pdf":
             # Convert to PDF first using LibreOffice
@@ -182,7 +221,7 @@ class ConversionService:
             if output_format == "pdf":
                 return pdf_path
             input_path = pdf_path
-        
+
         # From PDF to target format
         if output_format in ("jpg", "jpeg", "png", "webp", "tiff", "bmp"):
             return self._pdf_to_images(input_path, output_format)
@@ -193,7 +232,9 @@ class ConversionService:
         elif output_format in ("epub", "mobi"):
             return self._pdf_to_ebook(input_path, output_format)
         else:
-            raise ConversionError(f"Conversion from PDF to {output_format} not supported")
+            raise ConversionError(
+                f"Conversion from PDF to {output_format} not supported"
+            )
 
     def _pdf_to_images(self, pdf_path: str, format: str) -> str:
         """Convert PDF to image(s). Returns single image path or ZIP path."""
@@ -208,8 +249,9 @@ class ConversionService:
             else:
                 # Multiple pages - create a ZIP
                 import zipfile
+
                 zip_path = self._get_temp_path(".zip")
-                with zipfile.ZipFile(zip_path, 'w') as zf:
+                with zipfile.ZipFile(zip_path, "w") as zf:
                     for i in range(doc.page_count):
                         page = doc[i]
                         pix = page.get_pixmap(dpi=200)
@@ -226,7 +268,7 @@ class ConversionService:
         doc = fitz.open(pdf_path)
         try:
             output_path = self._get_temp_path(f".{format}")
-            with open(output_path, 'w', encoding='utf-8') as f:
+            with open(output_path, "w", encoding="utf-8") as f:
                 for i in range(doc.page_count):
                     page = doc[i]
                     text = page.get_text()
@@ -254,7 +296,8 @@ class ConversionService:
                 output_path = self._get_temp_path(".mobi")
                 subprocess.run(
                     ["ebook-convert", epub_path, output_path],
-                    capture_output=True, timeout=120
+                    capture_output=True,
+                    timeout=120,
                 )
                 if os.path.exists(output_path):
                     return output_path
@@ -271,7 +314,7 @@ class ConversionService:
             "file_size": os.path.getsize(file_path),
             "format": self._get_extension(file_path),
         }
-        
+
         ext = self._get_extension(file_path)
         if ext == "pdf":
             try:
@@ -281,7 +324,7 @@ class ConversionService:
                 doc.close()
             except Exception:
                 pass
-        
+
         return info
 
 

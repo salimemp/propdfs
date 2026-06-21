@@ -1,10 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:propdfs/main.dart';
 import 'package:propdfs/core/localization/app_localizations.dart';
-import 'package:propdfs/core/accessibility/accessibility_provider.dart';
 import 'package:propdfs/core/accessibility/voice_service.dart';
 import 'package:propdfs/presentation/screens/accessibility_screen.dart';
 import 'package:propdfs/presentation/screens/beta_program_screen.dart';
@@ -13,8 +11,6 @@ import 'package:propdfs/presentation/screens/ai_chat_screen.dart';
 import 'package:propdfs/presentation/screens/login_screen.dart';
 import 'package:propdfs/presentation/screens/home_screen.dart';
 import 'package:propdfs/presentation/screens/settings_screen.dart';
-import 'package:propdfs/presentation/screens/pdf_tools_screen.dart';
-import 'package:propdfs/presentation/screens/document_list_screen.dart';
 
 void main() {
   group('App Startup', () {

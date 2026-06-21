@@ -1,6 +1,5 @@
 import structlog
 from fastapi import Request
-from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 logger = structlog.get_logger()
@@ -32,7 +31,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
     """Simple rate limiting middleware using Redis."""
-    
+
     async def dispatch(self, request: Request, call_next):
         # Implement Redis-based rate limiting here
         return await call_next(request)
