@@ -9,125 +9,93 @@ class AppFooter extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // Bulletproof layout for Flutter web CanvasKit:
-    // - explicit height (132px) — never relies on intrinsic height
-    // - `Column` with `mainAxisSize.min` to wrap content cleanly
-    // - `SingleChildScrollView` horizontal for the link row (handles
-    //   narrow viewports without `Wrap`'s infinite intrinsic height)
-    return Material(
-      color: isDark ? const Color(0xFF0a0a0f) : Colors.white,
-      child: SafeArea(
-        top: false,
-        child: Container(
-          height: 132,
-          decoration: BoxDecoration(
-            border: Border(
-              top: BorderSide(
-                color: isDark ? Colors.grey[900]! : Colors.grey[200]!,
-                width: 1,
-              ),
-            ),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1200),
-              child: Column(
+    // Simplest possible footer. Explicit height (110px) is the entire
+    // contract — no Material wrapper, no SafeArea, no ConstrainedBox.
+    // Any wrapping widget that tries to compute intrinsic height
+    // collapses the parent Scaffold body to 0×0 in Flutter web CanvasKit.
+    return SizedBox(
+      height: 110,
+      child: Container(
+        color: isDark ? const Color(0xFF0a0a0f) : Colors.white,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // Brand row
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Row(
                 mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // Brand row
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Container(
-                        width: 24,
-                        height: 24,
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFF2563EB), Color(0xFF7C3AED)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: const Center(
-                          child: Icon(
-                            Icons.picture_as_pdf,
-                            size: 14,
-                            color: Colors.white,
-                          ),
-                        ),
+                  Container(
+                    width: 20,
+                    height: 20,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF2563EB), Color(0xFF7C3AED)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
                       ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'ProPDFs',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: isDark ? Colors.white : Colors.black87,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        '© 2026 ProPDFs',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey[500],
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        '·',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey[500],
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Powered by Elixio Digital',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey[500],
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
+                      borderRadius: BorderRadius.circular(5),
+                    ),
+                    child: const Icon(
+                      Icons.picture_as_pdf,
+                      size: 12,
+                      color: Colors.white,
+                    ),
                   ),
-                  const SizedBox(height: 12),
-                  // Links row — horizontal scroll on narrow viewports
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        _FooterLink('Pricing', '/pricing'),
-                        const SizedBox(width: 16),
-                        _FooterLink('Tools', '/tools'),
-                        const SizedBox(width: 16),
-                        _FooterLink('Blog', '/blog'),
-                        const SizedBox(width: 16),
-                        _FooterLink('vs alternatives', '/compare'),
-                        const SizedBox(width: 16),
-                        _FooterLink('About', '/about'),
-                        const SizedBox(width: 16),
-                        _FooterLink('Contact', '/contact'),
-                        const SizedBox(width: 16),
-                        _FooterLink('Privacy', '/privacy'),
-                        const SizedBox(width: 16),
-                        _FooterLink('Terms', '/terms'),
-                      ],
+                  const SizedBox(width: 8),
+                  Text(
+                    'ProPDFs',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: isDark ? Colors.white : Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '© 2026 · Powered by Elixio Digital',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[500],
                     ),
                   ),
                 ],
               ),
             ),
-          ),
+            const SizedBox(height: 8),
+            // Links row — horizontal scroll for narrow viewports
+            SizedBox(
+              height: 32,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                shrinkWrap: true,
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                children: [
+                  _FooterLink('Pricing', '/pricing'),
+                  const SizedBox(width: 16),
+                  _FooterLink('Tools', '/tools'),
+                  const SizedBox(width: 16),
+                  _FooterLink('Blog', '/blog'),
+                  const SizedBox(width: 16),
+                  _FooterLink('vs alternatives', '/compare'),
+                  const SizedBox(width: 16),
+                  _FooterLink('About', '/about'),
+                  const SizedBox(width: 16),
+                  _FooterLink('Contact', '/contact'),
+                  const SizedBox(width: 16),
+                  _FooterLink('Privacy', '/privacy'),
+                  const SizedBox(width: 16),
+                  _FooterLink('Terms', '/terms'),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -147,7 +115,7 @@ class _FooterLink extends StatelessWidget {
       style: TextButton.styleFrom(
         foregroundColor: Colors.grey[500],
         padding: EdgeInsets.zero,
-        minimumSize: Size.zero,
+        minimumSize: const Size(0, 32),
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
       ),
       child: Text(
