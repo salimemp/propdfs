@@ -195,7 +195,13 @@ class _DocumentListScreenState extends ConsumerState<DocumentListScreen> {
       // Auth guard will redirect, but render an empty scaffold in the meantime.
       return Scaffold(
         appBar: AppBar(title: const Text('My Documents')),
-        bottomNavigationBar: const AppFooter(),
+        bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(color: const Color(0xFF0a0a0f), height: 1),
+          const AppFooter(),
+        ],
+      ),
         body: const Center(child: CircularProgressIndicator()),
       );
     }
@@ -210,7 +216,13 @@ class _DocumentListScreenState extends ConsumerState<DocumentListScreen> {
           ),
         ],
       ),
-      bottomNavigationBar: const AppFooter(),
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(color: const Color(0xFF0a0a0f), height: 1),
+          const AppFooter(),
+        ],
+      ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _error != null

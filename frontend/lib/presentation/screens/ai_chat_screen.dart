@@ -169,7 +169,13 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
           ),
         ],
       ),
-      bottomNavigationBar: const AppFooter(),
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(color: const Color(0xFF0a0a0f), height: 1),
+          const AppFooter(),
+        ],
+      ),
       body: Column(
         children: [
           // Document header (chosen document)

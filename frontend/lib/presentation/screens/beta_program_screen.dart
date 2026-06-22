@@ -190,7 +190,13 @@ class _BetaProgramScreenState extends ConsumerState<BetaProgramScreen> {
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.get('beta_program'))),
-      bottomNavigationBar: const AppFooter(),
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(color: const Color(0xFF0a0a0f), height: 1),
+          const AppFooter(),
+        ],
+      ),
       body: _isEnrolled
           ? _buildEnrolledView(l10n)
           : _buildEnrollView(l10n, isAuthenticated),

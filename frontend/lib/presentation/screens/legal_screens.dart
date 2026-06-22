@@ -18,7 +18,13 @@ class PrivacyPolicyScreen extends ConsumerWidget {
           ),
         ],
       ),
-      bottomNavigationBar: const AppFooter(),
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(color: const Color(0xFF0a0a0f), height: 1),
+          const AppFooter(),
+        ],
+      ),
       body: const SingleChildScrollView(
         padding: EdgeInsets.all(24),
         child: Column(
@@ -112,7 +118,13 @@ class TermsOfServiceScreen extends ConsumerWidget {
           ),
         ],
       ),
-      bottomNavigationBar: const AppFooter(),
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(color: const Color(0xFF0a0a0f), height: 1),
+          const AppFooter(),
+        ],
+      ),
       body: const SingleChildScrollView(
         padding: EdgeInsets.all(24),
         child: Column(

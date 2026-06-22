@@ -11,7 +11,13 @@ class MyDataScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       appBar: AppBar(title: const Text('My Data')),
-      bottomNavigationBar: const AppFooter(),
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(color: const Color(0xFF0a0a0f), height: 1),
+          const AppFooter(),
+        ],
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(

@@ -214,7 +214,13 @@ class _PdfToolsScreenState extends ConsumerState<PdfToolsScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('PDF Tools')),
-      bottomNavigationBar: const AppFooter(),
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(color: const Color(0xFF0a0a0f), height: 1),
+          const AppFooter(),
+        ],
+      ),
       body: Column(
         children: [
           // Tool Selector

@@ -84,7 +84,13 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
         backgroundColor: Colors.red[50],
         foregroundColor: Colors.red[700],
       ),
-      bottomNavigationBar: const AppFooter(),
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(color: const Color(0xFF0a0a0f), height: 1),
+          const AppFooter(),
+        ],
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),

@@ -110,7 +110,13 @@ class _BlogScreenState extends ConsumerState<BlogScreen> {
           ),
         ],
       ),
-      bottomNavigationBar: const AppFooter(),
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(color: const Color(0xFF0a0a0f), height: 1),
+          const AppFooter(),
+        ],
+      ),
       body: Column(
         children: [
           // Search bar
@@ -341,7 +347,13 @@ class _BlogDetailScreenState extends ConsumerState<BlogDetailScreen> {
       appBar: AppBar(
         title: Text(_post?.title ?? 'Article'),
       ),
-      bottomNavigationBar: const AppFooter(),
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(color: const Color(0xFF0a0a0f), height: 1),
+          const AppFooter(),
+        ],
+      ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
