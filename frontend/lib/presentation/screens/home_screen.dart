@@ -170,8 +170,8 @@ class HomeScreen extends ConsumerWidget {
             // only the first row of cards in Flutter web CanvasKit — the
             // cards' computed aspect ratio was wrong in that renderer and
             // the second/third rows were clipped. Explicit Rows of
-            // Expanded children give a definite intrinsic height on every
-            // renderer and work identically on mobile.
+            // fixed-height SizedBox cards give a definite intrinsic height
+            // on every renderer and work identically on mobile.
             Text(
               l10n.get('tools'),
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -348,10 +348,13 @@ class HomeScreen extends ConsumerWidget {
   }
 
   Widget _buildToolRow(BuildContext context, List<Widget> cards) {
-    // Two cards per row, each card expanded to fill half the row width.
-    // Cards inside `Expanded` get a definite bounded width and height.
+    // Two cards per row, each in a fixed-height SizedBox so the layout
+    // has a definite intrinsic height (does not rely on Row + Expanded +
+    // crossAxisAlignment.stretch, which collapsed to oversized cards on
+    // Flutter web CanvasKit). Cards have explicit width via SizedBox
+    // expand + Expanded inside the row.
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         for (int i = 0; i < cards.length; i++) ...[
           if (i > 0) const SizedBox(width: 12),
@@ -369,39 +372,51 @@ class HomeScreen extends ConsumerWidget {
     required Color color,
     required VoidCallback onTap,
   }) {
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(10),
+    // Fixed-height card (130px). Putting the card in a SizedBox with
+    // definite height prevents Flutter web CanvasKit from giving the
+    // Expanded-wrapped Column an unbounded height, which made the cards
+    // ~300px tall with empty space below the icon.
+    return SizedBox(
+      height: 130,
+      child: Card(
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.start,
+              mainAxisSize: MainAxisSize.max,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(icon, color: color, size: 24),
                 ),
-                child: Icon(icon, color: color, size: 24),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                title,
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
+                const Spacer(),
+                Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                subtitle,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Colors.grey[500],
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Colors.grey[500],
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

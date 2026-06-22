@@ -9,107 +9,17 @@ class AppFooter extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // The previous Wrap-based layout worked on iOS/Android but had an
-    // intrinsic-height calculation issue when used as a Scaffold
-    // `bottomNavigationBar` in Flutter web (CanvasKit renderer). The Wrap
-    // would report an unbounded height in that slot, causing the body to
-    // get 0 height and the whole screen to render blank with only the
-    // overlay cookie banner visible. A two-row `Column` of `Row`s with
-    // `mainAxisAlignment` set gives a definite intrinsic height on every
-    // renderer.
-    final brand = Row(
-      mainAxisSize: MainAxisSize.min,
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Container(
-          width: 24,
-          height: 24,
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFF2563EB), Color(0xFF7C3AED)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: const Center(
-            child: Icon(
-              Icons.picture_as_pdf,
-              size: 14,
-              color: Colors.white,
-            ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Text(
-          'ProPDFs',
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
-            color: isDark ? Colors.white : Colors.black87,
-          ),
-        ),
-        const SizedBox(width: 8),
-        Text(
-          '© 2026 ProPDFs',
-          style: TextStyle(
-            fontSize: 13,
-            color: Colors.grey[500],
-          ),
-        ),
-        const SizedBox(width: 8),
-        Text(
-          '·',
-          style: TextStyle(
-            fontSize: 13,
-            color: Colors.grey[500],
-          ),
-        ),
-        const SizedBox(width: 8),
-        Flexible(
-          child: Text(
-            'Powered by Elixio Digital',
-            style: TextStyle(
-              fontSize: 13,
-              color: Colors.grey[500],
-            ),
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-      ],
-    );
-
-    // Use a horizontally-scrolling Row instead of `Wrap`. `Wrap` reports an
-    // infinite intrinsic height when used as a Scaffold `bottomNavigationBar`
-    // in Flutter web (CanvasKit renderer), which collapses the body to 0×0.
-    // `SingleChildScrollView` with `Axis.horizontal` gives a definite
-    // intrinsic height (the height of the tallest link button), and on
-    // narrow screens the user can swipe to reach any link.
-    final links = SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      physics: const AlwaysScrollableScrollPhysics(),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          _FooterLink('Pricing', '/pricing'),
-          _FooterLink('Tools', '/tools'),
-          _FooterLink('Blog', '/blog'),
-          _FooterLink('vs alternatives', '/compare'),
-          _FooterLink('About', '/about'),
-          _FooterLink('Contact', '/contact'),
-          _FooterLink('Privacy', '/privacy'),
-          _FooterLink('Terms', '/terms'),
-        ],
-      ),
-    );
-
+    // Bulletproof layout for Flutter web CanvasKit:
+    // - explicit height (132px) — never relies on intrinsic height
+    // - `Column` with `mainAxisSize.min` to wrap content cleanly
+    // - `SingleChildScrollView` horizontal for the link row (handles
+    //   narrow viewports without `Wrap`'s infinite intrinsic height)
     return Material(
       color: isDark ? const Color(0xFF0a0a0f) : Colors.white,
       child: SafeArea(
         top: false,
         child: Container(
+          height: 132,
           decoration: BoxDecoration(
             border: Border(
               top: BorderSide(
@@ -126,9 +36,94 @@ class AppFooter extends ConsumerWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  brand,
+                  // Brand row
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 24,
+                        height: 24,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF2563EB), Color(0xFF7C3AED)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Center(
+                          child: Icon(
+                            Icons.picture_as_pdf,
+                            size: 14,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'ProPDFs',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: isDark ? Colors.white : Colors.black87,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '© 2026 ProPDFs',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey[500],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '·',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey[500],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Powered by Elixio Digital',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey[500],
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 12),
-                  links,
+                  // Links row — horizontal scroll on narrow viewports
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        _FooterLink('Pricing', '/pricing'),
+                        const SizedBox(width: 16),
+                        _FooterLink('Tools', '/tools'),
+                        const SizedBox(width: 16),
+                        _FooterLink('Blog', '/blog'),
+                        const SizedBox(width: 16),
+                        _FooterLink('vs alternatives', '/compare'),
+                        const SizedBox(width: 16),
+                        _FooterLink('About', '/about'),
+                        const SizedBox(width: 16),
+                        _FooterLink('Contact', '/contact'),
+                        const SizedBox(width: 16),
+                        _FooterLink('Privacy', '/privacy'),
+                        const SizedBox(width: 16),
+                        _FooterLink('Terms', '/terms'),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
