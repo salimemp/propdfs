@@ -67,6 +67,7 @@ async def ocr_pdf(
     except Exception as e:
         try:
             import sentry_sdk
+
             sentry_sdk.capture_exception(e)
         except Exception:
             pass
@@ -98,6 +99,7 @@ async def ocr_image(
         # Forward to Sentry (see conversion.py for the same pattern).
         try:
             import sentry_sdk
+
             sentry_sdk.capture_exception(e)
         except Exception:
             pass
