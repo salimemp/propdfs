@@ -310,36 +310,7 @@ class HomeScreen extends ConsumerWidget {
           ],
         ),
       ),
-      bottomNavigationBar: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          NavigationBar(
-            selectedIndex: 0,
-            onDestinationSelected: (index) {
-              switch (index) {
-                case 0:
-                  break;
-                case 1:
-                  context.go('/documents');
-                  break;
-                case 2:
-                  context.go('/tools');
-                  break;
-                case 3:
-                  context.go('/settings');
-                  break;
-              }
-            },
-            destinations: [
-              NavigationDestination(icon: const Icon(Icons.home), label: l10n.get('home')),
-              NavigationDestination(icon: const Icon(Icons.folder), label: l10n.get('files')),
-              NavigationDestination(icon: const Icon(Icons.build), label: l10n.get('tools')),
-              NavigationDestination(icon: const Icon(Icons.settings), label: l10n.get('settings')),
-            ],
-          ),
-          const AppFooter(),
-        ],
-      ),
+      bottomNavigationBar: const AppFooter(),
     );
   }
 
