@@ -164,14 +164,12 @@ class HomeScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 24),
 
-            // Quick Actions Grid — built with explicit `Column` of `Row`s
-            // instead of `GridView.count`. `GridView.count` with
-            // `shrinkWrap: true` and `childAspectRatio: 1.2` was rendering
-            // only the first row of cards in Flutter web CanvasKit — the
-            // cards' computed aspect ratio was wrong in that renderer and
-            // the second/third rows were clipped. Explicit Rows of
-            // fixed-height SizedBox cards give a definite intrinsic height
-            // on every renderer and work identically on mobile.
+            // Quick Actions Grid — built with a single `Wrap` of fixed-size
+            // cards. `Wrap` is more reliable than `Row + Expanded` in
+            // Flutter web CanvasKit because it doesn't need cross-axis
+            // stretch to fill space. Each card is a `SizedBox(width: ~half,
+            // height: 130)` so the layout has definite intrinsic dimensions
+            // on every renderer.
             Text(
               l10n.get('tools'),
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -179,62 +177,60 @@ class HomeScreen extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 12),
-            _buildToolRow(context, [
-              _buildToolCard(
-                context,
-                icon: Icons.merge_type,
-                title: l10n.get('merge_pdfs'),
-                subtitle: 'Combine multiple files',
-                color: Colors.blue,
-                onTap: () => context.go('/tools', extra: 'merge'),
-              ),
-              _buildToolCard(
-                context,
-                icon: Icons.call_split,
-                title: l10n.get('split_pdf'),
-                subtitle: 'Extract pages',
-                color: Colors.green,
-                onTap: () => context.go('/tools', extra: 'split'),
-              ),
-            ]),
-            const SizedBox(height: 12),
-            _buildToolRow(context, [
-              _buildToolCard(
-                context,
-                icon: Icons.compress,
-                title: l10n.get('compress'),
-                subtitle: 'Reduce file size',
-                color: Colors.orange,
-                onTap: () => context.go('/tools', extra: 'compress'),
-              ),
-              _buildToolCard(
-                context,
-                icon: Icons.rotate_right,
-                title: l10n.get('rotate'),
-                subtitle: 'Change orientation',
-                color: Colors.purple,
-                onTap: () => context.go('/tools', extra: 'rotate'),
-              ),
-            ]),
-            const SizedBox(height: 12),
-            _buildToolRow(context, [
-              _buildToolCard(
-                context,
-                icon: Icons.water_drop,
-                title: l10n.get('watermark'),
-                subtitle: 'Add text overlay',
-                color: Colors.teal,
-                onTap: () => context.go('/tools', extra: 'watermark'),
-              ),
-              _buildToolCard(
-                context,
-                icon: Icons.transform,
-                title: l10n.get('convert'),
-                subtitle: 'PDF to images',
-                color: Colors.indigo,
-                onTap: () => context.go('/tools', extra: 'convert'),
-              ),
-            ]),
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: [
+                _buildToolCard(
+                  context,
+                  icon: Icons.merge_type,
+                  title: l10n.get('merge_pdfs'),
+                  subtitle: 'Combine multiple files',
+                  color: Colors.blue,
+                  onTap: () => context.go('/tools', extra: 'merge'),
+                ),
+                _buildToolCard(
+                  context,
+                  icon: Icons.call_split,
+                  title: l10n.get('split_pdf'),
+                  subtitle: 'Extract pages',
+                  color: Colors.green,
+                  onTap: () => context.go('/tools', extra: 'split'),
+                ),
+                _buildToolCard(
+                  context,
+                  icon: Icons.compress,
+                  title: l10n.get('compress'),
+                  subtitle: 'Reduce file size',
+                  color: Colors.orange,
+                  onTap: () => context.go('/tools', extra: 'compress'),
+                ),
+                _buildToolCard(
+                  context,
+                  icon: Icons.rotate_right,
+                  title: l10n.get('rotate'),
+                  subtitle: 'Change orientation',
+                  color: Colors.purple,
+                  onTap: () => context.go('/tools', extra: 'rotate'),
+                ),
+                _buildToolCard(
+                  context,
+                  icon: Icons.water_drop,
+                  title: l10n.get('watermark'),
+                  subtitle: 'Add text overlay',
+                  color: Colors.teal,
+                  onTap: () => context.go('/tools', extra: 'watermark'),
+                ),
+                _buildToolCard(
+                  context,
+                  icon: Icons.transform,
+                  title: l10n.get('convert'),
+                  subtitle: 'PDF to images',
+                  color: Colors.indigo,
+                  onTap: () => context.go('/tools', extra: 'convert'),
+                ),
+              ],
+            ),
 
             const SizedBox(height: 24),
 
@@ -347,23 +343,6 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildToolRow(BuildContext context, List<Widget> cards) {
-    // Two cards per row, each in a fixed-height SizedBox so the layout
-    // has a definite intrinsic height (does not rely on Row + Expanded +
-    // crossAxisAlignment.stretch, which collapsed to oversized cards on
-    // Flutter web CanvasKit). Cards have explicit width via SizedBox
-    // expand + Expanded inside the row.
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        for (int i = 0; i < cards.length; i++) ...[
-          if (i > 0) const SizedBox(width: 12),
-          Expanded(child: cards[i]),
-        ],
-      ],
-    );
-  }
-
   Widget _buildToolCard(
     BuildContext context, {
     required IconData icon,
@@ -372,11 +351,14 @@ class HomeScreen extends ConsumerWidget {
     required Color color,
     required VoidCallback onTap,
   }) {
-    // Fixed-height card (130px). Putting the card in a SizedBox with
-    // definite height prevents Flutter web CanvasKit from giving the
-    // Expanded-wrapped Column an unbounded height, which made the cards
-    // ~300px tall with empty space below the icon.
+    // Fixed-size card. Width = half the screen (minus the body padding
+    // and the Wrap's 12px spacing), height = 130. Both dimensions are
+    // explicit so Flutter web CanvasKit does not try to grow the card
+    // to fill available space.
+    final screenWidth = MediaQuery.of(context).size.width;
+    final cardWidth = (screenWidth - 32 - 32 - 12) / 2; // body padding + spacing
     return SizedBox(
+      width: cardWidth.clamp(120.0, 400.0),
       height: 130,
       child: Card(
         clipBehavior: Clip.antiAlias,
@@ -385,9 +367,8 @@ class HomeScreen extends ConsumerWidget {
           child: Padding(
             padding: const EdgeInsets.all(12),
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.start,
-              mainAxisSize: MainAxisSize.max,
               children: [
                 Container(
                   padding: const EdgeInsets.all(8),
@@ -397,7 +378,7 @@ class HomeScreen extends ConsumerWidget {
                   ),
                   child: Icon(icon, color: color, size: 24),
                 ),
-                const Spacer(),
+                const SizedBox(height: 12),
                 Text(
                   title,
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
@@ -406,7 +387,7 @@ class HomeScreen extends ConsumerWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 4),
                 Text(
                   subtitle,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
