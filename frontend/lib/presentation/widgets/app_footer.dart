@@ -101,7 +101,6 @@ class AppFooter extends ConsumerWidget {
       child: SafeArea(
         top: false,
         child: Container(
-          width: double.infinity,
           decoration: BoxDecoration(
             border: Border(
               top: BorderSide(

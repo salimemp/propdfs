@@ -79,7 +79,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         title: const Text('ProPDFs', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
         iconTheme: const IconThemeData(color: Colors.white),
       ),
-      bottomNavigationBar: const AppFooter(),
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            color: const Color(0xFF0a0a0f),
+            height: 1,
+          ),
+          const AppFooter(),
+        ],
+      ),
       // The body has to be a layout widget that gives its child a definite
       // width (SingleChildScrollView expands horizontally inside Scaffold).
       // Putting Center/SafeArea between Scaffold and the scroll view made
