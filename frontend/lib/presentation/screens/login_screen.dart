@@ -76,19 +76,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       backgroundColor: const Color(0xFF0a0a0f),
       appBar: const AppHeader(showSignIn: false),
       bottomNavigationBar: const AppFooter(),
-      // Plain SingleChildScrollView — earlier Column > Expanded > Center >
-      // SingleChildScrollView caused the body to collapse to 0 height in
-      // Flutter web (visible as a blank canvas). SafeArea + Center still
-      // keeps the form narrow on wide screens.
-      body: SafeArea(
+      // The body has to be a layout widget that gives its child a definite
+      // width (SingleChildScrollView expands horizontally inside Scaffold).
+      // Putting Center/SafeArea between Scaffold and the scroll view made
+      // the canvas collapse to 0×0 in Flutter web. Same fix as the home
+      // screen: SingleChildScrollView is the direct child of Scaffold body.
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
         child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 400),
-              child: Form(
-                key: _formKey,
-                child: Column(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 400),
+            child: Form(
+              key: _formKey,
+              child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         // Title
@@ -312,9 +312,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                 ),
               ),
-            ),
-          ),
-        );
+            ));
   }
 }
 
