@@ -7,7 +7,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_client.dart';
 import '../providers/auth_provider.dart';
-import '../widgets/app_footer.dart';
 
 class DocumentListScreen extends ConsumerStatefulWidget {
   const DocumentListScreen({super.key});
@@ -195,14 +194,7 @@ class _DocumentListScreenState extends ConsumerState<DocumentListScreen> {
       // Auth guard will redirect, but render an empty scaffold in the meantime.
       return Scaffold(
         appBar: AppBar(title: const Text('My Documents')),
-        bottomNavigationBar: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(color: const Color(0xFF0a0a0f), height: 1),
-          const AppFooter(),
-        ],
-      ),
-        body: const Center(child: CircularProgressIndicator()),
+          body: const Center(child: CircularProgressIndicator()),
       );
     }
 
@@ -214,13 +206,6 @@ class _DocumentListScreenState extends ConsumerState<DocumentListScreen> {
             icon: const Icon(Icons.refresh),
             onPressed: _isLoading ? null : _load,
           ),
-        ],
-      ),
-      bottomNavigationBar: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(color: const Color(0xFF0a0a0f), height: 1),
-          const AppFooter(),
         ],
       ),
       body: _isLoading

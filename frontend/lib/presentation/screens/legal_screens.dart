@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../widgets/app_footer.dart';
 
 class PrivacyPolicyScreen extends ConsumerWidget {
   const PrivacyPolicyScreen({super.key});
@@ -16,13 +15,6 @@ class PrivacyPolicyScreen extends ConsumerWidget {
             icon: const Icon(Icons.share),
             onPressed: () {},
           ),
-        ],
-      ),
-      bottomNavigationBar: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(color: const Color(0xFF0a0a0f), height: 1),
-          const AppFooter(),
         ],
       ),
       body: const SingleChildScrollView(
@@ -116,13 +108,6 @@ class TermsOfServiceScreen extends ConsumerWidget {
             icon: const Icon(Icons.share),
             onPressed: () {},
           ),
-        ],
-      ),
-      bottomNavigationBar: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(color: const Color(0xFF0a0a0f), height: 1),
-          const AppFooter(),
         ],
       ),
       body: const SingleChildScrollView(

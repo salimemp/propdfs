@@ -90,7 +90,7 @@ class ProPDFsApp extends ConsumerWidget {
       child: MaterialApp.router(
         title: 'ProPDFs - Enterprise Document Processing Platform',
         debugShowCheckedModeBanner: false,
-        theme: ProPDFsTheme.lightTheme.copyWith(
+        theme: AppTheme.light().copyWith(
           colorScheme: accessibility.highContrast
               ? const ColorScheme.light(
                   primary: Colors.black,
@@ -104,7 +104,7 @@ class ProPDFsApp extends ConsumerWidget {
                 )
               : null,
         ),
-        darkTheme: ProPDFsTheme.darkTheme,
+        darkTheme: AppTheme.dark(),
         themeMode: themeSettings.flutterThemeMode,
         routerConfig: router,
         locale: const Locale('en'),

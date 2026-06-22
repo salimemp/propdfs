@@ -5,7 +5,6 @@ import 'package:dio/dio.dart';
 
 import '../../core/api_client.dart';
 import '../providers/auth_provider.dart';
-import '../widgets/app_footer.dart';
 
 class DeleteAccountScreen extends ConsumerStatefulWidget {
   const DeleteAccountScreen({super.key});
@@ -83,13 +82,6 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
         title: const Text('Delete Account'),
         backgroundColor: Colors.red[50],
         foregroundColor: Colors.red[700],
-      ),
-      bottomNavigationBar: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(color: const Color(0xFF0a0a0f), height: 1),
-          const AppFooter(),
-        ],
       ),
       body: SafeArea(
         child: SingleChildScrollView(

@@ -5,7 +5,6 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../providers/auth_provider.dart';
 import '../../core/api_client.dart';
-import '../widgets/app_footer.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -79,7 +78,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         title: const Text('ProPDFs', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
         iconTheme: const IconThemeData(color: Colors.white),
       ),
-      bottomNavigationBar: const AppFooter(),
       // The body has to be a layout widget that gives its child a definite
       // width (SingleChildScrollView expands horizontally inside Scaffold).
       // Putting Center/SafeArea between Scaffold and the scroll view made

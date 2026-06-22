@@ -6,7 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api_client.dart';
 import '../../core/localization/app_localizations.dart';
 import '../../core/accessibility/voice_service.dart';
-import '../widgets/app_footer.dart';
 
 class AIChatScreen extends ConsumerStatefulWidget {
   final String? documentId;
@@ -167,13 +166,6 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
             icon: const Icon(Icons.attach_file),
             onPressed: _pickDocument,
           ),
-        ],
-      ),
-      bottomNavigationBar: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(color: const Color(0xFF0a0a0f), height: 1),
-          const AppFooter(),
         ],
       ),
       body: Column(

@@ -5,7 +5,6 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/api_client.dart';
-import '../widgets/app_footer.dart';
 
 class BlogScreen extends ConsumerStatefulWidget {
   const BlogScreen({super.key});
@@ -108,13 +107,6 @@ class _BlogScreenState extends ConsumerState<BlogScreen> {
             icon: const Icon(Icons.refresh),
             onPressed: _isLoading ? null : _loadPosts,
           ),
-        ],
-      ),
-      bottomNavigationBar: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(color: const Color(0xFF0a0a0f), height: 1),
-          const AppFooter(),
         ],
       ),
       body: Column(
@@ -346,13 +338,6 @@ class _BlogDetailScreenState extends ConsumerState<BlogDetailScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(_post?.title ?? 'Article'),
-      ),
-      bottomNavigationBar: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(color: const Color(0xFF0a0a0f), height: 1),
-          const AppFooter(),
-        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())

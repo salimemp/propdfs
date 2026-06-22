@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 
 import '../providers/auth_provider.dart';
 import '../widgets/app_header.dart';
-import '../widgets/app_footer.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -57,13 +56,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFF0a0a0f),
       appBar: const AppHeader(showSignIn: false),
-      bottomNavigationBar: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(color: const Color(0xFF0a0a0f), height: 1),
-          const AppFooter(),
-        ],
-      ),
       body: Column(
         children: [
           Expanded(
