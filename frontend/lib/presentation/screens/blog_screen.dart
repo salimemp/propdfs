@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/theme.dart';
 import '../../core/api_client.dart';
 
 class BlogScreen extends ConsumerStatefulWidget {
@@ -100,11 +101,21 @@ class _BlogScreenState extends ConsumerState<BlogScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.surfaceLight,
       appBar: AppBar(
-        title: const Text('Blog'),
+        backgroundColor: AppColors.surfaceLight,
+        elevation: 0,
+        foregroundColor: AppColors.textLight,
+        title: const Text(
+          'Blog',
+          style: TextStyle(
+            color: AppColors.textLight,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh, color: AppColors.textLight),
             onPressed: _isLoading ? null : _loadPosts,
           ),
         ],
@@ -117,6 +128,8 @@ class _BlogScreenState extends ConsumerState<BlogScreen> {
             child: TextField(
               controller: _searchController,
               decoration: InputDecoration(
+                fillColor: AppColors.surfaceMutedLight,
+                filled: true,
                 hintText: 'Search articles...',
                 prefixIcon: const Icon(Icons.search),
                 suffixIcon: _searchQuery.isEmpty
@@ -174,24 +187,13 @@ class _BlogScreenState extends ConsumerState<BlogScreen> {
           const SizedBox(height: 8),
           Expanded(
             child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
+                ? const Center(
+                    child: CircularProgressIndicator(
+                        color: AppColors.primaryLight))
                 : _error != null
-                    ? Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.error_outline,
-                                color: Colors.red, size: 48),
-                            const SizedBox(height: 8),
-                            Text(_error!),
-                            const SizedBox(height: 16),
-                            FilledButton(
-                                onPressed: _loadPosts, child: const Text('Retry')),
-                          ],
-                        ),
-                      )
+                    ? _BlogComingSoon(onRetry: _loadPosts)
                     : _posts.isEmpty
-                        ? const Center(child: Text('No blog posts found.'))
+                        ? const _BlogComingSoon()
                         : RefreshIndicator(
                             onRefresh: _loadPosts,
                             child: ListView.builder(
@@ -336,27 +338,27 @@ class _BlogDetailScreenState extends ConsumerState<BlogDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.surfaceLight,
       appBar: AppBar(
-        title: Text(_post?.title ?? 'Article'),
+        backgroundColor: AppColors.surfaceLight,
+        elevation: 0,
+        foregroundColor: AppColors.textLight,
+        title: Text(
+          _post?.title ?? 'Article',
+          style: const TextStyle(
+            color: AppColors.textLight,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(
+              child: CircularProgressIndicator(
+                  color: AppColors.primaryLight))
           : _error != null
-              ? Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.error_outline,
-                          color: Colors.red, size: 48),
-                      const SizedBox(height: 8),
-                      Text(_error!),
-                      const SizedBox(height: 16),
-                      FilledButton(onPressed: _load, child: const Text('Retry')),
-                    ],
-                  ),
-                )
+              ? _BlogComingSoon(onRetry: _load)
               : _post == null
-                  ? const Center(child: Text('Article not found.'))
+                  ? const _BlogComingSoon()
                   : SingleChildScrollView(
                       padding: const EdgeInsets.all(24),
                       child: ConstrainedBox(
@@ -504,4 +506,72 @@ class _BlogCategory {
   final int count;
 
   _BlogCategory({required this.name, required this.count});
+}
+
+/// Friendly "coming soon" placeholder shown when the blog backend isn't
+/// reachable yet (the public `/api/v1/blog/*` endpoints are a Phase 2 deliverable).
+/// Keeps the page looking intentional instead of a red error banner.
+class _BlogComingSoon extends StatelessWidget {
+  final VoidCallback? onRetry;
+  const _BlogComingSoon({this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 480),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Container(
+                width: 72,
+                height: 72,
+                decoration: BoxDecoration(
+                  color: AppColors.primaryLight.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Icon(
+                  Icons.article_outlined,
+                  size: 36,
+                  color: AppColors.primaryLight,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Articles coming soon',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textLight,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'We\u2019re writing practical guides on getting the most out of '
+                'PDFs \u2014 merging workflows, AI-powered extraction, accessibility, '
+                'and more. Subscribe and we\u2019ll let you know when the first '
+                'posts go live.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 15,
+                  color: AppColors.textMutedLight,
+                  height: 1.6,
+                ),
+              ),
+              const SizedBox(height: 24),
+              if (onRetry != null)
+                OutlinedButton.icon(
+                  onPressed: onRetry,
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Try again'),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

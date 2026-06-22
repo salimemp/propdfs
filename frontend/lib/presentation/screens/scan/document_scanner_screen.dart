@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:camera/camera.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
-import '../../widgets/app_footer.dart';
+import '../../../core/theme.dart';
 
 class DocumentScannerScreen extends StatefulWidget {
   const DocumentScannerScreen({super.key});
@@ -108,6 +108,7 @@ class _DocumentScannerScreenState extends State<DocumentScannerScreen> {
     }
 
     return Scaffold(
+        backgroundColor: AppColors.surfaceLight,
       appBar: AppBar(
         title: const Text('Document Scanner'),
         actions: [
@@ -195,7 +196,6 @@ class _DocumentScannerScreenState extends State<DocumentScannerScreen> {
               ],
             ),
           ),
-          const AppFooter(),
         ],
       ),
     );
@@ -294,7 +294,6 @@ class _DocumentScannerScreenState extends State<DocumentScannerScreen> {
               ],
             ),
           ),
-          const AppFooter(),
         ],
       ),
     );

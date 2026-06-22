@@ -19,14 +19,16 @@ import '../presentation/screens/legal_screens.dart';
 import '../presentation/screens/blog_screen.dart';
 import '../presentation/screens/delete_account_screen.dart';
 import '../presentation/screens/my_data_screen.dart';
+import '../presentation/screens/pricing_screen.dart';
+import '../presentation/screens/about_screen.dart';
 import '../presentation/providers/auth_provider.dart';
 
 import 'dart:async';
 
 // Routes that require a signed-in user. Everything else is public.
+// /tools is PUBLIC — anyone can use PDF tools without an account.
 const _protectedRoutes = {
   '/documents',
-  '/tools',
   '/settings',
   '/scan',
   '/accessibility',
@@ -117,12 +119,23 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const HomeScreen(),
       ),
       GoRoute(
+        path: '/pricing',
+        builder: (context, state) => const PricingScreen(),
+      ),
+      GoRoute(
+        path: '/about',
+        builder: (context, state) => const AboutScreen(),
+      ),
+      GoRoute(
         path: '/documents',
         builder: (context, state) => const DocumentListScreen(),
       ),
       GoRoute(
+        // Public PDF tools catalog. `?tool=merge` query param pre-selects a tool.
         path: '/tools',
-        builder: (context, state) => const PdfToolsScreen(),
+        builder: (context, state) => PdfToolsScreen(
+          initialTool: state.uri.queryParameters['tool'],
+        ),
       ),
       GoRoute(
         path: '/settings',

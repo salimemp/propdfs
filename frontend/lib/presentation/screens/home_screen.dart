@@ -287,7 +287,7 @@ class _HeroSection extends StatelessWidget {
                 runSpacing: 12,
                 children: [
                   FilledButton.icon(
-                    onPressed: () => context.go('/merge'),
+                    onPressed: () => context.go('/tools?tool=merge'),
                     icon: const Icon(Icons.merge_type),
                     label: const Text('Merge PDFs — Free'),
                     style: FilledButton.styleFrom(
@@ -570,51 +570,51 @@ class _ToolSpec {
 // individual tool pages.
 final List<_ToolSpec> _allTools = [
   // Organize (indigo)
-  _ToolSpec('Merge PDF', 'Combine multiple PDFs into one file.', Icons.merge_type, AppColors.catOrganize, '/merge', 'Organize'),
-  _ToolSpec('Split PDF', 'Extract or split pages from your PDF.', Icons.call_split, AppColors.catOrganize, '/split', 'Organize'),
-  _ToolSpec('Organize PDF', 'Reorder pages visually with drag & drop.', Icons.dashboard_customize, AppColors.catOrganize, '/organize', 'Organize'),
-  _ToolSpec('Remove pages', 'Delete unwanted pages from your PDF.', Icons.delete_sweep, AppColors.catOrganize, '/remove-pages', 'Organize'),
-  _ToolSpec('Extract pages', 'Save specific pages as a new PDF.', Icons.content_copy, AppColors.catOrganize, '/extract', 'Organize'),
+  _ToolSpec('Merge PDF', 'Combine multiple PDFs into one file.', Icons.merge_type, AppColors.catOrganize, '/tools?tool=merge', 'Organize'),
+  _ToolSpec('Split PDF', 'Extract or split pages from your PDF.', Icons.call_split, AppColors.catOrganize, '/tools?tool=split', 'Organize'),
+  _ToolSpec('Organize PDF', 'Reorder pages visually with drag & drop.', Icons.dashboard_customize, AppColors.catOrganize, '/tools?tool=merge', 'Organize'),
+  _ToolSpec('Remove pages', 'Delete unwanted pages from your PDF.', Icons.delete_sweep, AppColors.catOrganize, '/tools?tool=extract', 'Organize'),
+  _ToolSpec('Extract pages', 'Save specific pages as a new PDF.', Icons.content_copy, AppColors.catOrganize, '/tools?tool=extract', 'Organize'),
 
   // Optimize (cyan)
-  _ToolSpec('Compress PDF', 'Reduce file size while keeping quality.', Icons.compress, AppColors.catOptimize, '/compress', 'Optimize'),
-  _ToolSpec('Repair PDF', 'Recover damaged or unreadable PDFs.', Icons.build, AppColors.catOptimize, '/repair', 'Optimize'),
-  _ToolSpec('OCR PDF', 'Make scanned PDFs searchable with OCR.', Icons.document_scanner, AppColors.catOptimize, '/ocr', 'Optimize'),
+  _ToolSpec('Compress PDF', 'Reduce file size while keeping quality.', Icons.compress, AppColors.catOptimize, '/tools?tool=compress', 'Optimize'),
+  _ToolSpec('Repair PDF', 'Recover damaged or unreadable PDFs.', Icons.build, AppColors.catOptimize, '/tools?tool=merge', 'Optimize'),
+  _ToolSpec('OCR PDF', 'Make scanned PDFs searchable with OCR.', Icons.document_scanner, AppColors.catOptimize, '/tools?tool=merge', 'Optimize'),
 
   // Convert to PDF (violet)
-  _ToolSpec('Word to PDF', 'Convert .docx files to PDF.', Icons.description, AppColors.catConvertTo, '/word-to-pdf', 'Convert'),
-  _ToolSpec('Excel to PDF', 'Convert .xlsx files to PDF.', Icons.table_chart, AppColors.catConvertTo, '/excel-to-pdf', 'Convert'),
-  _ToolSpec('PowerPoint to PDF', 'Convert .pptx files to PDF.', Icons.slideshow, AppColors.catConvertTo, '/ppt-to-pdf', 'Convert'),
-  _ToolSpec('JPG to PDF', 'Convert images to a single PDF.', Icons.image, AppColors.catConvertTo, '/jpg-to-pdf', 'Convert'),
-  _ToolSpec('HTML to PDF', 'Convert web pages to PDF.', Icons.code, AppColors.catConvertTo, '/html-to-pdf', 'Convert'),
+  _ToolSpec('Word to PDF', 'Convert .docx files to PDF.', Icons.description, AppColors.catConvertTo, '/tools?tool=convert', 'Convert'),
+  _ToolSpec('Excel to PDF', 'Convert .xlsx files to PDF.', Icons.table_chart, AppColors.catConvertTo, '/tools?tool=convert', 'Convert'),
+  _ToolSpec('PowerPoint to PDF', 'Convert .pptx files to PDF.', Icons.slideshow, AppColors.catConvertTo, '/tools?tool=convert', 'Convert'),
+  _ToolSpec('JPG to PDF', 'Convert images to a single PDF.', Icons.image, AppColors.catConvertTo, '/tools?tool=convert', 'Convert'),
+  _ToolSpec('HTML to PDF', 'Convert web pages to PDF.', Icons.code, AppColors.catConvertTo, '/tools?tool=convert', 'Convert'),
 
   // Convert from PDF (pink)
-  _ToolSpec('PDF to Word', 'Convert PDFs to editable .docx.', Icons.picture_as_pdf, AppColors.catConvertFrom, '/pdf-to-word', 'Convert'),
-  _ToolSpec('PDF to Excel', 'Extract tables as editable .xlsx.', Icons.picture_as_pdf, AppColors.catConvertFrom, '/pdf-to-excel', 'Convert'),
-  _ToolSpec('PDF to PowerPoint', 'Convert PDFs to .pptx slides.', Icons.picture_as_pdf, AppColors.catConvertFrom, '/pdf-to-ppt', 'Convert'),
-  _ToolSpec('PDF to JPG', 'Extract each page as an image.', Icons.photo_library, AppColors.catConvertFrom, '/pdf-to-jpg', 'Convert'),
+  _ToolSpec('PDF to Word', 'Convert PDFs to editable .docx.', Icons.picture_as_pdf, AppColors.catConvertFrom, '/tools?tool=convert', 'Convert'),
+  _ToolSpec('PDF to Excel', 'Extract tables as editable .xlsx.', Icons.picture_as_pdf, AppColors.catConvertFrom, '/tools?tool=convert', 'Convert'),
+  _ToolSpec('PDF to PowerPoint', 'Convert PDFs to .pptx slides.', Icons.picture_as_pdf, AppColors.catConvertFrom, '/tools?tool=convert', 'Convert'),
+  _ToolSpec('PDF to JPG', 'Extract each page as an image.', Icons.photo_library, AppColors.catConvertFrom, '/tools?tool=convert', 'Convert'),
 
   // Edit (amber)
-  _ToolSpec('Edit PDF', 'Add text, shapes, comments to any PDF.', Icons.edit, AppColors.catEdit, '/edit', 'Edit'),
-  _ToolSpec('Rotate PDF', 'Rotate pages to any angle.', Icons.rotate_right, AppColors.catEdit, '/rotate', 'Edit'),
-  _ToolSpec('Watermark', 'Add text or image watermarks.', Icons.water_drop, AppColors.catEdit, '/watermark', 'Edit'),
-  _ToolSpec('Page numbers', 'Stamp page numbers anywhere.', Icons.format_list_numbered, AppColors.catEdit, '/page-numbers', 'Edit'),
-  _ToolSpec('Crop PDF', 'Adjust margins and trim pages.', Icons.crop, AppColors.catEdit, '/crop', 'Edit'),
-  _ToolSpec('Sign PDF', 'Draw, type, or upload a signature.', Icons.draw, AppColors.catEdit, '/sign', 'Edit'),
-  _ToolSpec('Compare PDF', 'Highlight differences between two files.', Icons.compare, AppColors.catEdit, '/compare-pdf', 'Edit'),
+  _ToolSpec('Edit PDF', 'Add text, shapes, comments to any PDF.', Icons.edit, AppColors.catEdit, '/tools?tool=merge', 'Edit'),
+  _ToolSpec('Rotate PDF', 'Rotate pages to any angle.', Icons.rotate_right, AppColors.catEdit, '/tools?tool=rotate', 'Edit'),
+  _ToolSpec('Watermark', 'Add text or image watermarks.', Icons.water_drop, AppColors.catEdit, '/tools?tool=watermark', 'Edit'),
+  _ToolSpec('Page numbers', 'Stamp page numbers anywhere.', Icons.format_list_numbered, AppColors.catEdit, '/tools?tool=watermark', 'Edit'),
+  _ToolSpec('Crop PDF', 'Adjust margins and trim pages.', Icons.crop, AppColors.catEdit, '/tools?tool=merge', 'Edit'),
+  _ToolSpec('Sign PDF', 'Draw, type, or upload a signature.', Icons.draw, AppColors.catEdit, '/tools?tool=merge', 'Edit'),
+  _ToolSpec('Compare PDF', 'Highlight differences between two files.', Icons.compare, AppColors.catEdit, '/tools?tool=merge', 'Edit'),
 
   // Security (emerald)
-  _ToolSpec('Protect PDF', 'Add a password to lock your PDF.', Icons.lock, AppColors.catSecurity, '/protect', 'Security'),
-  _ToolSpec('Unlock PDF', 'Remove the password from a PDF.', Icons.lock_open, AppColors.catSecurity, '/unlock', 'Security'),
-  _ToolSpec('Redact PDF', 'Permanently black out sensitive content.', Icons.visibility_off, AppColors.catSecurity, '/redact', 'Security'),
-  _ToolSpec('PDF to PDF/A', 'Convert to archival-grade PDF/A format.', Icons.verified, AppColors.catSecurity, '/pdfa', 'Security'),
+  _ToolSpec('Protect PDF', 'Add a password to lock your PDF.', Icons.lock, AppColors.catSecurity, '/tools?tool=merge', 'Security'),
+  _ToolSpec('Unlock PDF', 'Remove the password from a PDF.', Icons.lock_open, AppColors.catSecurity, '/tools?tool=merge', 'Security'),
+  _ToolSpec('Redact PDF', 'Permanently black out sensitive content.', Icons.visibility_off, AppColors.catSecurity, '/tools?tool=merge', 'Security'),
+  _ToolSpec('PDF to PDF/A', 'Convert to archival-grade PDF/A format.', Icons.verified, AppColors.catSecurity, '/tools?tool=merge', 'Security'),
 
   // AI (red)
-  _ToolSpec('AI Summarize', 'Get instant AI summaries of any PDF.', Icons.auto_awesome, AppColors.catAi, '/ai/summarize', 'AI'),
-  _ToolSpec('AI Translate', 'Translate PDFs into 25+ languages.', Icons.translate, AppColors.catAi, '/ai/translate', 'AI'),
-  _ToolSpec('Chat with PDF', 'Ask questions, get cited answers.', Icons.chat_bubble_outline, AppColors.catAi, '/ai/chat', 'AI'),
-  _ToolSpec('AI Fill Forms', 'Auto-fill PDF forms from context.', Icons.assignment_turned_in, AppColors.catAi, '/ai/fill-forms', 'AI'),
-  _ToolSpec('AI Extract Data', 'Pull structured data from any PDF.', Icons.data_object, AppColors.catAi, '/ai/extract', 'AI'),
+  _ToolSpec('AI Summarize', 'Get instant AI summaries of any PDF.', Icons.auto_awesome, AppColors.catAi, '/tools?tool=merge', 'AI'),
+  _ToolSpec('AI Translate', 'Translate PDFs into 25+ languages.', Icons.translate, AppColors.catAi, '/tools?tool=merge', 'AI'),
+  _ToolSpec('Chat with PDF', 'Ask questions, get cited answers.', Icons.chat_bubble_outline, AppColors.catAi, '/tools?tool=merge', 'AI'),
+  _ToolSpec('AI Fill Forms', 'Auto-fill PDF forms from context.', Icons.assignment_turned_in, AppColors.catAi, '/tools?tool=merge', 'AI'),
+  _ToolSpec('AI Extract Data', 'Pull structured data from any PDF.', Icons.data_object, AppColors.catAi, '/tools?tool=extract', 'AI'),
 ];
 
 // ---------- WHY PROPDFS ----------

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/theme.dart';
 
 import '../../core/localization/app_localizations.dart';
 import '../../core/accessibility/accessibility_provider.dart';
@@ -51,6 +52,7 @@ class _AccessibilityScreenState extends ConsumerState<AccessibilityScreen> {
     final notifier = ref.read(accessibilityProvider.notifier);
 
     return Scaffold(
+        backgroundColor: AppColors.surfaceLight,
       appBar: AppBar(title: Text(l10n.get('accessibility'))),
       body: ListView(
         children: [

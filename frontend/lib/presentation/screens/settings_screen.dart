@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/theme.dart';
 
 import '../providers/auth_provider.dart';
 import '../../core/localization/app_localizations.dart';
@@ -15,6 +16,7 @@ class SettingsScreen extends ConsumerWidget {
     final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
+        backgroundColor: AppColors.surfaceLight,
       appBar: AppBar(title: Text(l10n.get('settings'))),
       body: ListView(
         children: [

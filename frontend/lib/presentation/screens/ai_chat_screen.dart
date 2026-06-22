@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/theme.dart';
 
 import '../../core/api_client.dart';
 import '../../core/localization/app_localizations.dart';
@@ -158,6 +159,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
     final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
+        backgroundColor: AppColors.surfaceLight,
       appBar: AppBar(
         title: Text(l10n.get('ai_chat')),
         actions: [

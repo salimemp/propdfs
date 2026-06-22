@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../../core/theme.dart';
 
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
@@ -193,6 +194,7 @@ class _DocumentListScreenState extends ConsumerState<DocumentListScreen> {
     if (auth?.user == null) {
       // Auth guard will redirect, but render an empty scaffold in the meantime.
       return Scaffold(
+        backgroundColor: AppColors.surfaceLight,
         appBar: AppBar(title: const Text('My Documents')),
           body: const Center(child: CircularProgressIndicator()),
       );

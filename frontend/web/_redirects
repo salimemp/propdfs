@@ -1,0 +1,5 @@
+# Cloudflare Pages SPA fallback — every unknown path returns index.html
+# so Flutter web's GoRouter can take over on the client.
+# Required when using PathUrlStrategy (clean URLs like /blog instead of /#/blog).
+# The trailing `200` means "serve this with HTTP 200, not 301/302".
+/*    /index.html   200

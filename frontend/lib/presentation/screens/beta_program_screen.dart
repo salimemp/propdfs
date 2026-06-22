@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/theme.dart';
 
 import '../../core/api_client.dart';
 import '../../core/localization/app_localizations.dart';
@@ -188,6 +189,7 @@ class _BetaProgramScreenState extends ConsumerState<BetaProgramScreen> {
     final isAuthenticated = auth?.user != null;
 
     return Scaffold(
+        backgroundColor: AppColors.surfaceLight,
       appBar: AppBar(title: Text(l10n.get('beta_program'))),
       body: _isEnrolled
           ? _buildEnrolledView(l10n)

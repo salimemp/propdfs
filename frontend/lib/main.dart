@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 
 import 'router/app_router.dart';
@@ -30,6 +31,13 @@ const String _environment = String.fromEnvironment(
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Use path-based URLs (/blog, /pricing, /tools) instead of hash URLs
+  // (/#/blog). Requires `frontend/web/_redirects` to send every unknown
+  // path to /index.html so Cloudflare Pages doesn't 404 on a hard reload.
+  if (kIsWeb) {
+    usePathUrlStrategy();
+  }
 
   // SentryFlutter.init early-returns when DSN is empty, so dev builds
   // (no --dart-define) work without any guard. The `beforeSend` filter

@@ -20,7 +20,11 @@ const Map<String, String> _kTaskTypes = {
 };
 
 class PdfToolsScreen extends ConsumerStatefulWidget {
-  const PdfToolsScreen({super.key});
+  /// Optional tool id passed via `?tool=merge` in the URL. When set and present
+  /// in the supported tool list, the screen opens with that tool pre-selected.
+  /// Unknown values fall back to 'merge' so links never land on a blank UI.
+  final String? initialTool;
+  const PdfToolsScreen({super.key, this.initialTool});
 
   @override
   ConsumerState<PdfToolsScreen> createState() => _PdfToolsScreenState();
@@ -28,7 +32,20 @@ class PdfToolsScreen extends ConsumerStatefulWidget {
 
 class _PdfToolsScreenState extends ConsumerState<PdfToolsScreen> {
   final List<_PickedFile> _selectedFiles = [];
-  String _selectedTool = 'merge';
+  late String _selectedTool;
+
+  @override
+  void initState() {
+    super.initState();
+    // Resolve the initial tool from the URL ?tool= query param, falling back
+    // to 'merge' if the slug doesn't match any known tool.
+    final supported =
+        _kTaskTypes.keys.toSet(); // same id set as _tools list below
+    _selectedTool =
+        (widget.initialTool != null && supported.contains(widget.initialTool))
+            ? widget.initialTool!
+            : 'merge';
+  }
   bool _isUploading = false;
   bool _isPolling = false;
   _TaskStatus? _taskStatus;

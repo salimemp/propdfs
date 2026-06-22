@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/theme.dart';
 
 
 class PrivacyPolicyScreen extends ConsumerWidget {
@@ -8,6 +9,7 @@ class PrivacyPolicyScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
+        backgroundColor: AppColors.surfaceLight,
       appBar: AppBar(
         title: const Text('Privacy Policy'),
         actions: [
