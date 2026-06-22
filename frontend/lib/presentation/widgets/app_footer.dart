@@ -79,21 +79,30 @@ class AppFooter extends ConsumerWidget {
       ],
     );
 
-    final links = Wrap(
-      alignment: WrapAlignment.center,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      spacing: 16,
-      runSpacing: 4,
-      children: [
-        _FooterLink('Pricing', '/pricing'),
-        _FooterLink('Tools', '/tools'),
-        _FooterLink('Blog', '/blog'),
-        _FooterLink('vs alternatives', '/compare'),
-        _FooterLink('About', '/about'),
-        _FooterLink('Contact', '/contact'),
-        _FooterLink('Privacy', '/privacy'),
-        _FooterLink('Terms', '/terms'),
-      ],
+    // Use a horizontally-scrolling Row instead of `Wrap`. `Wrap` reports an
+    // infinite intrinsic height when used as a Scaffold `bottomNavigationBar`
+    // in Flutter web (CanvasKit renderer), which collapses the body to 0×0.
+    // `SingleChildScrollView` with `Axis.horizontal` gives a definite
+    // intrinsic height (the height of the tallest link button), and on
+    // narrow screens the user can swipe to reach any link.
+    final links = SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      physics: const AlwaysScrollableScrollPhysics(),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          _FooterLink('Pricing', '/pricing'),
+          _FooterLink('Tools', '/tools'),
+          _FooterLink('Blog', '/blog'),
+          _FooterLink('vs alternatives', '/compare'),
+          _FooterLink('About', '/about'),
+          _FooterLink('Contact', '/contact'),
+          _FooterLink('Privacy', '/privacy'),
+          _FooterLink('Terms', '/terms'),
+        ],
+      ),
     );
 
     return Material(
