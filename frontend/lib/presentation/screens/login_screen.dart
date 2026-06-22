@@ -76,17 +76,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       backgroundColor: const Color(0xFF0a0a0f),
       appBar: const AppHeader(showSignIn: false),
       bottomNavigationBar: const AppFooter(),
-      body: Column(
-        children: [
-          Expanded(
-            child: Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 400),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
+      // Plain SingleChildScrollView — earlier Column > Expanded > Center >
+      // SingleChildScrollView caused the body to collapse to 0 height in
+      // Flutter web (visible as a blank canvas). SafeArea + Center still
+      // keeps the form narrow on wide screens.
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 400),
+              child: Form(
+                key: _formKey,
+                child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         // Title
@@ -312,9 +314,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ),
             ),
           ),
-        ],
-      ),
-    );
+        );
   }
 }
 
