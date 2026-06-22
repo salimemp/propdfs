@@ -19,23 +19,34 @@ class HomeScreen extends ConsumerWidget {
       appBar: AppBar(
         title: Text(l10n.get('app_name')),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined),
-            onPressed: () {},
-          ),
-          PopupMenuButton<String>(
-            onSelected: (value) {
-              if (value == 'logout') {
-                ref.read(authStateProvider.notifier).logout();
-              } else if (value == 'settings') {
-                context.go('/settings');
-              }
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem(value: 'settings', child: Text('Settings')),
-              const PopupMenuItem(value: 'logout', child: Text('Logout')),
-            ],
-          ),
+          if (user == null)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: FilledButton.icon(
+                onPressed: () => context.go('/login'),
+                icon: const Icon(Icons.login, size: 18),
+                label: const Text('Sign in'),
+              ),
+            )
+          else ...[
+            IconButton(
+              icon: const Icon(Icons.notifications_outlined),
+              onPressed: () {},
+            ),
+            PopupMenuButton<String>(
+              onSelected: (value) {
+                if (value == 'logout') {
+                  ref.read(authStateProvider.notifier).logout();
+                } else if (value == 'settings') {
+                  context.go('/settings');
+                }
+              },
+              itemBuilder: (context) => [
+                const PopupMenuItem(value: 'settings', child: Text('Settings')),
+                const PopupMenuItem(value: 'logout', child: Text('Logout')),
+              ],
+            ),
+          ],
         ],
       ),
       body: SingleChildScrollView(
@@ -44,14 +55,18 @@ class HomeScreen extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Hello, ${user?.fullName?.split(' ').first ?? 'User'}!',
+              user == null
+                  ? 'Welcome to ProPDFs'
+                  : 'Hello, ${user.fullName?.split(' ').first ?? 'User'}!',
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(height: 4),
             Text(
-              'What would you like to do with your documents today?',
+              user == null
+                  ? 'Convert, merge, split, compress, and analyse PDFs — no sign-up required to start.'
+                  : 'What would you like to do with your documents today?',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 color: Colors.grey[600],
               ),
@@ -121,28 +136,28 @@ class HomeScreen extends ConsumerWidget {
                     Icons.auto_awesome,
                     l10n.get('ai_summarize'),
                     Colors.orange,
-                    () => context.go('/ai-chat'),
+                    () => context.go('/tools'),
                   ),
                   _buildAIFeatureCard(
                     context,
                     Icons.translate,
                     l10n.get('ai_translate'),
                     Colors.blue,
-                    () => context.go('/ai-chat'),
+                    () => context.go('/tools'),
                   ),
                   _buildAIFeatureCard(
                     context,
                     Icons.chat_bubble,
                     l10n.get('chat_with_doc'),
                     Colors.green,
-                    () => context.go('/ai-chat'),
+                    () => context.go('/tools'),
                   ),
                   _buildAIFeatureCard(
                     context,
                     Icons.document_scanner,
                     l10n.get('ocr'),
                     Colors.purple,
-                    () => context.go('/scan'),
+                    () => context.go('/tools'),
                   ),
                 ],
               ),
@@ -218,46 +233,79 @@ class HomeScreen extends ConsumerWidget {
 
             const SizedBox(height: 24),
 
-            // Recent Documents
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  l10n.get('recent_documents'),
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
+            // Recent Documents — only show when signed in.
+            if (user != null) ...[
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    l10n.get('recent_documents'),
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => context.go('/documents'),
+                    child: Text(l10n.get('view_all')),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Card(
+                child: ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: Colors.red[50],
+                    child: Icon(Icons.picture_as_pdf, color: Colors.red[400]),
+                  ),
+                  title: const Text('Sample Document.pdf'),
+                  subtitle: Text('2.4 MB • 12 pages', style: TextStyle(color: Colors.grey[500])),
+                  trailing: const Icon(Icons.more_vert),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Card(
+                child: ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: Colors.blue[50],
+                    child: Icon(Icons.description, color: Colors.blue[400]),
+                  ),
+                  title: const Text('Report.docx'),
+                  subtitle: Text('1.1 MB', style: TextStyle(color: Colors.grey[500])),
+                  trailing: const Icon(Icons.more_vert),
+                ),
+              ),
+            ] else ...[
+              // Guest CTA — show a single clear card telling the visitor
+              // what they can do without signing in vs after signing in.
+              Card(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'No account required',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Browse the tools above and convert documents straight from your browser. Sign in only if you want to save your work to the cloud.',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                      const SizedBox(height: 12),
+                      OutlinedButton.icon(
+                        onPressed: () => context.go('/register'),
+                        icon: const Icon(Icons.person_add, size: 18),
+                        label: const Text('Create a free account'),
+                      ),
+                    ],
                   ),
                 ),
-                TextButton(
-                  onPressed: () => context.go('/documents'),
-                  child: Text(l10n.get('view_all')),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Card(
-              child: ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: Colors.red[50],
-                  child: Icon(Icons.picture_as_pdf, color: Colors.red[400]),
-                ),
-                title: const Text('Sample Document.pdf'),
-                subtitle: Text('2.4 MB • 12 pages', style: TextStyle(color: Colors.grey[500])),
-                trailing: const Icon(Icons.more_vert),
               ),
-            ),
-            const SizedBox(height: 8),
-            Card(
-              child: ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: Colors.blue[50],
-                  child: Icon(Icons.description, color: Colors.blue[400]),
-                ),
-                title: const Text('Report.docx'),
-                subtitle: Text('1.1 MB', style: TextStyle(color: Colors.grey[500])),
-                trailing: const Icon(Icons.more_vert),
-              ),
-            ),
+            ],
           ],
         ),
       ),

@@ -30,9 +30,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
-    
+
     final notifier = ref.read(authStateProvider.notifier);
     await notifier.login(_emailController.text.trim(), _passwordController.text);
+
+    // If login succeeded, navigate to the `next` param (or /home).
+    final state = ref.read(authStateProvider);
+    if (state.value?.user != null && mounted) {
+      final next = GoRouterState.of(context).uri.queryParameters['next'];
+      if (next != null && next.isNotEmpty && next.startsWith('/')) {
+        context.go(next);
+      } else {
+        context.go('/home');
+      }
+    }
   }
 
   Future<void> _loginWithGoogle() async {

@@ -23,32 +23,74 @@ import '../presentation/providers/auth_provider.dart';
 
 import 'dart:async';
 
+// Routes that require a signed-in user. Everything else is public.
+const _protectedRoutes = {
+  '/documents',
+  '/tools',
+  '/settings',
+  '/scan',
+  '/accessibility',
+  '/ai-chat',
+  '/language',
+  '/delete-account',
+  '/my-data',
+};
+
+// Routes where a signed-in user shouldn't sit (they'd just bounce to /home).
+const _authOnlyRoutes = {'/login', '/register', '/auth/callback'};
+
+bool _isProtected(String location) {
+  // A path is protected if it equals one of the protected paths, or is a
+  // sub-route (e.g. /tools/anything). We use startsWith rather than ==
+  // because GoRouter matches longer paths against their parent.
+  for (final p in _protectedRoutes) {
+    if (location == p || location.startsWith('$p/')) return true;
+  }
+  return false;
+}
+
+bool _isAuthOnly(String location) => _authOnlyRoutes.contains(location);
+
 final appRouterProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateProvider);
 
   return GoRouter(
-    initialLocation: '/',
+    // Land on the public home page directly. No splash → no bounce.
+    initialLocation: '/home',
     // SentryNavigatorObserver emits a breadcrumb on every route push/replace,
     // so when an error fires you can see the exact navigation path the user
     // took to reach it. No-op when Sentry isn't initialised.
     observers: [SentryNavigatorObserver()],
     redirect: (context, state) {
       final isAuthenticated = authState.value?.user != null;
-      final isAuthRoute = state.matchedLocation == '/login' || 
-                          state.matchedLocation == '/register' ||
-                          state.matchedLocation == '/auth/callback';
+      final location = state.matchedLocation;
 
-      if (!isAuthenticated && !isAuthRoute) {
-        return '/login';
+      // Public pages: never redirect.
+      if (!_isProtected(location) && !_isAuthOnly(location)) {
+        return null;
       }
-      if (isAuthenticated && isAuthRoute) {
+
+      // Protected page + not signed in → bounce to login (but remember where
+      // they were going so we can resume after sign-in).
+      if (_isProtected(location) && !isAuthenticated) {
+        return '/login?next=${Uri.encodeComponent(location)}';
+      }
+
+      // Auth-only page (login/register) + already signed in → home.
+      if (_isAuthOnly(location) && isAuthenticated) {
         return '/home';
       }
+
       return null;
     },
     routes: [
       GoRoute(
+        // `/` is kept as a backward-compat alias — redirects to /home.
         path: '/',
+        redirect: (context, state) => '/home',
+      ),
+      GoRoute(
+        path: '/splash',
         builder: (context, state) => const SplashScreen(),
       ),
       GoRoute(
