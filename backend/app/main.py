@@ -78,6 +78,15 @@ async def lifespan(app: FastAPI):
 
     # Database
     async with engine.begin() as conn:
+        # First, heal any schema drift from earlier deploys (adds
+        # columns that the model has but the live DB is missing).
+        # See app/db/migrations.py for the additive-only list.
+        from app.db.migrations import run_additive_migrations
+
+        await run_additive_migrations(conn)
+        # Then create any missing tables. Safe to call after the
+        # migration step — IF NOT EXISTS makes both no-ops on
+        # subsequent deploys.
         await conn.run_sync(Base.metadata.create_all)
         await conn.run_sync(BetaBase.metadata.create_all)
 
