@@ -79,7 +79,7 @@ async def get_current_active_user(
 ) -> User:
     if current_user.status != UserStatus.ACTIVE:
         raise HTTPException(status_code=403, detail="User account is not active")
-    return user
+    return current_user
 
 
 async def require_admin(

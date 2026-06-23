@@ -59,6 +59,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Pin Node 24 for the npm/npx steps below. GitHub's ubuntu-latest
+      # runner ships with Node 20 by default; @railway/cli and
+      # @sentry/cli both work fine on 24, and 24 is the current LTS
+      # line (Node 20 is end-of-life April 2026).
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
       # Deploy backend to Railway Staging
       - name: Install Railway CLI
         run: npm install -g @railway/cli
@@ -109,6 +117,12 @@ jobs:
     environment: production
     steps:
       - uses: actions/checkout@v4
+
+      # Pin Node 24 for the npm/npx steps below. See deploy-staging
+      # for the rationale.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
 
       # Deploy backend to Railway Production
       - name: Install Railway CLI
