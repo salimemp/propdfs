@@ -1,18 +1,24 @@
-#!/usr/bin/env python3
-"""
-Run the queued blog topics through harborseo.ai and POST each one to
+"""Run the queued blog topics through harborseo.ai and POST each one to
 the backend. The queue is `scripts/_seeds/topics.json` — edit that
 file (or open a PR against it) to control what gets published.
 
 Invoked by the GitHub Action `.github/workflows/seo.yml` on manual
 dispatch with `publish=true`. Can also be run locally:
 
-    HARBORSEO_API_KEY=... PROPDFS_ADMIN_TOKEN=... \
+    HARBORSEO_API_KEY=... PROPDFS_ADMIN_TOKEN=... \\
       python scripts/publish_queued_posts.py
 
 The script is idempotent — if a post with the same slug already exists
 on the backend, we skip it (the API returns 409 and we treat that as
 "already published, move on").
+
+## Token handling
+
+We expect `PROPDFS_ADMIN_TOKEN` to be a REFRESH token (output of
+`scripts/get_admin_token.py`). At the start of every run we POST to
+`/auth/refresh` to mint a fresh 60-min access token, then use that for
+the actual blog POST. This way the workflow survives long between
+runs without manual rotation.
 """
 import json
 import os
@@ -21,12 +27,38 @@ from pathlib import Path
 
 # Allow running as a script.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from scripts.harborseo import HarborSeoClient, BlogPost, PROPDFS_API, PROPDFS_ADMIN_TOKEN  # noqa: E402
+from scripts.harborseo import (  # noqa: E402
+    HarborSeoClient,
+    BlogPost,
+    PROPDFS_API,
+    PROPDFS_ADMIN_TOKEN,
+)
 
 import httpx  # noqa: E402
 
 
 QUEUE_PATH = Path(__file__).resolve().parent / "_seeds" / "topics.json"
+
+
+def fresh_access_token() -> tuple[str | None, str]:
+    """Exchange the stored refresh token for a fresh access token.
+
+    Returns (access_token, error). One of the two is non-None.
+    """
+    if not PROPDFS_ADMIN_TOKEN:
+        return None, "PROPDFS_ADMIN_TOKEN not set"
+    with httpx.Client(timeout=15.0) as c:
+        try:
+            r = c.post(
+                f"{PROPDFS_API}/auth/refresh",
+                json={"refresh_token": PROPDFS_ADMIN_TOKEN},
+            )
+            r.raise_for_status()
+            return r.json().get("access_token"), ""
+        except httpx.HTTPStatusError as e:
+            return None, f"refresh failed: {e.response.status_code} {e.response.text}"
+        except Exception as e:
+            return None, f"refresh failed: {e}"
 
 
 def already_published(slug: str) -> bool:
@@ -43,18 +75,20 @@ def already_published(slug: str) -> bool:
     return False
 
 
-def publish(post: BlogPost) -> tuple[bool, str]:
-    if not PROPDFS_ADMIN_TOKEN:
-        return False, "PROPDFS_ADMIN_TOKEN not set"
+def publish(post: BlogPost, access_token: str) -> tuple[bool, str]:
     with httpx.Client(timeout=30.0) as c:
         r = c.post(
             f"{PROPDFS_API}/blog/posts",
             json=post.to_dict(),
             headers={
-                "Authorization": f"Bearer {PROPDFS_ADMIN_TOKEN}",
+                "Authorization": f"Bearer {access_token}",
                 "Content-Type": "application/json",
             },
         )
+        if r.status_code == 401:
+            return False, "401 — access token rejected (rotate PROPDFS_ADMIN_TOKEN)"
+        if r.status_code == 403:
+            return False, "403 — user is not admin (re-run create_admin.py)"
         if r.status_code == 409:
             return False, f"409 — slug '{post.slug}' already exists"
         r.raise_for_status()
@@ -70,6 +104,13 @@ def main() -> int:
     if not queue:
         print("queue is empty — nothing to publish")
         return 0
+
+    print("→ Exchanging refresh token for fresh access token …")
+    access_token, err = fresh_access_token()
+    if not access_token:
+        print(f"✗ {err}", file=sys.stderr)
+        return 1
+    print("  ✓ fresh access token minted")
 
     client = HarborSeoClient()
     published = 0
@@ -87,7 +128,7 @@ def main() -> int:
             print(f"  skip — '{post.slug}' already live")
             skipped += 1
             continue
-        ok, msg = publish(post)
+        ok, msg = publish(post, access_token)
         print(f"  {'✓' if ok else '✗'} {msg}")
         if ok:
             published += 1
