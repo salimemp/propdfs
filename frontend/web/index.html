@@ -18,6 +18,18 @@
   <meta name="author" content="ProPDFs">
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
   <meta name="googlebot" content="index, follow, max-image-preview:large, max-snippet:-1">
+
+  <!-- Google Search Console verification. Two methods deployed for
+       belt-and-suspenders reliability:
+         1) This <meta> tag (the recommended method for SPAs —
+            Google reads the head from any page that hits the
+            canonical URL).
+         2) The HTML file at /googleBguSVNY65bi-pvRVGT8KqpBUnwMutY6BWAqkUBrKTR0.html
+            with the matching `google-site-verification:` body
+            (fallback in case a crawler hits that path first).
+       Token belongs to the propdfs.com property in Google Search
+       Console. Rotate the token if the property is ever moved. -->
+  <meta name="google-site-verification" content="BguSVNY65bi-pvRVGT8KqpBUnwMutY6BWAqkUBrKTR0">
   <link rel="canonical" href="https://propdfs.com/">
 
   <!-- Language alternates. We translate the UI into 25+ locales; every

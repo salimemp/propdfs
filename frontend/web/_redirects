@@ -17,6 +17,11 @@
 /rss.xml        /rss.xml       200
 /feed.xml       /feed.xml      200
 /atom.xml       /atom.xml      200
+# Google Search Console verification file. Body is
+# `google-site-verification: googleBguSVNY65bi...html` (a single
+# line, the standard Google file-format token). Belt-and-suspenders
+# with the <meta> tag in index.html.
+/googleBguSVNY65bi-pvRVGT8KqpBUnwMutY6BWAqkUBrKTR0.html /googleBguSVNY65bi-pvRVGT8KqpBUnwMutY6BWAqkUBrKTR0.html 200
 
 # SPA fallback — every unknown path returns index.html so GoRouter
 # can take over on the client. Required with PathUrlStrategy so
