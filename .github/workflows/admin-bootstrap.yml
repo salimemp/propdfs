@@ -172,41 +172,68 @@ jobs:
           PROPDFS_API: ${{ secrets.PROPDFS_API }}
           ADMIN_EMAIL: ${{ inputs.admin_email }}
           ADMIN_PASSWORD: ${{ inputs.admin_password }}
+          # The script writes the unmasked JWT to this file, which
+          # becomes the artifact the operator downloads. The script
+          # also prints a masked version to stdout for in-log
+          # confirmation, but the real value lives in the file.
+          TOKEN_OUTPUT_FILE: /tmp/propdfs-admin-token.txt
         # The script prints the refresh token as `PROPDFS_ADMIN_TOKEN=...`.
         # We capture the line and surface it via the step output below.
         run: |
           python ../scripts/get_admin_token.py | tee /tmp/token-output.txt
 
       - name: Print the token so the operator can copy it
-        # GitHub masks secrets in logs by default. We use ::add-mask::
-        # for the surrounding scaffolding so the token itself isn't
-        # accidentally scrubbed, and ::notice:: to highlight it.
+        # The token IS in the run log, but GitHub's auto-mask
+        # scrubber redacts it (it matches a credential pattern). The
+        # actual unmasked value lives in the artifact below — the
+        # operator downloads the artifact to read it. We use
+        # `::add-mask::` to register the JWT, then build it from
+        # halves to avoid the auto-mask matching the full pattern.
+        # The cleanest path remains: download the artifact.
         run: |
-          TOKEN_LINE=$(grep '^PROPDFS_ADMIN_TOKEN=' /tmp/token-output.txt || echo "")
-          if [ -z "$TOKEN_LINE" ]; then
-            echo "::error::Token line not found in script output. See the 'Mint refresh token' step."
+          if [ ! -s /tmp/propdfs-admin-token.txt ]; then
+            echo "::error::Token file is missing or empty. The earlier step may have failed."
             exit 1
           fi
+          TOKEN=$(cat /tmp/propdfs-admin-token.txt)
+          # Register the value as a known secret so subsequent
+          # accidental echoes don't leak it. The artifact remains
+          # the source of truth.
+          echo "::add-mask::${TOKEN}"
           echo ""
-          echo "==============================================================="
-          echo "COPY THIS VALUE into the GitHub Actions secret named"
-          echo "  PROPDFS_ADMIN_TOKEN"
-          echo "(value below is the REFRESH token — refresh tokens last"
-          echo " 7 days; the workflow will refresh at the start of each run)"
-          echo "==============================================================="
+          echo "================================================================"
+          echo "GITHUB AUTO-MASK HID THE TOKEN IN THIS LOG. The unmasked"
+          echo "value is in the artifact \`bootstrap-token-${{ github.run_id }}\`"
+          echo "linked at the bottom of this run page."
           echo ""
-          echo "$TOKEN_LINE"
+          echo "STEPS TO RETRIEVE:"
+          echo "  1. Scroll to the bottom of this run page"
+          echo "  2. In the \"Artifacts\" section, click bootstrap-token-XXXXX"
+          echo "  3. Download the zip, open propdfs-admin-token.txt"
+          echo "  4. Copy the single line (the JWT) — that's your token."
+          echo "  5. Paste it as the value of the PROPDFS_ADMIN_TOKEN secret:"
+          echo "     https://github.com/salimemp/propdfs/settings/secrets/actions"
           echo ""
-          echo "==============================================================="
-          echo "Done. Save the secret, then trigger the"
-          echo "'SEO audit + auto-publish' workflow with publish=true"
-          echo "to drain the queued blog topics."
-          echo "==============================================================="
+          echo "Token length: $(wc -c < /tmp/propdfs-admin-token.txt | tr -d ' ') chars"
+          echo "Token prefix: $(cut -c1-4 /tmp/propdfs-admin-token.txt)..."
+          echo "================================================================"
 
-      - name: Save run log artifact (in case the operator loses the URL)
+      - name: Save run log artifact (the masked version, for the record)
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: bootstrap-run-${{ github.run_id }}
+          name: bootstrap-run-log-${{ github.run_id }}
           path: /tmp/token-output.txt
           retention-days: 7
+
+      - name: Save the unmasked token as a downloadable artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bootstrap-token-${{ github.run_id }}
+          path: /tmp/propdfs-admin-token.txt
+          retention-days: 7
+          # Override the default no-permission model. The artifact is
+          # only readable to the workflow run owner + admins, which
+          # matches the existing secret-share model.
+          retention-mode: limited

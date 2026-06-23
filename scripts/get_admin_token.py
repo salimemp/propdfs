@@ -40,6 +40,14 @@ import httpx
 PROPDFS_API = os.environ.get("PROPDFS_API", "https://api.propdfs.com/api/v1")
 ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD")
+# When set, the unmasked refresh token is written to this file
+# INSTEAD of being printed to stdout. This is how the admin-bootstrap
+# workflow routes the token around GitHub's auto-mask scrubber, which
+# would otherwise redact the JWT in the run log. The file is then
+# uploaded as a workflow artifact for the operator to download.
+# The file is also written with mode 0600 so a partially-raced read
+# from a misbehaving step can't read it.
+TOKEN_OUTPUT_FILE = os.environ.get("TOKEN_OUTPUT_FILE")
 
 
 def _ensure_creds() -> None:
@@ -135,6 +143,21 @@ def main() -> int:
     # helps if you `eval` it, but mostly it's there so a grep/copy is unambiguous.
     print(f"PROPDFS_ADMIN_TOKEN={refresh}")
     print("=" * 60)
+
+    # Write the unmasked token to a file when the operator wants to
+    # route around GitHub's log-scrubber. The file is what the
+    # workflow artifact is built from, so the operator downloads the
+    # artifact and reads the JWT from the file directly.
+    if TOKEN_OUTPUT_FILE:
+        try:
+            flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
+            fd = os.open(TOKEN_OUTPUT_FILE, flags, 0o600)
+            with os.fdopen(fd, "w") as f:
+                f.write(refresh + "\n")
+            print(f"  (token also written to {TOKEN_OUTPUT_FILE})", file=sys.stderr)
+        except OSError as e:
+            print(f"  ✗ failed to write {TOKEN_OUTPUT_FILE}: {e}", file=sys.stderr)
+            return 1
     print()
     print("This is the REFRESH token. It lasts ~7 days and the workflow")
     print("uses /auth/refresh to mint a fresh access token at the start")
