@@ -126,10 +126,15 @@ jobs:
         working-directory: backend
         run: |
           python -m pip install --upgrade pip
-          # We need sqlalchemy + asyncpg for the DB UPDATE in create_admin.py.
-          # Most other deps are already in requirements.txt — install only what
-          # the bootstrap script needs to keep the step fast.
-          pip install -q "sqlalchemy>=2.0" "asyncpg>=0.27" httpx pyotp qrcode
+          # We need sqlalchemy + asyncpg + psycopg2-binary for the DB UPDATE
+          # in create_admin.py. Most other deps are already in
+          # requirements.txt — install only what the bootstrap script needs
+          # to keep the step fast. `psycopg2-binary` is the sync Postgres
+          # driver create_engine() defaults to when DATABASE_URL has the
+          # plain `postgresql://` scheme (the script strips the
+          # `+asyncpg` suffix before calling create_engine so the
+          # async engine in app.db.session doesn't get reused here).
+          pip install -q "sqlalchemy>=2.0" "asyncpg>=0.27" "psycopg2-binary" httpx pyotp qrcode
 
       - name: Bootstrap admin (register + promote to admin)
         working-directory: backend
