@@ -46,7 +46,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Pre-flight: DNS + endpoint reachability
+      - name: "Pre-flight: DNS + endpoint reachability"
         env:
           PROPDFS_API: ${{ secrets.PROPDFS_API }}
         # Fail fast with a human-readable message instead of a stack
