@@ -53,6 +53,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Optional
 
+import html2text
 import httpx
 
 # ─── Config ────────────────────────────────────────────────────────────────
@@ -313,18 +314,31 @@ class HarborSeoClient:
         language: str = "en",
     ) -> dict:
         """Create an article. Returns the initial article object
-        (status usually "pending" or "generating"). Use
-        `wait_for_article` to poll for completion.
+        (status usually "queued" — the actual generation runs
+        async on the harborseo side). Use `wait_for_article` to
+        poll for completion.
 
-        Body shape is best-effort and may need iteration against
-        the real API — see scripts/_probe_harborseo_create.py for
-        a one-shot tool that tries a few candidate bodies and
-        reports which one returns 200/201.
+        Body shape (verified against the real API 2026-06-23):
+          Required: site_id, keywords (string, non-empty),
+                    topic OR title
+          Optional: target_word_count, word_count, type, language,
+                    tone_of_voice, category
+
+        The original 400 the operator was seeing was a body-shape
+        mismatch: the API expects `keywords` as a comma-separated
+        STRING, not a list of strings. We coerce here.
         """
+        # The real harborseo API takes `keywords` as a single
+        # comma-separated string. Newline-separated also works;
+        # comma is the convention.
+        keywords_str = ", ".join(k.strip() for k in keywords if k.strip())
+        if not keywords_str:
+            raise ValueError("create_article requires at least one non-empty keyword")
+
         body = {
             "site_id": site_id,
             "topic": topic,
-            "keywords": keywords,
+            "keywords": keywords_str,
             "target_word_count": target_words,
             "language": language,
         }
@@ -333,9 +347,6 @@ class HarborSeoClient:
         try:
             return self._request("POST", "/articles", json_body=body)
         except httpx.HTTPStatusError as e:
-            # Surface the response body so the operator can see
-            # what the API actually wants — the default httpx
-            # message only includes the status line.
             body_text = e.response.text[:500] if e.response else "(no body)"
             raise RuntimeError(
                 f"POST /articles {e.response.status_code}: {body_text} "
@@ -460,16 +471,39 @@ class HarborSeoClient:
         category: str,
         target_words: int,
     ) -> BlogPost:
-        """Map a completed harborseo article dict to our BlogPost."""
-        # harborseo returns the article body under several possible
-        # keys depending on the generator version. Try them all.
-        content = (
+        """Map a completed harborseo article dict to our BlogPost.
+
+        harborseo returns `content` as HTML (a full <h1>...</html>
+        document with embedded styles). Our ProPDFs blog backend
+        expects Markdown. We convert with html2text; the result is
+        clean enough for a backend that renders Markdown to HTML
+        client-side.
+
+        Title, slug, word_count come straight from harborseo.
+        meta_description is either returned by the API or
+        extracted from the first paragraph of the converted
+        Markdown as a fallback.
+        """
+        # harborseo returns the article body as HTML. The shape
+        # varies across the API's history; try several keys.
+        raw_content = (
             article.get("content")
             or article.get("body")
             or article.get("markdown")
             or article.get("text")
             or ""
         )
+        # Detect HTML vs Markdown. harborseo ships HTML; if the
+        # future version returns Markdown, leave it as-is.
+        if "<" in raw_content and ">" in raw_content and "</" in raw_content:
+            h = html2text.HTML2Text()
+            h.body_width = 0  # don't wrap
+            h.ignore_links = False
+            h.ignore_images = False
+            content = h.handle(raw_content).strip()
+        else:
+            content = raw_content.strip()
+
         title = article.get("title") or topic
         slug = article.get("slug") or self._slugify(title)
         meta = (
@@ -478,6 +512,18 @@ class HarborSeoClient:
             or article.get("excerpt")
             or ""
         )
+        if not meta and content:
+            # Extract the first non-heading paragraph as a
+            # ~150 char meta description. Google's snippet
+            # algorithm prefers 120-160 chars.
+            for line in content.splitlines():
+                line = line.strip()
+                if not line or line.startswith("#") or line.startswith("!"):
+                    continue
+                plain = re.sub(r"[*_`]+", "", line)
+                if 60 <= len(plain) <= 320:
+                    meta = plain[:157].rsplit(" ", 1)[0] + "."
+                    break
         word_count = article.get("word_count") or len(content.split())
         return BlogPost(
             title=title,

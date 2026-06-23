@@ -90,7 +90,7 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install deps
-        run: pip install httpx
+        run: pip install httpx html2text
       - name: Generate and publish blog posts
         env:
           HARBORSEO_API_KEY: ${{ secrets.HARBORSEO_API_KEY }}
