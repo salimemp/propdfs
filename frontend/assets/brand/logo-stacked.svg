@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- ProPDFs stacked lockup — mark on top, wordmark below.
+     Use for square placements: avatars, social cards, splash. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200" role="img" aria-label="ProPDFs">
+  <title>ProPDFs</title>
+  <g transform="translate(68, 16)">
+    <rect x="0" y="0" width="64" height="64" rx="14" ry="14" fill="#0F172A"/>
+    <path d="M 64 0 L 64 16 L 48 0 Z" fill="#DC2626"/>
+    <path d="M 18 16
+             L 18 50
+             L 26 50
+             L 26 38
+             L 36 38
+             C 43 38 48 33 48 27
+             C 48 21 43 16 36 16
+             Z
+             M 26 23
+             L 35 23
+             C 38 23 40 25 40 27
+             C 40 29 38 31 35 31
+             L 26 31
+             Z" fill="#FFFFFF"/>
+  </g>
+  <g transform="translate(100, 130)" text-anchor="middle" fill="#0F172A">
+    <text x="0" y="0"
+          font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif"
+          font-size="44"
+          font-weight="600"
+          letter-spacing="-1.4">Pro<tspan font-weight="800">PDFs</tspan></text>
+  </g>
+  <g transform="translate(100, 168)" text-anchor="middle" fill="#475569">
+    <text x="0" y="0"
+          font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif"
+          font-size="14"
+          font-weight="500"
+          letter-spacing="2.5">Every PDF tool. Private. Free.</text>
+  </g>
+</svg>

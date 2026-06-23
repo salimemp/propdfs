@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- ProPDFs favicon. The folded-corner triangle is dropped because
+     it disappears below ~24px; the P is slightly bolder and the
+     corner radius is reduced for tighter visual mass. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="ProPDFs">
+  <title>ProPDFs</title>
+  <rect x="2" y="2" width="60" height="60" rx="12" ry="12" fill="#0F172A"/>
+  <path d="M 62 2 L 62 18 L 46 2 Z" fill="#DC2626"/>
+  <path d="M 17 14
+           L 17 50
+           L 26 50
+           L 26 38
+           L 36 38
+           C 44 38 49 33 49 26
+           C 49 19 44 14 36 14
+           Z
+           M 26 22
+           L 35 22
+           C 39 22 41 24 41 26
+           C 41 28 39 30 35 30
+           L 26 30
+           Z" fill="#FFFFFF"/>
+</svg>

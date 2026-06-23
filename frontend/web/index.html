@@ -59,6 +59,10 @@
   <meta property="og:description" content="32 PDF tools in one place — merge, split, compress, convert, edit, sign, OCR, and translate. End-to-end encrypted.">
   <meta property="og:url" content="https://propdfs.com/">
   <meta property="og:image" content="https://propdfs.com/og-default.png">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="ProPDFs — 32 PDF tools, in-browser, zero upload">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta property="og:image:alt" content="ProPDFs — 32 PDF tools, in-browser, zero upload">
@@ -68,7 +72,10 @@
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="ProPDFs — Every PDF tool. Private. Free.">
   <meta name="twitter:description" content="32 PDF tools in one place. In-browser, end-to-end encrypted, GDPR-ready.">
-  <meta name="twitter:image" content="https://propdfs.com/og-default.png">
+  <meta name="twitter:image" content="https://propdfs.com/twitter-card.png">
+  <meta name="twitter:image:alt" content="ProPDFs — 32 PDF tools, in-browser, zero upload">
+  <meta name="twitter:site" content="@propdfs">
+  <meta name="twitter:creator" content="@propdfs">
 
   <!-- ===== Structured data ===== -->
   <!-- SoftwareApplication — what Google shows in the rich result for our
@@ -123,7 +130,7 @@
     "@type": "Organization",
     "name": "ProPDFs",
     "url": "https://propdfs.com",
-    "logo": "https://propdfs.com/icon.png",
+    "logo": "https://propdfs.com/icon-512.png",
     "description": "Free, fast, private PDF tools. End-to-end encrypted.",
     "sameAs": [],
     "contactPoint": {
@@ -156,10 +163,17 @@
   <meta name="apple-mobile-web-app-title" content="ProPDFs">
   <meta name="theme-color" media="(prefers-color-scheme: light)" content="#4F46E5">
   <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0F172A">
-  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
 
-  <!-- Favicon set — multi-size so Chrome / Safari / Firefox all pick the
-       best match. Generated via scripts/generate_favicons.py. -->
+  <!-- Favicon set — multi-size so Chrome / Safari / Firefox / Edge
+       all pick the best match. Modern browsers (Chrome 80+, FF 41+)
+       prefer the SVG when available; legacy browsers fall back to
+       the PNG sizes in the order listed. All assets are generated
+       by scripts/generate_brand_assets.py from the master
+       frontend/assets/brand/*.svg sources — never hand-edit the
+       PNGs, edit the SVGs and rerun. -->
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="icon" type="image/png" sizes="48x48" href="favicon-48.png">
   <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png">
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">

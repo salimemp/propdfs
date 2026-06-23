@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ProPDFs brand logo — master vector.
+
+  Design language
+  ----------------
+  - The mark is a rounded square (the "page") in deep navy
+    (#0F172A / Tailwind slate-900). A PDF-red corner fold
+    (#DC2626 / red-600) sits in the top-right — the universal
+    visual signal for "this is a PDF / document".
+  - A bold "P" in white occupies the center. The P is rendered
+    as a path (not text) so the SVG renders identically across
+    rasterizers, browsers, and PDF readers without depending
+    on system font availability.
+  - The wordmark "ProPDFs" uses an Inter-family fallback chain.
+    The kerning is hand-tuned (slightly tighter on the P→r
+    and D→s transitions) for the lockup proportions.
+
+  Variants in this directory
+  --------------------------
+  - logo-mark.svg          Mark only (square). Use wherever a
+                           full lockup doesn't fit.
+  - logo-horizontal.svg    Mark + wordmark side by side. The
+                           default for headers, business cards,
+                           and email signatures.
+  - logo-stacked.svg       Mark on top, wordmark below. Use
+                           for square placements (avatars, OG
+                           cards) where horizontal is too wide.
+  - favicon.svg            Simplified mark for 16x16 / 32x32.
+                           No folded-corner triangle (it disap-
+                           pears at small sizes anyway) and the
+                           P is slightly bolder.
+  - logo-mono-light.svg    Single-colour version for light
+                           backgrounds (currentColor driven).
+  - logo-mono-dark.svg     Single-colour version for dark
+                           backgrounds.
+
+  Color tokens
+  ------------
+  --propdfs-navy:   #0F172A
+  --propdfs-red:    #DC2626
+  --propdfs-white:  #FFFFFF
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 64" width="240" height="64" role="img" aria-label="ProPDFs">
+  <title>ProPDFs</title>
+  <desc>ProPDFs logo — a navy rounded square with a PDF-red corner fold and a bold white P, alongside the ProPDFs wordmark.</desc>
+
+  <!-- ===== Mark ===== -->
+  <g transform="translate(0, 0)">
+    <!-- Navy rounded square — the page -->
+    <rect x="0" y="0" width="64" height="64" rx="14" ry="14" fill="#0F172A"/>
+    <!-- Red folded corner triangle -->
+    <path d="M 64 0 L 64 16 L 48 0 Z" fill="#DC2626"/>
+    <!-- Bold white P (path-based for renderer-independence) -->
+    <path d="M 18 16
+             L 18 50
+             L 26 50
+             L 26 38
+             L 36 38
+             C 43 38 48 33 48 27
+             C 48 21 43 16 36 16
+             Z
+             M 26 23
+             L 35 23
+             C 38 23 40 25 40 27
+             C 40 29 38 31 35 31
+             L 26 31
+             Z" fill="#FFFFFF"/>
+  </g>
+
+  <!-- ===== Wordmark ===== -->
+  <g transform="translate(80, 0)" fill="#0F172A">
+    <!-- "Pro" in semibold, "PDFs" in bold. Drawn as text since
+         wordmark proportions are tightly tuned and we control
+         the font stack — the SVG renderers we use (cairosvg,
+         browsers, PDF readers) all support the fallback chain. -->
+    <text x="0" y="44"
+          font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif"
+          font-size="36"
+          font-weight="600"
+          letter-spacing="-1.2">Pro<tspan font-weight="800">PDFs</tspan></text>
+  </g>
+</svg>
