@@ -103,12 +103,29 @@ def main() -> int:
     print()
 
     if not is_admin:
+        # Don't bail. The refresh token is valid for 7 days regardless
+        # of admin status — admin is only enforced at /blog/posts POST
+        # time, which won't happen until the next harborseo publish
+        # tick. The operator can flip is_admin=true via the Railway
+        # Postgres "Data" tab in the meantime. Hard-failing here
+        # would block the workflow from printing the token at all,
+        # and the operator would have nothing to save as a secret.
         print(
-            "✗ User is NOT marked admin. Run create_admin.py first, or "
-            "UPDATE users SET is_admin = TRUE for this user in the DB.",
+            "  ⚠️  is_admin is FALSE. The token below is still valid "
+            "(refresh tokens last 7 days), but /blog/posts will return "
+            "403 until the operator runs:",
             file=sys.stderr,
         )
-        return 1
+        print(
+            "      UPDATE users SET is_admin = TRUE "
+            f"WHERE email = '{email}';",
+            file=sys.stderr,
+        )
+        print(
+            "  in Railway → Postgres service → Data tab → New query.",
+            file=sys.stderr,
+        )
+        print()
 
     print("=" * 60)
     print("PASTE THIS VALUE INTO THE GitHub Actions SECRET NAMED")
