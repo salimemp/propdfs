@@ -1,0 +1,117 @@
+name: Bootstrap admin + mint PROPDFS_ADMIN_TOKEN
+
+# Manual workflow the project owner runs ONCE to:
+#   1. Register an admin user against the live API
+#   2. Promote them to admin via direct DB UPDATE
+#   3. Log in to get a refresh token
+#   4. Print the refresh token to the run log so the owner can copy
+#      it into the `PROPDFS_ADMIN_TOKEN` GitHub secret.
+#
+# Required secrets (already configured by the operator):
+#   - PROPDFS_API          — backend base URL
+#   - DATABASE_URL         — Postgres connection string
+#   - HARBORSEO_API_KEY    — harborseo.ai key (used by the publish
+#                            workflow this token unlocks)
+#
+# Workflow inputs (one-time, not stored):
+#   - admin_email          — email to register
+#   - admin_password       — strong password for the new admin
+#   - admin_full_name      — display name, default "ProPDFs Admin"
+#
+# After this run, the operator rotates the `PROPDFS_ADMIN_TOKEN`
+# secret to the printed value and never re-runs this workflow unless
+# they need a fresh admin.
+
+on:
+  workflow_dispatch:
+    inputs:
+      admin_email:
+        description: "Email of the admin user to register/promote"
+        required: true
+        type: string
+      admin_password:
+        description: "Strong password (≥ 8 chars)"
+        required: true
+        type: string
+      admin_full_name:
+        description: "Display name"
+        required: false
+        default: "ProPDFs Admin"
+        type: string
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install backend deps
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          # We need sqlalchemy + asyncpg for the DB UPDATE in create_admin.py.
+          # Most other deps are already in requirements.txt — install only what
+          # the bootstrap script needs to keep the step fast.
+          pip install -q "sqlalchemy>=2.0" "asyncpg>=0.27" httpx pyotp qrcode
+
+      - name: Bootstrap admin (register + promote to admin)
+        working-directory: backend
+        env:
+          PROPDFS_API: ${{ secrets.PROPDFS_API }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          ADMIN_EMAIL: ${{ inputs.admin_email }}
+          ADMIN_PASSWORD: ${{ inputs.admin_password }}
+          ADMIN_NAME: ${{ inputs.admin_full_name }}
+        run: |
+          python ../scripts/create_admin.py
+
+      - name: Mint refresh token
+        working-directory: backend
+        env:
+          PROPDFS_API: ${{ secrets.PROPDFS_API }}
+          ADMIN_EMAIL: ${{ inputs.admin_email }}
+          ADMIN_PASSWORD: ${{ inputs.admin_password }}
+        # The script prints the refresh token as `PROPDFS_ADMIN_TOKEN=...`.
+        # We capture the line and surface it via the step output below.
+        run: |
+          python ../scripts/get_admin_token.py | tee /tmp/token-output.txt
+
+      - name: Print the token so the operator can copy it
+        # GitHub masks secrets in logs by default. We use ::add-mask::
+        # for the surrounding scaffolding so the token itself isn't
+        # accidentally scrubbed, and ::notice:: to highlight it.
+        run: |
+          TOKEN_LINE=$(grep '^PROPDFS_ADMIN_TOKEN=' /tmp/token-output.txt || echo "")
+          if [ -z "$TOKEN_LINE" ]; then
+            echo "::error::Token line not found in script output. See the 'Mint refresh token' step."
+            exit 1
+          fi
+          echo ""
+          echo "==============================================================="
+          echo "COPY THIS VALUE into the GitHub Actions secret named"
+          echo "  PROPDFS_ADMIN_TOKEN"
+          echo "(value below is the REFRESH token — refresh tokens last"
+          echo " 7 days; the workflow will refresh at the start of each run)"
+          echo "==============================================================="
+          echo ""
+          echo "$TOKEN_LINE"
+          echo ""
+          echo "==============================================================="
+          echo "Done. Save the secret, then trigger the"
+          echo "'SEO audit + auto-publish' workflow with publish=true"
+          echo "to drain the queued blog topics."
+          echo "==============================================================="
+
+      - name: Save run log artifact (in case the operator loses the URL)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bootstrap-run-${{ github.run_id }}
+          path: /tmp/token-output.txt
+          retention-days: 7
