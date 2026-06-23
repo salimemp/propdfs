@@ -46,6 +46,55 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Pre-flight: DNS + endpoint reachability
+        env:
+          PROPDFS_API: ${{ secrets.PROPDFS_API }}
+        # Fail fast with a human-readable message instead of a stack
+        # trace. Three checks:
+        #   1. PROPDFS_API is set and ends in /api/v1
+        #   2. The hostname resolves
+        #   3. PRODFSP_API/health returns 2xx
+        run: |
+          set -euo pipefail
+
+          if [ -z "${PROPDFS_API:-}" ]; then
+            echo "::error::PROPDFS_API secret is not set in this repo."
+            echo "  Go to Settings → Secrets and variables → Actions and add it."
+            exit 1
+          fi
+
+          # Strip trailing slash so we can safely append paths.
+          BASE="${PROPDFS_API%/}"
+          if [[ "$BASE" != */api/v1 ]]; then
+            echo "::error::PROPDFS_API must end in /api/v1"
+            echo "  Current value: $PROPDFS_API"
+            echo "  Fix: edit the secret and append /api/v1 to the URL."
+            echo "  Example: https://propdfs-backend-production.up.railway.app/api/v1"
+            exit 1
+          fi
+
+          HOST=$(echo "$BASE" | sed -E 's#^https?://##; s#/api/v1$##')
+          echo "Checking DNS for $HOST …"
+          if ! getent hosts "$HOST" >/dev/null 2>&1; then
+            echo "::error::DNS lookup failed for $HOST"
+            echo "  The hostname doesn't resolve. Either api.propdfs.com"
+            echo "  has no DNS record (use the Railway-generated *.up.railway.app"
+            echo "  URL for now) or the Railway service was renamed."
+            exit 1
+          fi
+          echo "  ✓ $HOST resolves"
+
+          echo "Checking $BASE/health …"
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$BASE/health" || echo "000")
+          if [[ "$STATUS" != 2* ]]; then
+            echo "::error::$BASE/health returned HTTP $STATUS"
+            echo "  Expected 2xx. If 401, the API requires an auth header on health."
+            echo "  If 404, /api/v1/health doesn't exist (check the router list in"
+            echo "  backend/app/main.py)."
+            exit 1
+          fi
+          echo "  ✓ health endpoint returned $STATUS"
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
