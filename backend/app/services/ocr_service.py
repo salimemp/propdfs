@@ -8,7 +8,6 @@ import pytesseract
 from PIL import Image
 import io
 
-
 logger = structlog.get_logger()
 
 

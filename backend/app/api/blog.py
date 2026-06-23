@@ -8,7 +8,6 @@ from app.models.database import User
 
 import structlog
 
-
 logger = structlog.get_logger()
 router = APIRouter(prefix="/blog", tags=["Blog"])
 

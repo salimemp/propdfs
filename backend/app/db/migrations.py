@@ -31,6 +31,7 @@ Limitations:
     to drop or alter a column, do it manually in a maintenance
     window.
 """
+
 from __future__ import annotations
 
 import structlog
@@ -47,12 +48,10 @@ logger = structlog.get_logger()
 ADDITIVE_MIGRATIONS: list[tuple[str, str, str]] = [
     # PR #6 — admin gate (admin-token bootstrap scripts)
     ("users", "is_admin", "BOOLEAN NOT NULL DEFAULT FALSE"),
-
     # PR #5 — 2FA / TOTP
     ("users", "is_mfa_enabled", "BOOLEAN NOT NULL DEFAULT FALSE"),
     ("users", "mfa_secret", "VARCHAR(255)"),
     ("users", "mfa_backup_codes", "JSONB"),
-
     # PR #5/6 — session tracking + GDPR deletion flow
     ("users", "last_login_at", "TIMESTAMP WITH TIME ZONE"),
     ("users", "deletion_requested_at", "TIMESTAMP WITH TIME ZONE"),
@@ -78,8 +77,7 @@ async def run_additive_migrations(conn: AsyncConnection) -> None:
         assert table.replace("_", "").isalnum(), f"bad table name: {table}"
         assert column.replace("_", "").isalnum(), f"bad column name: {column}"
         sql = (
-            f'ALTER TABLE "{table}" '
-            f"ADD COLUMN IF NOT EXISTS {column} {definition}"
+            f'ALTER TABLE "{table}" ' f"ADD COLUMN IF NOT EXISTS {column} {definition}"
         )
         try:
             await conn.execute(text(sql))

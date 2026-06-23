@@ -42,7 +42,6 @@ from app.models.schemas import (
     MFAEnableRequest,
     MFADisableRequest,
     MFAVerifyRequest,
-    MFALoginResponse,
 )
 
 logger = structlog.get_logger()
@@ -98,8 +97,6 @@ async def require_admin(
             detail="Admin privileges required for this action.",
         )
     return current_user
-
-
 
 
 @router.post(
@@ -295,10 +292,12 @@ def _generate_backup_codes(n: int = 10) -> list[str]:
     (one JSON column)."""
     alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"  # skip 0/O/1/I for readability
     return [
-        "-".join([
-            "".join(secrets.choice(alphabet) for _ in range(5)),
-            "".join(secrets.choice(alphabet) for _ in range(5)),
-        ])
+        "-".join(
+            [
+                "".join(secrets.choice(alphabet) for _ in range(5)),
+                "".join(secrets.choice(alphabet) for _ in range(5)),
+            ]
+        )
         for _ in range(n)
     ]
 
@@ -357,9 +356,7 @@ async def enable_mfa(
             detail="Start at /auth/2fa/setup first.",
         )
     if current_user.is_mfa_enabled:
-        raise HTTPException(
-            status_code=400, detail="2FA is already enabled."
-        )
+        raise HTTPException(status_code=400, detail="2FA is already enabled.")
 
     totp = pyotp.TOTP(current_user.mfa_secret)
     # valid_window=1 accepts the code from 30s before/after to tolerate
@@ -417,9 +414,7 @@ async def verify_mfa(
     if not user_id:
         raise HTTPException(status_code=401, detail="Invalid MFA token.")
 
-    result = await db.execute(
-        select(User).where(User.id == uuid.UUID(user_id))
-    )
+    result = await db.execute(select(User).where(User.id == uuid.UUID(user_id)))
     user = result.scalar_one_or_none()
     if not user or user.status != UserStatus.ACTIVE or not user.mfa_secret:
         raise HTTPException(status_code=401, detail="User not found.")
@@ -467,15 +462,11 @@ async def disable_mfa(
     """Turn 2FA off. Requires the user's password as a deliberate-friction
     guard against account takeover via a hijacked session."""
     if not current_user.is_mfa_enabled:
-        raise HTTPException(
-            status_code=400, detail="2FA is not enabled."
-        )
+        raise HTTPException(status_code=400, detail="2FA is not enabled.")
     if not current_user.password_hash or not verify_password(
         payload.password, current_user.password_hash
     ):
-        raise HTTPException(
-            status_code=401, detail="Wrong password."
-        )
+        raise HTTPException(status_code=401, detail="Wrong password.")
 
     await db.execute(
         update(User)
