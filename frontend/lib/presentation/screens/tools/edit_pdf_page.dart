@@ -1,6 +1,3 @@
-import 'dart:typed_data';
-import 'dart:ui';
-
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -33,12 +30,11 @@ class _EditPdfPageState extends State<EditPdfPage> {
   int _pageCount = 1;
   _EditTool _activeTool = _EditTool.text;
   Color _activeColor = const Color(0xFFEF4444);
-  double _activeStrokeWidth = 2;
+  final double _activeStrokeWidth = 2;
   Offset? _dragStart;
   Offset? _dragCurrent;
   bool _busy = false;
   String? _error;
-  String? _statusMessage;
   Uint8List? _outputBytes;
   final _textController = TextEditingController(text: 'Type here');
 
@@ -127,20 +123,14 @@ class _EditPdfPageState extends State<EditPdfPage> {
       _busy = true;
       _error = null;
       _outputBytes = null;
-      _statusMessage = null;
     });
     try {
       // Apply per-page edits sequentially. Pages without edits are
       // skipped — we only re-encode pages the user actually touched.
       Uint8List current = _pdfBytes!;
-      final totalEdits =
-          _opsByPage.fold<int>(0, (sum, ops) => sum + ops.length);
-      var done = 0;
       for (var i = 0; i < _opsByPage.length; i++) {
         if (_opsByPage[i].isEmpty) continue;
         if (!mounted) return;
-        setState(() => _statusMessage =
-            'Applying ${++done} of $totalEdits edits…');
         current = await PdfEditorService.edit(
           pdfBytes: current,
           pageIndex: i,
@@ -151,29 +141,14 @@ class _EditPdfPageState extends State<EditPdfPage> {
       setState(() {
         _outputBytes = current;
         _busy = false;
-        _statusMessage = null;
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _error = 'Could not apply edits: $e';
         _busy = false;
-        _statusMessage = null;
       });
     }
-  }
-
-  Offset _canvasToPdf(Offset c, Size canvasSize) {
-    // Map canvas pixels to PDF points. We treat the canvas as a
-    // top-down coordinate system at the PDF's natural aspect ratio.
-    // For MVP we assume US Letter (612 × 792 points) — pages with
-    // different dimensions will be visually distorted but the operation
-    // bounding boxes will still land correctly because we scale.
-    const pdfW = 612.0;
-    const pdfH = 792.0;
-    final sx = pdfW / canvasSize.width;
-    final sy = pdfH / canvasSize.height;
-    return Offset(c.dx * sx, c.dy * sy);
   }
 
   void _commitDragAsShape() {
@@ -245,7 +220,6 @@ class _EditPdfPageState extends State<EditPdfPage> {
   /// coordinates, but that's a much bigger project.
   Future<void> _openTextReplaceDialog() async {
     if (_pdfBytes == null) return;
-    setState(() => _statusMessage = 'Extracting text from page…');
     String original;
     try {
       original = await PdfEditorService.extractPageText(
@@ -256,12 +230,10 @@ class _EditPdfPageState extends State<EditPdfPage> {
       if (!mounted) return;
       setState(() {
         _error = 'Could not extract text: $e';
-        _statusMessage = null;
       });
       return;
     }
     if (!mounted) return;
-    setState(() => _statusMessage = null);
 
     final controller = TextEditingController(text: original);
     final result = await showDialog<String>(
@@ -312,9 +284,6 @@ class _EditPdfPageState extends State<EditPdfPage> {
     if (result == null || !mounted) return;
     final newText = result;
 
-    setState(() {
-      _statusMessage = 'Applying text replacement…';
-    });
     try {
       // Step 1: white-out the existing text region (full page minus
       // 50pt margins is a reasonable approximation when we don't have
@@ -367,13 +336,11 @@ class _EditPdfPageState extends State<EditPdfPage> {
         if (_opsByPage.length > _currentPage) {
           _opsByPage[_currentPage] = [];
         }
-        _statusMessage = null;
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _error = 'Could not apply text replacement: $e';
-        _statusMessage = null;
       });
     }
   }

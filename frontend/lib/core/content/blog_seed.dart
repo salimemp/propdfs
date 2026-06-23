@@ -17,21 +17,21 @@
 // This list is loaded once at startup — runtime perf is identical.
 final List<Map<String, dynamic>> kBlogSeedPosts = [
   {
-    "id": "seed-1",
-    "slug": "welcome-to-propdfs",
-    "title": "Welcome to ProPDFs: 32 PDF tools, one place",
-    "meta_description":
-        "A quick tour of ProPDFs — every tool we ship today, why we built it, "
+    'id': 'seed-1',
+    'slug': 'welcome-to-propdfs',
+    'title': 'Welcome to ProPDFs: 32 PDF tools, one place',
+    'meta_description':
+        'A quick tour of ProPDFs — every tool we ship today, why we built it, '
         "and what's coming next.",
-    "keywords": <String>["propdfs", "pdf tools", "introduction"],
-    "author": "ProPDFs Editorial Team",
-    "published_at": "2025-01-01T00:00:00Z",
-    "updated_at": "2025-01-01T00:00:00Z",
-    "category": "announcements",
-    "tags": <String>["propdfs", "introduction", "launch"],
-    "reading_time": 4,
-    "featured_image": "",
-    "content": """# Welcome to ProPDFs
+    'keywords': <String>['propdfs', 'pdf tools', 'introduction'],
+    'author': 'ProPDFs Editorial Team',
+    'published_at': '2025-01-01T00:00:00Z',
+    'updated_at': '2025-01-01T00:00:00Z',
+    'category': 'announcements',
+    'tags': <String>['propdfs', 'introduction', 'launch'],
+    'reading_time': 4,
+    'featured_image': '',
+    'content': """# Welcome to ProPDFs
 
 ProPDFs is **32 PDF tools in one place** — merge, split, compress, convert, edit, sign, and translate PDFs without ever installing software.
 
@@ -57,21 +57,21 @@ We're shipping native iOS and Android apps next quarter, plus real-time collabor
 Welcome aboard."""
   },
   {
-    "id": "seed-2",
-    "slug": "pdf-merge-best-practices",
-    "title": "How to merge PDFs the right way (and the wrong way)",
-    "meta_description":
-        "Most PDF merges silently lose bookmarks, form fields, or page labels. "
+    'id': 'seed-2',
+    'slug': 'pdf-merge-best-practices',
+    'title': 'How to merge PDFs the right way (and the wrong way)',
+    'meta_description':
+        'Most PDF merges silently lose bookmarks, form fields, or page labels. '
         "Here's how to keep them.",
-    "keywords": <String>["merge", "pdf", "tutorial"],
-    "author": "Sarah Mitchell, Document Specialist",
-    "published_at": "2025-01-08T00:00:00Z",
-    "updated_at": "2025-01-08T00:00:00Z",
-    "category": "tutorial",
-    "tags": <String>["pdf", "merge", "tutorial", "best-practices"],
-    "reading_time": 5,
-    "featured_image": "",
-    "content": """# How to merge PDFs the right way (and the wrong way)
+    'keywords': <String>['merge', 'pdf', 'tutorial'],
+    'author': 'Sarah Mitchell, Document Specialist',
+    'published_at': '2025-01-08T00:00:00Z',
+    'updated_at': '2025-01-08T00:00:00Z',
+    'category': 'tutorial',
+    'tags': <String>['pdf', 'merge', 'tutorial', 'best-practices'],
+    'reading_time': 5,
+    'featured_image': '',
+    'content': '''# How to merge PDFs the right way (and the wrong way)
 
 Merging PDFs sounds simple: combine 5 files, get 1 file. But the **wrong** way silently drops things — bookmarks, form fields, page labels, accessibility tags — and your "merged" file is barely usable.
 
@@ -97,24 +97,24 @@ ProPDFs uses this approach — your merged file keeps its internal structure, in
 - **Mixed sizes** — merging Letter and A4 pages is fine; the output keeps the original page sizes.
 - **Bookmarks** — ProPDFs merges the source bookmarks automatically. If you want a custom table of contents, edit the merged file with **Edit PDF**.
 
-Try the Merge tool now →"""
+Try the Merge tool now →'''
   },
   {
-    "id": "seed-3",
-    "slug": "ocr-scanned-pdfs",
-    "title": "What is OCR and why your scanned PDFs need it",
-    "meta_description":
-        "Scanned PDFs are pictures, not text. OCR turns them into searchable, "
+    'id': 'seed-3',
+    'slug': 'ocr-scanned-pdfs',
+    'title': 'What is OCR and why your scanned PDFs need it',
+    'meta_description':
+        'Scanned PDFs are pictures, not text. OCR turns them into searchable, '
         "copyable, accessible documents. Here's how it works.",
-    "keywords": <String>["ocr", "scanned", "pdf", "accessibility"],
-    "author": "Daniel Okafor, ML Engineer",
-    "published_at": "2025-01-12T00:00:00Z",
-    "updated_at": "2025-01-12T00:00:00Z",
-    "category": "guide",
-    "tags": <String>["ocr", "scanned", "accessibility", "ml"],
-    "reading_time": 6,
-    "featured_image": "",
-    "content": """# What is OCR and why your scanned PDFs need it
+    'keywords': <String>['ocr', 'scanned', 'pdf', 'accessibility'],
+    'author': 'Daniel Okafor, ML Engineer',
+    'published_at': '2025-01-12T00:00:00Z',
+    'updated_at': '2025-01-12T00:00:00Z',
+    'category': 'guide',
+    'tags': <String>['ocr', 'scanned', 'accessibility', 'ml'],
+    'reading_time': 6,
+    'featured_image': '',
+    'content': """# What is OCR and why your scanned PDFs need it
 
 A scanned PDF is **not a text document** — it's a stack of images that happen to be inside a `.pdf` wrapper. Try selecting text from one: you'll copy a blank string. Try Ctrl+F to search: nothing found. Try a screen reader: silence.
 
@@ -151,9 +151,9 @@ Try the OCR tool →"""
 /// Categories seeded alongside the posts. Matches the response shape of
 /// `/api/v1/blog/categories` (name + count).
 final List<Map<String, dynamic>> kBlogSeedCategories = [
-  <String, dynamic>{"name": "announcements", "count": 1},
-  <String, dynamic>{"name": "tutorial", "count": 1},
-  <String, dynamic>{"name": "guide", "count": 1},
-  <String, dynamic>{"name": "comparison", "count": 0},
-  <String, dynamic>{"name": "release-notes", "count": 0},
+  <String, dynamic>{'name': 'announcements', 'count': 1},
+  <String, dynamic>{'name': 'tutorial', 'count': 1},
+  <String, dynamic>{'name': 'guide', 'count': 1},
+  <String, dynamic>{'name': 'comparison', 'count': 0},
+  <String, dynamic>{'name': 'release-notes', 'count': 0},
 ];

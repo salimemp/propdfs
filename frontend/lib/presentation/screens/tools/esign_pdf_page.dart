@@ -24,7 +24,6 @@ class EsignPdfPage extends StatefulWidget {
 class _EsignPdfPageState extends State<EsignPdfPage> {
   Uint8List? _pdfBytes;
   String? _pdfName;
-  Uint8List? _signaturePng;
   bool _busy = false;
   String? _error;
   Uint8List? _outputBytes;
@@ -77,7 +76,6 @@ class _EsignPdfPageState extends State<EsignPdfPage> {
     });
     try {
       final png = await _renderSignaturePng();
-      _signaturePng = png;
       final out = await PdfEditorService.addSignature(
         pdfBytes: _pdfBytes!,
         signaturePng: png,
