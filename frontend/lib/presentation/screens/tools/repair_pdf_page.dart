@@ -7,17 +7,13 @@ import 'package:flutter/material.dart';
 
 import '../../../core/services/pdf_editor_service.dart';
 import '../../../core/theme.dart';
+import '../../../core/services/web_bridge.dart';
 
 /// Web download shim. Implemented as a JS interop call from
 /// `web/index.html`. Falls back to in-app storage on native (handled by
 /// the platform channel).
 void _webDownload(Uint8List bytes, String filename) {
-  if (kIsWeb) {
-    // Defer to the JS shim registered in web/index.html. The shim
-    // creates a Blob URL and clicks an anchor with download=filename.
-    // ignore: avoid_print
-    print('[RepairPdf] download shim: $filename (${bytes.lengthInBytes}B)');
-  }
+  WebBridge.downloadBytes(bytes, filename, mimeType: 'application/pdf');
 }
 
 /// Client-side PDF repair. Opens a PDF, copies every page onto a fresh

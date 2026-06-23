@@ -123,6 +123,14 @@ class PdfEditorService {
     return await compute(_pageCountImpl, pdfBytes);
   }
 
+  /// Extract all text from a single page. Used by Edit PDF's
+  /// "Replace text" mode so the user can edit the original content.
+  static Future<String> extractPageText(
+      Uint8List pdfBytes, int pageIndex) async {
+    return await compute(_extractPageTextImpl,
+        _ExtractTextArgs(pdfBytes: pdfBytes, pageIndex: pageIndex));
+  }
+
   /// Page dimensions in PDF user-space units (72 per inch).
   static Future<List<PdfPageSize>> pageSizes(Uint8List pdfBytes) async {
     return await compute(_pageSizesImpl, pdfBytes);
@@ -428,6 +436,23 @@ int _pageCountImpl(Uint8List pdfBytes) {
   final n = doc.pages.count;
   doc.dispose();
   return n;
+}
+
+class _ExtractTextArgs {
+  final Uint8List pdfBytes;
+  final int pageIndex;
+  _ExtractTextArgs({required this.pdfBytes, required this.pageIndex});
+}
+
+String _extractPageTextImpl(_ExtractTextArgs args) {
+  final doc = PdfDocument(inputBytes: args.pdfBytes);
+  final extractor = PdfTextExtractor(doc);
+  final text = extractor.extractText(
+    startPageIndex: args.pageIndex,
+    endPageIndex: args.pageIndex,
+  );
+  doc.dispose();
+  return text;
 }
 
 List<PdfPageSize> _pageSizesImpl(Uint8List pdfBytes) {

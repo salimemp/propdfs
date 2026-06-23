@@ -62,7 +62,11 @@ class User(Base):
     plan_tier: Mapped[PlanTier] = mapped_column(Enum(PlanTier), default=PlanTier.FREE)
     is_email_verified: Mapped[bool] = mapped_column(Boolean, default=False)
     is_mfa_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
     mfa_secret: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    mfa_backup_codes: Mapped[Optional[JSONB]] = mapped_column(
+        JSONB, nullable=True
+    )  # bcrypt-hashed one-time backup codes
     oauth_provider: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     oauth_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     stripe_customer_id: Mapped[Optional[str]] = mapped_column(

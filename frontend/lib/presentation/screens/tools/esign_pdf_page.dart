@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/services/pdf_editor_service.dart';
 import '../../../core/theme.dart';
+import '../../../core/services/web_bridge.dart';
 
 /// eSign PDF — let the user draw / type / upload a signature, then
 /// place it anywhere on the document. Real implementation uses
@@ -406,10 +407,7 @@ String _suggestName(String original) {
 }
 
 void _webDownload(Uint8List bytes, String filename) {
-  if (kIsWeb) {
-    // ignore: avoid_print
-    print('[EsignPdf] download: $filename (${bytes.lengthInBytes}B)');
-  }
+  WebBridge.downloadBytes(bytes, filename, mimeType: 'application/pdf');
 }
 
 /// Simple brush-stroke model used by [_SignaturePainter] / the

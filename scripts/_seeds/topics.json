@@ -1,0 +1,32 @@
+[
+  {
+    "topic": "How to merge PDF files online for free",
+    "keywords": ["merge pdf", "combine pdf files", "join pdf", "pdf merger"],
+    "category": "tutorial",
+    "target_words": 1500
+  },
+  {
+    "topic": "Compress PDF without losing quality",
+    "keywords": ["compress pdf", "reduce pdf size", "pdf compressor", "shrink pdf"],
+    "category": "guide",
+    "target_words": 1800
+  },
+  {
+    "topic": "PDF vs Word: when to use which",
+    "keywords": ["pdf vs word", "when to use pdf", "pdf vs docx"],
+    "category": "comparison",
+    "target_words": 1400
+  },
+  {
+    "topic": "How to OCR a scanned PDF for free",
+    "keywords": ["ocr pdf", "scanned pdf to text", "searchable pdf"],
+    "category": "guide",
+    "target_words": 1600
+  },
+  {
+    "topic": "ProPDFs vs iLovePDF: which is better in 2026?",
+    "keywords": ["propdfs vs ilovepdf", "ilovepdf alternative", "best pdf tools"],
+    "category": "comparison",
+    "target_words": 2000
+  }
+]

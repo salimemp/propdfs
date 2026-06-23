@@ -246,7 +246,7 @@ void main() {
     testWidgets('OCR PDF lands on OcrPdfPage', (tester) async {
       await pump(tester, '/tools/ocr');
       expect(find.text('OCR PDF'), findsWidgets);
-      expect(find.textContaining('ML Kit'), findsOneWidget);
+      expect(find.textContaining('Tesseract'), findsOneWidget);
     });
 
     testWidgets('PDF to Word lands on ComingSoonToolPage, not Convert',

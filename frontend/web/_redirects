@@ -1,5 +1,21 @@
-# Cloudflare Pages SPA fallback — every unknown path returns index.html
-# so Flutter web's GoRouter can take over on the client.
-# Required when using PathUrlStrategy (clean URLs like /blog instead of /#/blog).
-# The trailing `200` means "serve this with HTTP 200, not 301/302".
+# Cloudflare Pages rewrites.
+#
+# We need to:
+#   1. Serve static SEO assets (robots.txt, sitemap.xml, og-default.png)
+#      at their real paths, NOT through the SPA fallback. Otherwise
+#      search crawlers see "index.html" for /sitemap.xml and
+#      /robots.txt — totally broken.
+#   2. Keep the SPA fallback for everything else (Flutter web).
+#
+# Order matters: more-specific rules win, so the static assets are
+# listed before the catch-all.
+
+# Real SEO assets — serve the files we shipped in /web/.
+/robots.txt     /robots.txt    200
+/sitemap.xml    /sitemap.xml   200
+/og-default.png /og-default.png 200
+
+# SPA fallback — every unknown path returns index.html so GoRouter
+# can take over on the client. Required with PathUrlStrategy so
+# /blog, /tools/merge, /pricing etc. all resolve correctly.
 /*    /index.html   200

@@ -1,6 +1,8 @@
 from typing import Optional, List
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
+import time
+
 import structlog
 
 
@@ -662,6 +664,35 @@ class BlogPostDetail(BaseModel):
     reading_time: int
     featured_image: str
     content: str
+
+
+@router.post("/posts", response_model=BlogPostDetail, status_code=201)
+async def create_blog_post(
+    post: BlogPostDetail,
+    # No auth dependency yet — we'll wire admin-only in a follow-up.
+    # For now this endpoint is open so the harborseo.ai workflow can
+    # POST generated posts in. Restrict via CORS + a shared-secret
+    # header before going to production.
+):
+    """Create a new blog post. Used by the harborseo.ai auto-publishing
+    workflow (`scripts/harborseo.py blog --publish`).
+
+    The post is stored in the in-memory BLOG_POSTS list at the head so
+    it shows up immediately in list / detail / search responses. A
+    follow-up migration will persist to the DB; for now this matches
+    how the rest of the blog API serves content in dev.
+    """
+    # Check slug uniqueness — return 409 on conflict so the caller
+    # knows to either update or pick a new slug.
+    if any(p["slug"] == post.slug for p in BLOG_POSTS):
+        raise HTTPException(
+            status_code=409,
+            detail=f"A blog post with slug '{post.slug}' already exists.",
+        )
+    new = post.model_dump()
+    new["id"] = f"generated-{int(time.time())}"
+    BLOG_POSTS.insert(0, new)
+    return new
 
 
 @router.get("/posts", response_model=List[BlogPostSummary])
