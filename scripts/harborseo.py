@@ -361,15 +361,21 @@ class HarborSeoClient:
         self,
         article_id: str,
         *,
-        timeout: int = 300,
-        poll_interval: int = 5,
+        timeout: int = 900,
+        poll_interval: int = 10,
         on_progress=None,
     ) -> dict:
         """Poll an article until status is terminal (completed /
         failed / cancelled) or we hit `timeout` seconds.
 
-        Calls `on_progress(message, step, total)` on each tick if
-        provided — useful for CLI progress output.
+        The default timeout is 900s (15 min) — harborseo's free
+        plan routinely takes 8-12 min per 1500-word article. The
+        caller can override via HARBORSEO_ARTICLE_TIMEOUT.
+
+        Calls `on_progress(message, step, total)` only when the
+        progress tuple CHANGES from the last tick (avoids
+        spamming the log with the same [1/5] line every 10s for
+        15 min).
         """
         deadline = time.time() + timeout
         terminal = {
@@ -381,22 +387,26 @@ class HarborSeoClient:
             "cancelled",
             "error",
         }
+        last_signature: tuple = ()
         while time.time() < deadline:
             data = self.get_article(article_id)
             status = (data.get("status") or "").lower()
             progress = data.get("progress") or {}
             if on_progress and progress:
-                on_progress(
-                    progress.get("message", status),
+                sig = (
+                    progress.get("message", ""),
                     progress.get("step", 0),
                     progress.get("total", 0),
                 )
+                if sig != last_signature:
+                    on_progress(*sig)
+                    last_signature = sig
             if status in terminal:
                 return data
             time.sleep(poll_interval)
         raise TimeoutError(
             f"Article {article_id} did not complete in {timeout}s "
-            f"(last status: '{status}')"
+            f"(last status: '{status}', last progress: {data.get('progress')})"
         )
 
     # ── High-level: generate a blog post end-to-end ─────────────────
@@ -450,7 +460,10 @@ class HarborSeoClient:
             raise RuntimeError(f"Article creation returned no id. Response: {initial}")
 
         article = self.wait_for_article(
-            article_id, timeout=300, poll_interval=5, on_progress=_progress
+            article_id,
+            timeout=int(os.environ.get("HARBORSEO_ARTICLE_TIMEOUT", "900")),
+            poll_interval=int(os.environ.get("HARBORSEO_POLL_INTERVAL", "10")),
+            on_progress=_progress,
         )
 
         status = (article.get("status") or "").lower()
