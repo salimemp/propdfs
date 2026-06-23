@@ -8,16 +8,27 @@ class VoiceService {
   final FlutterTts _tts = FlutterTts();
   final stt.SpeechToText _speech = stt.SpeechToText();
   bool _speechInitialized = false;
+  bool _ttsInitialized = false;
 
-  VoiceService() {
-    _initTts();
-  }
+  // No constructor side-effects. Hitting FlutterTts platform channels in
+  // the constructor crashes widget tests (no plugin implementation), and
+  // also races against app startup in production. The first `speak()` or
+  // explicit `init()` call initializes lazily.
+  VoiceService();
 
-  Future<void> _initTts() async {
-    await _tts.setLanguage('en-US');
-    await _tts.setSpeechRate(0.5);
-    await _tts.setVolume(1.0);
-    await _tts.setPitch(1.0);
+  /// Initialise TTS settings. Safe to call multiple times.
+  Future<void> initTts() async {
+    if (_ttsInitialized) return;
+    try {
+      await _tts.setLanguage('en-US');
+      await _tts.setSpeechRate(0.5);
+      await _tts.setVolume(1.0);
+      await _tts.setPitch(1.0);
+      _ttsInitialized = true;
+    } catch (_) {
+      // Plugin not available (e.g. widget test environment). Voice
+      // features degrade silently — the UI keeps working.
+    }
   }
 
   Future<void> setLanguage(String languageCode) async {
@@ -26,8 +37,13 @@ class VoiceService {
 
   Future<void> speak(String text) async {
     if (text.isEmpty) return;
-    await _tts.stop();
-    await _tts.speak(text);
+    await initTts();
+    try {
+      await _tts.stop();
+      await _tts.speak(text);
+    } catch (_) {
+      // TTS not available — silent fallback.
+    }
   }
 
   Future<void> stop() async {

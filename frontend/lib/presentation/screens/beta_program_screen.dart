@@ -184,7 +184,7 @@ class _BetaProgramScreenState extends ConsumerState<BetaProgramScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
+    final l10n = AppLocalizations.of(context);
     final auth = ref.watch(authStateProvider).value;
     final isAuthenticated = auth?.user != null;
 

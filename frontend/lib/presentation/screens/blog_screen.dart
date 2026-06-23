@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/theme.dart';
 import '../../core/api_client.dart';
+import '../../core/content/blog_seed.dart';
 
 class BlogScreen extends ConsumerStatefulWidget {
   const BlogScreen({super.key});
@@ -56,7 +57,18 @@ class _BlogScreenState extends ConsumerState<BlogScreen> {
         });
       }
     } catch (_) {
-      // Categories are decorative — ignore failures.
+      // API unreachable — fall back to seed categories. Better to show
+      // *something* useful than an empty chip bar.
+      if (mounted) {
+        setState(() {
+          _categories = kBlogSeedCategories
+              .map((j) => _BlogCategory(
+                    name: j['name'] as String? ?? 'uncategorized',
+                    count: (j['count'] as num?)?.toInt() ?? 0,
+                  ))
+              .toList();
+        });
+      }
     }
   }
 
@@ -84,18 +96,38 @@ class _BlogScreenState extends ConsumerState<BlogScreen> {
         _isLoading = false;
       });
     } on DioException catch (e) {
+      // Network/API error — fall back to the local seed so the page
+      // never looks broken in production.
       if (!mounted) return;
-      setState(() {
-        _error = e.response?.data?['detail'] ?? e.message ?? 'Failed to load blog';
-        _isLoading = false;
-      });
+      _applySeedFallback('Blog API unreachable (${e.message ?? e.type}). '
+          'Showing curated seed posts.');
     } catch (e) {
       if (!mounted) return;
-      setState(() {
-        _error = e.toString();
-        _isLoading = false;
-      });
+      _applySeedFallback('Could not load blog posts: $e');
     }
+  }
+
+  void _applySeedFallback(String note) {
+    var items = kBlogSeedPosts;
+    // Mirror the same filter logic the API applies.
+    if (_selectedCategory != null) {
+      items = items.where((p) => p['category'] == _selectedCategory).toList();
+    }
+    if (_searchQuery.isNotEmpty) {
+      final q = _searchQuery.toLowerCase();
+      items = items.where((p) {
+        final title = (p['title'] as String? ?? '').toLowerCase();
+        final desc =
+            (p['meta_description'] as String? ?? '').toLowerCase();
+        final tags = (p['tags'] as List?)?.join(' ').toLowerCase() ?? '';
+        return title.contains(q) || desc.contains(q) || tags.contains(q);
+      }).toList();
+    }
+    setState(() {
+      _posts = items.map(_BlogPost.fromJson).toList();
+      _isLoading = false;
+      _error = note;
+    });
   }
 
   @override
@@ -320,19 +352,33 @@ class _BlogDetailScreenState extends ConsumerState<BlogDetailScreen> {
         _post = _BlogPostDetail.fromJson(resp.data as Map<String, dynamic>);
         _isLoading = false;
       });
-    } on DioException catch (e) {
+    } on DioException catch (_) {
+      // API unreachable — fall back to the seed post if it matches.
       if (!mounted) return;
-      setState(() {
-        _error = e.response?.data?['detail'] ?? e.message ?? 'Failed to load post';
-        _isLoading = false;
-      });
-    } catch (e) {
+      _applySeedFallback();
+    } catch (_) {
       if (!mounted) return;
-      setState(() {
-        _error = e.toString();
-        _isLoading = false;
-      });
+      _applySeedFallback();
     }
+  }
+
+  void _applySeedFallback() {
+    final match = kBlogSeedPosts.firstWhere(
+      (p) => p['slug'] == widget.slug,
+      orElse: () => const {},
+    );
+    if (match.isEmpty) {
+      setState(() {
+        _error = 'Post not found.';
+        _isLoading = false;
+      });
+      return;
+    }
+    setState(() {
+      _post = _BlogPostDetail.fromJson(match);
+      _isLoading = false;
+      _error = 'Showing local cached version — live blog API offline.';
+    });
   }
 
   @override

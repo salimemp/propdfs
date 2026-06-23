@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -45,17 +46,63 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Future<void> _loginWithGoogle() async {
-    final uri = Uri.parse(ApiBaseUrl.oauthStart('google'));
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
+    await _launchOAuth('google');
   }
 
   Future<void> _loginWithGitHub() async {
-    final uri = Uri.parse(ApiBaseUrl.oauthStart('github'));
-    if (await canLaunchUrl(uri)) {
+    await _launchOAuth('github');
+  }
+
+  Future<void> _launchOAuth(String provider) async {
+    try {
+      final uri = Uri.parse(ApiBaseUrl.oauthStart(provider));
+      if (!await canLaunchUrl(uri)) {
+        _showSnack('Could not open $provider sign-in. Check your popup blocker.');
+        return;
+      }
       await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      // Surface the failure — silent failures on OAuth buttons left users
+      // wondering why nothing happened.
+      _showSnack('Sign-in with $provider failed: $e');
     }
+  }
+
+  Future<void> _loginWithMagicLink() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty || !email.contains('@')) {
+      _showSnack('Enter your email above first — we\'ll send the link there.');
+      return;
+    }
+    try {
+      await ref.read(apiClientProvider).post(
+            '/api/v1/auth/magic-link',
+            data: {'email': email},
+          );
+      _showSnack('Sign-in link sent to $email. Check your inbox.');
+    } on DioException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              e.response?.statusCode == 404
+                  ? 'Magic link sign-in isn\'t enabled on the backend yet. '
+                      'Use email + password or OAuth for now.'
+                  : 'Failed to send link: ${e.response?.data?['detail'] ?? e.message}',
+            ),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+    } catch (e) {
+      _showSnack('Network error: $e');
+    }
+  }
+
+  void _showSnack(String msg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
   void _showPasskeyComingSoon() {
@@ -153,7 +200,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             Expanded(child: Divider(color: Colors.grey[800])),
                           ],
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 16),
+
+                        // Magic link — sends a one-time login link to the
+                        // user's email instead of typing a password. Useful
+                        // for users on shared devices, or as a passwordless
+                        // option for the security-conscious.
+                        OutlinedButton.icon(
+                          onPressed: isLoading ? null : _loginWithMagicLink,
+                          icon: const Icon(Icons.mail_outline, size: 18),
+                          label: const Text('Email me a sign-in link'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.white,
+                            side: BorderSide(color: Colors.grey[700]!),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            minimumSize: const Size(double.infinity, 48),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
 
                         // Error message
                         if (error != null) ...[
@@ -261,7 +328,29 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             return null;
                           },
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 8),
+
+                        // Forgot password — right-aligned, secondary action.
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton(
+                            onPressed: () => context.go('/forgot-password'),
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            child: const Text(
+                              'Forgot password?',
+                              style: TextStyle(
+                                color: Color(0xFF2563EB),
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
 
                         // Sign in button
                         SizedBox(
@@ -288,9 +377,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                         const SizedBox(height: 24),
 
-                        // Sign up link
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
+                        // Sign up link — Wrap instead of Row so long
+                        // translations (German / Russian) don't overflow.
+                        Wrap(
+                          alignment: WrapAlignment.center,
+                          crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
                             Text(
                               "Don't have an account? ",

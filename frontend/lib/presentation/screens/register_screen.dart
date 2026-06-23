@@ -20,9 +20,25 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _obscurePassword = true;
   bool _agreeToTerms = false;
+  _PasswordStrength _passwordStrength = _PasswordStrength.none;
+
+  @override
+  void initState() {
+    super.initState();
+    // Live-update the strength meter as the user types.
+    _passwordController.addListener(_recomputePasswordStrength);
+  }
+
+  void _recomputePasswordStrength() {
+    final next = _scorePassword(_passwordController.text);
+    if (next != _passwordStrength) {
+      setState(() => _passwordStrength = next);
+    }
+  }
 
   @override
   void dispose() {
+    _passwordController.removeListener(_recomputePasswordStrength);
     _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
@@ -143,9 +159,18 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       if (value == null || value.length < 6) {
                         return 'Password must be at least 6 characters';
                       }
+                      if (_passwordStrength == _PasswordStrength.weak) {
+                        return 'Password is too weak — add length, numbers, or symbols';
+                      }
                       return null;
                     },
                   ),
+                  // Live password strength meter. Hidden until the user
+                  // starts typing so we don't show an empty bar.
+                  if (_passwordController.text.isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    _PasswordStrengthMeter(strength: _passwordStrength),
+                  ],
                   const SizedBox(height: 20),
 
                   _buildLabel('Confirm Password'),
@@ -284,6 +309,139 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       ),
       validator: validator,
+    );
+  }
+}
+
+/// Password strength buckets. Used by [_scorePassword] and surfaced in
+/// [_PasswordStrengthMeter] as both a coloured bar and a label.
+enum _PasswordStrength { none, weak, fair, good, strong }
+
+/// Heuristic password scoring. Not a substitute for server-side entropy
+/// checks (which the backend already enforces), but enough to nudge users
+/// away from `password123` at signup.
+///
+/// Score components:
+/// - length: 6+ → +1, 10+ → +2, 14+ → +3
+/// - mixed case letters → +1
+/// - digits → +1
+/// - symbols → +1
+///
+/// Max raw score = 8. Buckets:
+/// - 0-2 → weak
+/// - 3-4 → fair
+/// - 5-6 → good
+/// - 7+  → strong
+_PasswordStrength _scorePassword(String s) {
+  if (s.isEmpty) return _PasswordStrength.none;
+
+  int score = 0;
+  if (s.length >= 6) score += 1;
+  if (s.length >= 10) score += 1;
+  if (s.length >= 14) score += 1;
+
+  // Lower / upper case variety.
+  final hasLower = RegExp(r'[a-z]').hasMatch(s);
+  final hasUpper = RegExp(r'[A-Z]').hasMatch(s);
+  if (hasLower && hasUpper) score += 1;
+
+  if (RegExp(r'\d').hasMatch(s)) score += 1;
+  if (RegExp(r'[^A-Za-z0-9]').hasMatch(s)) score += 1;
+
+  // Common-password penalty — these should not score "fair" even with
+  // a digit or symbol appended.
+  const common = {
+    'password',
+    'password1',
+    'password123',
+    'qwerty',
+    'qwerty123',
+    '12345678',
+    '11111111',
+    'letmein',
+    'welcome',
+    'admin123',
+    'iloveyou',
+  };
+  if (common.contains(s.toLowerCase())) {
+    return _PasswordStrength.weak;
+  }
+
+  if (score <= 2) return _PasswordStrength.weak;
+  if (score <= 4) return _PasswordStrength.fair;
+  if (score <= 6) return _PasswordStrength.good;
+  return _PasswordStrength.strong;
+}
+
+class _PasswordStrengthMeter extends StatelessWidget {
+  final _PasswordStrength strength;
+  const _PasswordStrengthMeter({required this.strength});
+
+  ({double fill, Color color, String label}) get _style {
+    switch (strength) {
+      case _PasswordStrength.none:
+        return (fill: 0.0, color: Colors.transparent, label: '');
+      case _PasswordStrength.weak:
+        return (fill: 0.25, color: const Color(0xFFEF4444), label: 'Weak');
+      case _PasswordStrength.fair:
+        return (fill: 0.5, color: const Color(0xFFF59E0B), label: 'Fair');
+      case _PasswordStrength.good:
+        return (fill: 0.75, color: const Color(0xFF3B82F6), label: 'Good');
+      case _PasswordStrength.strong:
+        return (fill: 1.0, color: const Color(0xFF10B981), label: 'Strong');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = _style;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 4-segment bar. Empty segments use a faint outline.
+        ClipRRect(
+          borderRadius: BorderRadius.circular(3),
+          child: Row(
+            children: List.generate(4, (i) {
+              final lit = s.fill > (i / 4);
+              return Expanded(
+                child: Container(
+                  height: 4,
+                  margin: EdgeInsets.only(right: i < 3 ? 4 : 0),
+                  color: lit
+                      ? s.color
+                      : const Color(0xFF1a1a2e),
+                ),
+              );
+            }),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              s.label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: s.color == Colors.transparent
+                    ? Colors.grey[500]
+                    : s.color,
+              ),
+            ),
+            if (strength == _PasswordStrength.weak ||
+                strength == _PasswordStrength.fair)
+              Expanded(
+                child: Text(
+                  'Try 12+ chars, mix case, numbers, symbols.',
+                  style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                  textAlign: TextAlign.right,
+                ),
+              ),
+          ],
+        ),
+      ],
     );
   }
 }
