@@ -161,7 +161,11 @@ def process_topic(
             site_id=site_id,
         )
     except Exception as e:
-        return "failed", f"harborseo generate failed: {e}"
+        msg = f"harborseo generate failed: {e}"
+        print(f"  ✗ {msg}", file=sys.stderr)
+        return "failed", msg
+
+    print(f"  generated: slug='{post.slug}'  title='{post.title[:60]}'")
 
     # 2. Skip if the slug is already on the backend.
     if already_published(post.slug):
@@ -172,12 +176,13 @@ def process_topic(
     try:
         ok, msg = publish(post, access_token)
     except httpx.HTTPStatusError as e:
-        return (
-            "failed",
-            f"POST /blog/posts {e.response.status_code}: {e.response.text[:200]}",
-        )
+        msg = f"POST /blog/posts {e.response.status_code}: " f"{e.response.text[:200]}"
+        print(f"  ✗ {msg}", file=sys.stderr)
+        return "failed", msg
     except Exception as e:
-        return "failed", f"publish network error: {e}"
+        msg = f"publish network error: {e}"
+        print(f"  ✗ {msg}", file=sys.stderr)
+        return "failed", msg
 
     print(f"  {'✓' if ok else '✗'} {msg}")
     return ("published" if ok else "failed"), msg
