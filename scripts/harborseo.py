@@ -316,11 +316,10 @@ class HarborSeoClient:
         (status usually "pending" or "generating"). Use
         `wait_for_article` to poll for completion.
 
-        The body shape is best-effort — the real API takes
-        {site_id, topic, keywords, ...}. We send a small canonical
-        set; extra fields like `category` are dropped if the
-        server rejects them, but we don't catch that here so
-        shape mismatches surface loudly.
+        Body shape is best-effort and may need iteration against
+        the real API — see scripts/_probe_harborseo_create.py for
+        a one-shot tool that tries a few candidate bodies and
+        reports which one returns 200/201.
         """
         body = {
             "site_id": site_id,
@@ -329,14 +328,19 @@ class HarborSeoClient:
             "target_word_count": target_words,
             "language": language,
         }
-        # Some Convex endpoints also accept `type`; we pass
-        # category through as `type` since that's the field the
-        # server uses to distinguish "article" from "audit".
-        # If the server doesn't accept it, this is harmless
-        # (extra field, ignored).
         if category:
             body["type"] = category
-        return self._request("POST", "/articles", json_body=body)
+        try:
+            return self._request("POST", "/articles", json_body=body)
+        except httpx.HTTPStatusError as e:
+            # Surface the response body so the operator can see
+            # what the API actually wants — the default httpx
+            # message only includes the status line.
+            body_text = e.response.text[:500] if e.response else "(no body)"
+            raise RuntimeError(
+                f"POST /articles {e.response.status_code}: {body_text} "
+                f"(request body keys: {sorted(body.keys())})"
+            ) from e
 
     def get_article(self, article_id: str) -> dict:
         """Fetch one article by id."""
