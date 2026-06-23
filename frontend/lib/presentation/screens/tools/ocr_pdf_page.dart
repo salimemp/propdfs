@@ -1,23 +1,31 @@
+import 'dart:async';
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:pdfx/pdfx.dart';
 
 import '../../../core/services/pdf_editor_service.dart';
+import '../../../core/services/web_bridge.dart';
 import '../../../core/theme.dart';
 
-/// OCR PDF tool. On web + mobile, this renders the PDF pages to images,
-/// runs text recognition with `google_mlkit_text_recognition` (already
-/// a project dep), then overlays an invisible text layer via
-/// [PdfEditorService.overlayOcrText] so the result is searchable.
+/// OCR PDF — turn a scanned, image-only PDF into a searchable one.
 ///
-/// For MVP scope, this page renders the source PDF, surfaces the
-/// detected text in a side panel, and offers a "Download searchable PDF"
-/// button. The actual rendering + ML Kit call requires the platform
-/// pdfx viewer which isn't trivial to drive outside the widget tree, so
-/// the page wires up the UI + download path and uses the syncfusion
-/// overlay on whatever bytes we already have.
+/// Pipeline (web-only, runs entirely in the browser):
+///   1. Open the PDF with pdfx → get a [PdfDocument]
+///   2. For each page, render to PNG via [PdfPageImage]
+///   3. Hand the PNG data URL to Tesseract.js via [WebBridge.ocrImage]
+///   4. Get back the recognised text + per-word bounding boxes
+///   5. Overlay an invisible text layer via
+///      [PdfEditorService.overlayOcrText] so the result is searchable
+///   6. Download the new PDF via [WebBridge.downloadBytes]
+///
+/// On native (mobile) we fall back to a clearly-labelled "not yet
+/// supported" path — the OCR engine + page renderer need a Flutter
+/// native binding which we'll add in a follow-up. The web path is
+/// fully functional.
 class OcrPdfPage extends StatefulWidget {
   const OcrPdfPage({super.key});
 
@@ -29,15 +37,40 @@ class _OcrPdfPageState extends State<OcrPdfPage> {
   Uint8List? _inputBytes;
   String? _inputName;
   bool _busy = false;
+  String? _statusMessage;
   String? _error;
   String? _detectedText;
+  int _detectedBlockCount = 0;
   Uint8List? _outputBytes;
+  String _language = 'eng';
+
+  static const _languageOptions = <String, String>{
+    'eng': 'English',
+    'spa': 'Spanish',
+    'fra': 'French',
+    'deu': 'German',
+    'hin': 'Hindi',
+    'ara': 'Arabic',
+    'chi_sim': 'Chinese (Simplified)',
+    'jpn': 'Japanese',
+    'kor': 'Korean',
+    'por': 'Portuguese',
+    'rus': 'Russian',
+  };
+
+  @override
+  void dispose() {
+    // Free the Tesseract worker on screen exit.
+    if (kIsWeb) WebBridge.terminateOcr();
+    super.dispose();
+  }
 
   Future<void> _pickFile() async {
     setState(() {
       _error = null;
       _detectedText = null;
       _outputBytes = null;
+      _statusMessage = null;
     });
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
@@ -55,45 +88,105 @@ class _OcrPdfPageState extends State<OcrPdfPage> {
 
   Future<void> _runOcr() async {
     if (_inputBytes == null) return;
+    if (!kIsWeb) {
+      setState(() => _error =
+          'OCR currently runs in the browser. Open the web app at '
+          'https://app.getpdfpro.com/tools/ocr to use OCR.');
+      return;
+    }
     setState(() {
       _busy = true;
       _error = null;
       _detectedText = null;
+      _detectedBlockCount = 0;
       _outputBytes = null;
+      _statusMessage = 'Opening PDF…';
     });
-    try {
-      // Real OCR runs in the platform layer via google_mlkit_text_recognition.
-      // The platform method channel returns (recognized text, bounding
-      // boxes). For MVP we hand the user the input PDF unchanged so the
-      // download path is verifiable; backend integration will replace
-      // this with the real detection call.
-      // ignore: avoid_print
-      print('[OcrPdf] would invoke platform OCR on ${_inputBytes!.lengthInBytes}B');
-      final detected = 'OCR detected text would appear here.\n\n'
-          '(Backend integration with Tesseract / ML Kit Vision pending — '
-          'see the comment in OcrPdfPage._runOcr.)';
 
-      // Demo overlay so the "Download searchable PDF" button has
-      // something to hand back. The real path is:
-      //   final blocks = await _runMlKitOnPage(pageImage);
-      //   output = await PdfEditorService.overlayOcrText(...);
-      final output = await PdfEditorService.overlayOcrText(
-        pdfBytes: _inputBytes!,
-        pageIndex: 0,
-        blocks: [],
-      );
+    try {
+      final doc = await PdfDocument.openData(_inputBytes!);
+      final pageCount = doc.pagesCount;
+
+      Uint8List currentBytes = _inputBytes!;
+      final allText = StringBuffer();
+
+      for (var i = 0; i < pageCount; i++) {
+        if (!mounted) return;
+        setState(() => _statusMessage =
+            'Rendering page ${i + 1} of $pageCount…');
+
+        final page = await doc.getPage(i + 1); // pdfx is 1-indexed
+        final image = await page.render(
+          width: page.width * 2, // 2x for better OCR accuracy
+          height: page.height * 2,
+          format: PdfPageImageFormat.png,
+          // pdfx closes the page automatically after rendering.
+        );
+        await page.close();
+
+        if (image == null) {
+          throw StateError('Could not render page ${i + 1} to image.');
+        }
+
+        setState(() => _statusMessage =
+            'Recognising text on page ${i + 1} of $pageCount…');
+
+        final dataUrl =
+            'data:image/png;base64,${base64Encode(image.bytes)}';
+        final result = await WebBridge.ocrImage(dataUrl, lang: _language);
+
+        if (result.text.isNotEmpty) {
+          allText.writeln('--- Page ${i + 1} ---');
+          allText.writeln(result.text.trim());
+          allText.writeln();
+        }
+        _detectedBlockCount += result.blocks.length;
+
+        // Overlay the invisible text layer on this page. We accumulate
+        // a single output PDF by re-encoding after each overlay.
+        if (result.blocks.isNotEmpty) {
+          final blocks = result.blocks
+              .map((b) => OcrTextBlock(
+                    text: b.text,
+                    box: Rect.fromLTWH(b.x, b.y, b.w, b.h),
+                  ))
+              .toList();
+          // We scale image coords to PDF coords. The render is 2x the
+          // page dimensions, so divide by 2.
+          final scaled = blocks
+              .map((b) => OcrTextBlock(
+                    text: b.text,
+                    box: Rect.fromLTWH(
+                      b.box.left / 2,
+                      b.box.top / 2,
+                      b.box.width / 2,
+                      b.box.height / 2,
+                    ),
+                  ))
+              .toList();
+          currentBytes = await PdfEditorService.overlayOcrText(
+            pdfBytes: currentBytes,
+            pageIndex: i,
+            blocks: scaled,
+          );
+        }
+      }
+
+      await doc.close();
 
       if (!mounted) return;
       setState(() {
-        _detectedText = detected;
-        _outputBytes = output;
+        _detectedText = allText.toString().trim();
+        _outputBytes = currentBytes;
         _busy = false;
+        _statusMessage = null;
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _error = 'OCR failed: $e';
         _busy = false;
+        _statusMessage = null;
       });
     }
   }
@@ -135,9 +228,12 @@ class _OcrPdfPageState extends State<OcrPdfPage> {
               children: [
                 _buildHeader(),
                 const SizedBox(height: 24),
+                _buildLanguagePicker(),
+                const SizedBox(height: 16),
                 _buildPickArea(),
                 const SizedBox(height: 16),
                 if (_error != null) _buildErrorBanner(_error!),
+                if (_statusMessage != null) _buildStatusBanner(_statusMessage!),
                 if (_detectedText != null) _buildDetectedPanel(_detectedText!),
                 if (_outputBytes != null) _buildResultBanner(),
                 const SizedBox(height: 16),
@@ -172,7 +268,7 @@ class _OcrPdfPageState extends State<OcrPdfPage> {
                 Icon(Icons.lock_outline, size: 18, color: AppColors.catOptimize),
                 SizedBox(width: 8),
                 Text(
-                  '100% private — runs locally with ML Kit',
+                  '100% private — runs locally with Tesseract.js',
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
@@ -186,11 +282,49 @@ class _OcrPdfPageState extends State<OcrPdfPage> {
               'OCR PDF runs text recognition on every page of a scanned PDF '
               'and produces a new file with an invisible text layer — making '
               'the document searchable, copy-pasteable, and accessible to '
-              'screen readers.',
+              'screen readers. The first run downloads the OCR engine '
+              '(~10 MB); subsequent runs are cached.',
               style: TextStyle(
                 fontSize: 14,
                 color: AppColors.textMutedLight,
                 height: 1.6,
+              ),
+            ),
+          ],
+        ),
+      );
+
+  Widget _buildLanguagePicker() => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceMutedLight,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.borderLight),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.translate, size: 18, color: AppColors.textLight),
+            const SizedBox(width: 12),
+            const Text('Recognition language:',
+                style: TextStyle(fontWeight: FontWeight.w600)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  isExpanded: true,
+                  value: _language,
+                  items: _languageOptions.entries
+                      .map((e) => DropdownMenuItem(
+                            value: e.key,
+                            child: Text(e.value),
+                          ))
+                      .toList(),
+                  onChanged: _busy
+                      ? null
+                      : (v) {
+                          if (v != null) setState(() => _language = v);
+                        },
+                ),
               ),
             ),
           ],
@@ -261,6 +395,33 @@ class _OcrPdfPageState extends State<OcrPdfPage> {
         ),
       );
 
+  Widget _buildStatusBanner(String msg) => Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.primary.withOpacity(0.06),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.primary.withOpacity(0.30)),
+        ),
+        child: Row(
+          children: [
+            const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(
+                  strokeWidth: 2, color: AppColors.primary),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                msg,
+                style: const TextStyle(
+                    fontSize: 14, color: AppColors.textLight),
+              ),
+            ),
+          ],
+        ),
+      );
+
   Widget _buildDetectedPanel(String text) => Container(
         margin: const EdgeInsets.only(top: 16),
         padding: const EdgeInsets.all(16),
@@ -272,13 +433,14 @@ class _OcrPdfPageState extends State<OcrPdfPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Row(
+            Row(
               children: [
-                Icon(Icons.text_fields, size: 18, color: AppColors.primary),
-                SizedBox(width: 8),
+                const Icon(Icons.text_fields,
+                    size: 18, color: AppColors.primary),
+                const SizedBox(width: 8),
                 Text(
-                  'Detected text',
-                  style: TextStyle(
+                  'Detected text — $_detectedBlockCount words',
+                  style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
                     color: AppColors.textLight,
@@ -287,11 +449,14 @@ class _OcrPdfPageState extends State<OcrPdfPage> {
               ],
             ),
             const SizedBox(height: 8),
-            Text(text,
-                style: const TextStyle(
-                    fontSize: 13,
-                    color: AppColors.textMutedLight,
-                    height: 1.5)),
+            Text(
+              text.isEmpty ? '(no text detected)' : text,
+              style: const TextStyle(
+                fontSize: 13,
+                color: AppColors.textMutedLight,
+                height: 1.5,
+              ),
+            ),
           ],
         ),
       );
@@ -311,11 +476,10 @@ class _OcrPdfPageState extends State<OcrPdfPage> {
             Expanded(
               child: Text(
                 'Searchable PDF ready. The original scan is preserved; an '
-                'invisible text layer has been added.',
+                'invisible text layer has been added so the document is '
+                'searchable, copy-pasteable, and screen-reader-friendly.',
                 style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
+                    fontSize: 14, fontWeight: FontWeight.w600),
               ),
             ),
           ],
@@ -339,7 +503,7 @@ class _OcrPdfPageState extends State<OcrPdfPage> {
                   child: CircularProgressIndicator(
                       strokeWidth: 2, color: Colors.white))
               : const Icon(Icons.document_scanner),
-          label: Text(_busy ? 'Recognizing…' : 'Run OCR'),
+          label: Text(_busy ? 'Recognising…' : 'Run OCR'),
           style: FilledButton.styleFrom(
             backgroundColor: AppColors.catOptimize,
             foregroundColor: Colors.white,
@@ -349,7 +513,8 @@ class _OcrPdfPageState extends State<OcrPdfPage> {
         ),
         if (canDownload)
           OutlinedButton.icon(
-            onPressed: () => _webDownload(_outputBytes!, _suggestName(_inputName!)),
+            onPressed: () =>
+                _webDownload(_outputBytes!, _suggestName(_inputName!)),
             icon: const Icon(Icons.download),
             label: const Text('Download searchable PDF'),
             style: OutlinedButton.styleFrom(
@@ -369,8 +534,5 @@ String _suggestName(String original) {
 }
 
 void _webDownload(Uint8List bytes, String filename) {
-  if (kIsWeb) {
-    // ignore: avoid_print
-    print('[OcrPdf] download: $filename (${bytes.lengthInBytes}B)');
-  }
+  WebBridge.downloadBytes(bytes, filename, mimeType: 'application/pdf');
 }

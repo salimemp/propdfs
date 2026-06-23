@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/services/pdf_editor_service.dart';
 import '../../../core/theme.dart';
+import '../../../core/services/web_bridge.dart';
 
 /// Edit PDF — a minimal MVP editor that lets the user:
 /// - add text at any position on page 1
@@ -27,7 +28,9 @@ class EditPdfPage extends StatefulWidget {
 class _EditPdfPageState extends State<EditPdfPage> {
   Uint8List? _pdfBytes;
   String? _pdfName;
-  final List<PdfEditOperation> _ops = [];
+  final List<List<PdfEditOperation>> _opsByPage = [];
+  int _currentPage = 0;
+  int _pageCount = 1;
   _EditTool _activeTool = _EditTool.text;
   Color _activeColor = const Color(0xFFEF4444);
   double _activeStrokeWidth = 2;
@@ -35,8 +38,39 @@ class _EditPdfPageState extends State<EditPdfPage> {
   Offset? _dragCurrent;
   bool _busy = false;
   String? _error;
+  String? _statusMessage;
   Uint8List? _outputBytes;
   final _textController = TextEditingController(text: 'Type here');
+
+  // Edit ops keyed by page index. Empty for pages without edits so we
+  // don't burn cycles re-encoding pages the user didn't touch.
+  List<PdfEditOperation> get _ops =>
+      _opsByPage.length > _currentPage ? _opsByPage[_currentPage] : <PdfEditOperation>[];
+
+  void _addOp(PdfEditOperation op) {
+    while (_opsByPage.length <= _currentPage) {
+      _opsByPage.add([]);
+    }
+    _opsByPage[_currentPage].add(op);
+  }
+
+  void _popOp() {
+    if (_ops.isEmpty) return;
+    setState(() {
+      _opsByPage[_currentPage].removeLast();
+      if (_opsByPage[_currentPage].isEmpty) {
+        _opsByPage.removeAt(_currentPage);
+        if (_currentPage >= _opsByPage.length &&
+            _opsByPage.isNotEmpty) {
+          _currentPage = _opsByPage.length - 1;
+        }
+      }
+    });
+  }
+
+  void _clearOps() {
+    setState(() => _opsByPage.clear());
+  }
 
   static const _palette = <Color>[
     Color(0xFFEF4444), // red
@@ -57,7 +91,9 @@ class _EditPdfPageState extends State<EditPdfPage> {
     setState(() {
       _error = null;
       _outputBytes = null;
-      _ops.clear();
+      _opsByPage.clear();
+      _currentPage = 0;
+      _pageCount = 1;
     });
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
@@ -70,7 +106,12 @@ class _EditPdfPageState extends State<EditPdfPage> {
     setState(() {
       _pdfBytes = f.bytes;
       _pdfName = f.name;
+      // Resolve page count asynchronously; show 1 until it returns.
+      _pageCount = 1;
     });
+    final count = await PdfEditorService.pageCount(f.bytes!);
+    if (!mounted) return;
+    setState(() => _pageCount = count);
   }
 
   Future<void> _apply() async {
@@ -78,27 +119,46 @@ class _EditPdfPageState extends State<EditPdfPage> {
       setState(() => _error = 'Pick a PDF first.');
       return;
     }
+    if (_opsByPage.isEmpty) {
+      setState(() => _error = 'Add at least one edit first.');
+      return;
+    }
     setState(() {
       _busy = true;
       _error = null;
       _outputBytes = null;
+      _statusMessage = null;
     });
     try {
-      final out = await PdfEditorService.edit(
-        pdfBytes: _pdfBytes!,
-        pageIndex: 0,
-        operations: _ops,
-      );
+      // Apply per-page edits sequentially. Pages without edits are
+      // skipped — we only re-encode pages the user actually touched.
+      Uint8List current = _pdfBytes!;
+      final totalEdits =
+          _opsByPage.fold<int>(0, (sum, ops) => sum + ops.length);
+      var done = 0;
+      for (var i = 0; i < _opsByPage.length; i++) {
+        if (_opsByPage[i].isEmpty) continue;
+        if (!mounted) return;
+        setState(() => _statusMessage =
+            'Applying ${++done} of $totalEdits edits…');
+        current = await PdfEditorService.edit(
+          pdfBytes: current,
+          pageIndex: i,
+          operations: _opsByPage[i],
+        );
+      }
       if (!mounted) return;
       setState(() {
-        _outputBytes = out;
+        _outputBytes = current;
         _busy = false;
+        _statusMessage = null;
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _error = 'Could not apply edits: $e';
         _busy = false;
+        _statusMessage = null;
       });
     }
   }
@@ -137,10 +197,10 @@ class _EditPdfPageState extends State<EditPdfPage> {
         case _EditTool.image:
           break; // text uses textField commit, image is future work
         case _EditTool.rect:
-          _ops.add(PdfEditOperation.rect(rect, colorArgb: argb));
+          _addOp(PdfEditOperation.rect(rect, colorArgb: argb));
           break;
         case _EditTool.ellipse:
-          _ops.add(PdfEditOperation.ellipse(rect, colorArgb: argb));
+          _addOp(PdfEditOperation.ellipse(rect, colorArgb: argb));
           break;
         case _EditTool.line:
           // For line, we draw a thin rect along the drag direction.
@@ -152,7 +212,7 @@ class _EditPdfPageState extends State<EditPdfPage> {
                   _activeStrokeWidth,
                 )
               : rect;
-          _ops.add(PdfEditOperation.line(lineRect, colorArgb: argb));
+          _addOp(PdfEditOperation.line(lineRect, colorArgb: argb));
           break;
       }
       _dragStart = null;
@@ -162,16 +222,10 @@ class _EditPdfPageState extends State<EditPdfPage> {
 
   void _commitText(Offset canvasPos) {
     final argb = _activeColor.value;
-    final fontSize = 18.0;
-    // Compute approximate text rect — width=200, height=24.
-    final pdfRect = Rect.fromLTWH(
-      canvasPos.dx,
-      canvasPos.dy,
-      200,
-      24,
-    );
+    const fontSize = 18.0;
+    final pdfRect = Rect.fromLTWH(canvasPos.dx, canvasPos.dy, 200, 24);
     setState(() {
-      _ops.add(PdfEditOperation.text(
+      _addOp(PdfEditOperation.text(
         _textController.text,
         fontSize: fontSize,
         colorArgb: argb,
@@ -180,14 +234,153 @@ class _EditPdfPageState extends State<EditPdfPage> {
     });
   }
 
-  void _undo() {
-    if (_ops.isEmpty) return;
-    setState(() => _ops.removeLast());
+  /// Open a dialog that lets the user edit ALL text on the current
+  /// page. The existing text is extracted via PdfTextExtractor, displayed
+  /// in a multi-line editor; on save the original text is white-out'd and
+  /// the new text is drawn at the top of the page.
+  ///
+  /// This is a real (if rough) text-content editor — fine for fixing
+  /// typos or re-flowing a paragraph. For complex multi-column layouts
+  /// you'd want a richer editor that preserves the original
+  /// coordinates, but that's a much bigger project.
+  Future<void> _openTextReplaceDialog() async {
+    if (_pdfBytes == null) return;
+    setState(() => _statusMessage = 'Extracting text from page…');
+    String original;
+    try {
+      original = await PdfEditorService.extractPageText(
+        _pdfBytes!,
+        _currentPage,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = 'Could not extract text: $e';
+        _statusMessage = null;
+      });
+      return;
+    }
+    if (!mounted) return;
+    setState(() => _statusMessage = null);
+
+    final controller = TextEditingController(text: original);
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Replace text — page ${_currentPage + 1}'),
+        content: SizedBox(
+          width: 600,
+          height: 400,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Edit the text below. On save, we\'ll draw a white box over '
+                'the original text and write the new text at the top of the '
+                'page.',
+                style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+              ),
+              const SizedBox(height: 12),
+              Expanded(
+                child: TextField(
+                  controller: controller,
+                  maxLines: null,
+                  expands: true,
+                  textAlignVertical: TextAlignVertical.top,
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.all(12),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(null),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(controller.text),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+
+    if (result == null || !mounted) return;
+    final newText = result;
+
+    setState(() {
+      _statusMessage = 'Applying text replacement…';
+    });
+    try {
+      // Step 1: white-out the existing text region (full page minus
+      // 50pt margins is a reasonable approximation when we don't have
+      // per-line coordinates from pdfx).
+      final sizes = await PdfEditorService.pageSizes(_pdfBytes!);
+      if (_currentPage >= sizes.length) {
+        throw StateError('Page ${_currentPage + 1} out of range.');
+      }
+      final size = sizes[_currentPage];
+      final whiteRect = Rect.fromLTWH(
+        36,
+        36,
+        size.width - 72,
+        size.height - 72,
+      );
+      final afterWhiteout = await PdfEditorService.edit(
+        pdfBytes: _pdfBytes!,
+        pageIndex: _currentPage,
+        operations: [
+          PdfEditOperation.rect(whiteRect,
+              colorArgb: 0xFFFFFFFF), // opaque white
+        ],
+      );
+
+      // Step 2: write the new text at the top of the page.
+      final textRect = Rect.fromLTWH(
+        36,
+        36,
+        size.width - 72,
+        size.height - 72,
+      );
+      final finalBytes = await PdfEditorService.edit(
+        pdfBytes: afterWhiteout,
+        pageIndex: _currentPage,
+        operations: [
+          PdfEditOperation.text(
+            newText,
+            fontSize: 11,
+            colorArgb: 0xFF000000,
+            at: textRect,
+          ),
+        ],
+      );
+
+      if (!mounted) return;
+      setState(() {
+        _pdfBytes = finalBytes;
+        // Reset edit state for this page since we just wholesale
+        // replaced its content.
+        if (_opsByPage.length > _currentPage) {
+          _opsByPage[_currentPage] = [];
+        }
+        _statusMessage = null;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = 'Could not apply text replacement: $e';
+        _statusMessage = null;
+      });
+    }
   }
 
-  void _clear() {
-    setState(() => _ops.clear());
-  }
+  void _undo() => _popOp();
+
+  void _clear() => _clearOps();
 
   @override
   Widget build(BuildContext context) {
@@ -323,6 +516,64 @@ class _EditPdfPageState extends State<EditPdfPage> {
       ),
       child: Column(
         children: [
+          // Page picker row.
+          Row(
+            children: [
+              const Icon(Icons.description_outlined,
+                  size: 18, color: AppColors.textLight),
+              const SizedBox(width: 8),
+              const Text('Editing page',
+                  style: TextStyle(fontWeight: FontWeight.w600)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Row(
+                  children: [
+                    IconButton(
+                      onPressed: _currentPage > 0
+                          ? () => setState(() => _currentPage--)
+                          : null,
+                      icon: const Icon(Icons.chevron_left),
+                      tooltip: 'Previous page',
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceLight,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppColors.borderLight),
+                      ),
+                      child: Text(
+                        '${_currentPage + 1} / $_pageCount',
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: _currentPage + 1 < _pageCount
+                          ? () => setState(() => _currentPage++)
+                          : null,
+                      icon: const Icon(Icons.chevron_right),
+                      tooltip: 'Next page',
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      _ops.isEmpty
+                          ? 'No edits yet'
+                          : '${_ops.length} edit${_ops.length == 1 ? '' : 's'} on this page',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: _ops.isEmpty
+                            ? Colors.grey[500]
+                            : AppColors.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const Divider(height: 16),
           // Tool row.
           Wrap(
             spacing: 6,
@@ -341,6 +592,7 @@ class _EditPdfPageState extends State<EditPdfPage> {
           Wrap(
             spacing: 6,
             runSpacing: 6,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               for (final c in _palette)
                 GestureDetector(
@@ -374,16 +626,25 @@ class _EditPdfPageState extends State<EditPdfPage> {
                   ),
                 ),
               ],
-              const Spacer(),
+              const SizedBox(width: 12),
               TextButton.icon(
                 onPressed: _ops.isEmpty ? null : _undo,
                 icon: const Icon(Icons.undo, size: 18),
                 label: const Text('Undo'),
               ),
               TextButton.icon(
-                onPressed: _ops.isEmpty ? null : _clear,
+                onPressed: _opsByPage.every((p) => p.isEmpty)
+                    ? null
+                    : _clear,
                 icon: const Icon(Icons.delete_sweep, size: 18),
                 label: const Text('Clear'),
+              ),
+              TextButton.icon(
+                onPressed: _pdfBytes == null || _busy
+                    ? null
+                    : _openTextReplaceDialog,
+                icon: const Icon(Icons.text_fields, size: 18),
+                label: const Text('Replace text'),
               ),
             ],
           ),
@@ -711,8 +972,5 @@ String _suggestName(String original) {
 }
 
 void _webDownload(Uint8List bytes, String filename) {
-  if (kIsWeb) {
-    // ignore: avoid_print
-    print('[EditPdf] download: $filename (${bytes.lengthInBytes}B)');
-  }
+  WebBridge.downloadBytes(bytes, filename, mimeType: 'application/pdf');
 }

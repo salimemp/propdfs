@@ -29,6 +29,7 @@ import '../presentation/screens/my_data_screen.dart';
 import '../presentation/screens/pricing_screen.dart';
 import '../presentation/screens/about_screen.dart';
 import '../presentation/screens/forgot_password_screen.dart';
+import '../presentation/screens/mfa_setup_screen.dart';
 import '../presentation/providers/auth_provider.dart';
 import '../core/tools/tool_registry.dart';
 
@@ -192,6 +193,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/settings',
         builder: (context, state) => const SettingsScreen(),
+      ),
+      GoRoute(
+        path: '/settings/2fa',
+        builder: (context, state) => const MfaSetupScreen(),
       ),
       GoRoute(
         path: '/scan',

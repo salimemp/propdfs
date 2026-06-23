@@ -1,0 +1,18 @@
+User-agent: *
+# Allow everything by default — there are no private pages we want
+# hidden from search engines.
+Allow: /
+
+# Block internal routes that don't make sense as search results.
+# Flutter web renders the same index.html for every path; crawlers
+# that ignore these will still only see the canonical home page.
+Disallow: /api/
+Disallow: /auth/callback
+Disallow: /forgot-password
+Disallow: /settings
+Disallow: /settings/2fa
+
+# Sitemap location. Update the domain here when you set up the
+# production canonical (right now propdfs.com is the canonical, but
+# once propdf.com is parked we may need to swap).
+Sitemap: https://propdfs.com/sitemap.xml

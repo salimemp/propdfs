@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/services/pdf_editor_service.dart';
 import '../../../core/theme.dart';
+import '../../../core/services/web_bridge.dart';
 
 /// Comment PDF — add sticky-note comments anywhere on the page.
 /// Each comment is anchored to (x, y) in top-down PDF coordinates.
@@ -564,8 +565,6 @@ String _suggestName(String original) {
 }
 
 void _webDownload(Uint8List bytes, String filename) {
-  if (kIsWeb) {
-    // ignore: avoid_print
-    print('[CommentPdf] download: $filename (${bytes.lengthInBytes}B)');
-  }
+  WebBridge.downloadBytes(bytes, filename, mimeType: 'application/pdf');
 }
+

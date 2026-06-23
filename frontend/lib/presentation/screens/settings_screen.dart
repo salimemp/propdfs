@@ -80,7 +80,10 @@ class SettingsScreen extends ConsumerWidget {
             context,
             icon: Icons.verified_user_outlined,
             title: 'Two-Factor Authentication',
-            onTap: () {},
+            subtitle: authState.value?.user?.planTier == 'free'
+                ? 'Adds an extra login step with Google Authenticator / 1Password'
+                : null,
+            onTap: () => context.push('/settings/2fa'),
           ),
           _buildListTile(
             context,

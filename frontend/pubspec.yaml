@@ -95,6 +95,9 @@ dependencies:
   syncfusion_flutter_pdf: ^28.2.7
   syncfusion_flutter_pdfviewer: ^28.2.7
 
+  # Two-factor / authenticator QR codes. Tiny, well-maintained.
+  qr_flutter: ^4.1.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

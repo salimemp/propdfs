@@ -23,6 +23,11 @@ class TokenResponse(BaseModel):
     refresh_token: str
     token_type: str = "bearer"
     expires_in: int
+    # When the user has 2FA enabled, /login returns only `mfa_token` and
+    # these two flags. The client POSTs the TOTP code to
+    # /auth/2fa/verify to receive the normal token pair.
+    mfa_required: bool = False
+    mfa_token: Optional[str] = None
 
 
 class UserResponse(BaseModel):
@@ -39,6 +44,46 @@ class UserResponse(BaseModel):
 
 class RefreshTokenRequest(BaseModel):
     refresh_token: str
+
+
+# ─── MFA / 2FA Schemas ───
+
+
+class MFASetupResponse(BaseModel):
+    """Returned from /auth/2fa/setup so the user can enrol an authenticator app."""
+
+    secret: str  # base32-encoded TOTP secret
+    otpauth_url: str  # otpauth://totp/... URI the QR code encodes
+    qr_png_data_url: str  # data:image/png;base64,... ready to drop into <img src>
+
+
+class MFAEnableRequest(BaseModel):
+    """Sent to /auth/2fa/enable to confirm the user has scanned the QR
+    and successfully typed a code from their authenticator app."""
+
+    code: str = Field(min_length=6, max_length=6, pattern=r"^\d{6}$")
+
+
+class MFADisableRequest(BaseModel):
+    """Sent to /auth/2fa/disable to turn 2FA off (requires password re-confirm)."""
+
+    password: str
+
+
+class MFAVerifyRequest(BaseModel):
+    """Sent after a successful login when the user has 2FA enabled.
+    Completes the login by returning a normal token pair on success."""
+
+    mfa_token: str  # short-lived token returned from /login when MFA is required
+    code: str = Field(min_length=6, max_length=6, pattern=r"^\d{6}$")
+
+
+class MFALoginResponse(BaseModel):
+    """Returned from /login when the user has 2FA enabled — the client
+    must then POST to /auth/2fa/verify with [code]."""
+
+    mfa_required: bool = True
+    mfa_token: str
 
 
 # ─── Document Schemas ───

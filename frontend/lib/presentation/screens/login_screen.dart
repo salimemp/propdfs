@@ -31,7 +31,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     final notifier = ref.read(authStateProvider.notifier);
-    await notifier.login(_emailController.text.trim(), _passwordController.text);
+    final mfaRequired = await notifier.login(
+      _emailController.text.trim(),
+      _passwordController.text,
+    );
+
+    if (!mounted) return;
+
+    if (mfaRequired) {
+      // The login API returned mfa_required=true. Pop a dialog asking
+      // for the 6-digit code, then post it to /auth/2fa/verify.
+      await _promptForMfaCode();
+      return;
+    }
 
     // If login succeeded, navigate to the `next` param (or /home).
     final state = ref.read(authStateProvider);
@@ -41,6 +53,129 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         context.go(next);
       } else {
         context.go('/home');
+      }
+    }
+  }
+
+  /// Pop a 6-digit-code dialog. On success, AuthNotifier completes the
+  /// login (issues the real tokens + sets user state) and we navigate.
+  Future<void> _promptForMfaCode() async {
+    final controller = TextEditingController();
+    bool verifying = false;
+    String? error;
+
+    final ok = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setLocal) {
+          return AlertDialog(
+            title: const Text('Two-factor code'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text(
+                  'Open your authenticator app and enter the 6-digit code '
+                  'for ProPDFs.',
+                  style: TextStyle(fontSize: 13),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: controller,
+                  autofocus: true,
+                  keyboardType: TextInputType.number,
+                  maxLength: 6,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 8,
+                  ),
+                  decoration: const InputDecoration(
+                    hintText: '000000',
+                    counterText: '',
+                    border: OutlineInputBorder(),
+                  ),
+                  onSubmitted: (_) => Navigator.of(ctx).pop(true),
+                ),
+                if (error != null) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    error!,
+                    style: const TextStyle(
+                        color: Color(0xFFEF4444), fontSize: 12),
+                  ),
+                ],
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: verifying
+                    ? null
+                    : () => Navigator.of(ctx).pop(false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: verifying
+                    ? null
+                    : () async {
+                        setLocal(() {
+                          verifying = true;
+                          error = null;
+                        });
+                        try {
+                          final ok2 = await ref
+                              .read(authStateProvider.notifier)
+                              .verifyMfa(controller.text.trim());
+                          if (mounted && ok2 && ctx.mounted) {
+                            Navigator.of(ctx).pop(true);
+                          } else if (ctx.mounted) {
+                            setLocal(() {
+                              verifying = false;
+                              error =
+                                  'That code didn\'t match. Try the next one.';
+                            });
+                          }
+                        } catch (_) {
+                          if (ctx.mounted) {
+                            setLocal(() {
+                              verifying = false;
+                              error =
+                                  'Verification failed. Try again.';
+                            });
+                          }
+                        }
+                      },
+                child: verifying
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Text('Verify'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+
+    controller.dispose();
+
+    if (!mounted) return;
+    if (ok == true) {
+      // Tokens + user state are set by verifyMfa. Navigate to next.
+      final state = ref.read(authStateProvider);
+      if (state.value?.user != null) {
+        final next =
+            GoRouterState.of(context).uri.queryParameters['next'];
+        if (next != null && next.isNotEmpty && next.startsWith('/')) {
+          context.go(next);
+        } else {
+          context.go('/home');
+        }
       }
     }
   }

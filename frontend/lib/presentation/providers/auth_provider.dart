@@ -95,28 +95,85 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
     }
   }
 
-  Future<void> login(String email, String password) async {
+  /// Login. Returns `true` if the user must complete a 2FA step next,
+  /// `false` if login completed normally.
+  ///
+  /// When MFA is enabled the server returns `{mfa_required: true, mfa_token: ...}`
+  /// instead of a normal token pair. We persist that token temporarily
+  /// so [verifyMfa] can POST it along with the 6-digit code.
+  Future<bool> login(String email, String password) async {
     state = AsyncValue.data(state.value!.copyWith(isLoading: true, error: null));
     try {
       final response = await _dio.post('/api/v1/auth/login', data: {
         'email': email,
         'password': password,
       });
-      final tokens = response.data as Map<String, dynamic>;
-      await _saveTokens(tokens);
-      _dio.options.headers['Authorization'] = 'Bearer ${tokens['access_token']}';
-      
+      final body = response.data as Map<String, dynamic>;
+
+      // Server tells us "you need to enter a TOTP code now".
+      if (body['mfa_required'] == true && body['mfa_token'] != null) {
+        _pendingMfaToken = body['mfa_token'] as String;
+        state = AsyncValue.data(state.value!.copyWith(isLoading: false));
+        return true;
+      }
+
+      // Normal login — got tokens immediately.
+      await _saveTokens(body);
+      _dio.options.headers['Authorization'] = 'Bearer ${body['access_token']}';
+
       final userResponse = await _dio.get('/api/v1/auth/me');
       final user = User.fromJson(userResponse.data);
-      
+
       state = AsyncValue.data(AuthState(
         user: user,
-        accessToken: tokens['access_token'],
-        refreshToken: tokens['refresh_token'],
+        accessToken: body['access_token'] as String,
+        refreshToken: body['refresh_token'] as String,
       ));
+      return false;
     } on DioException catch (e) {
       final msg = e.response?.data?['detail'] ?? 'Login failed';
       state = AsyncValue.data(state.value!.copyWith(isLoading: false, error: msg));
+      return false;
+    }
+  }
+
+  /// Token held between the first login response and the 2FA verify
+  /// call. Cleared after verify (success or failure).
+  String? _pendingMfaToken;
+
+  /// Complete a 2FA-protected login. Returns true on success.
+  Future<bool> verifyMfa(String code) async {
+    final token = _pendingMfaToken;
+    if (token == null) {
+      state = AsyncValue.data(
+        state.value!.copyWith(error: 'No pending 2FA challenge. Sign in again.'),
+      );
+      return false;
+    }
+    state = AsyncValue.data(state.value!.copyWith(isLoading: true, error: null));
+    try {
+      final response = await _dio.post(
+        '/api/v1/auth/2fa/verify',
+        data: {'mfa_token': token, 'code': code},
+      );
+      final body = response.data as Map<String, dynamic>;
+      await _saveTokens(body);
+      _dio.options.headers['Authorization'] = 'Bearer ${body['access_token']}';
+
+      final userResponse = await _dio.get('/api/v1/auth/me');
+      final user = User.fromJson(userResponse.data);
+
+      _pendingMfaToken = null;
+      state = AsyncValue.data(AuthState(
+        user: user,
+        accessToken: body['access_token'] as String,
+        refreshToken: body['refresh_token'] as String,
+      ));
+      return true;
+    } on DioException catch (e) {
+      final msg = e.response?.data?['detail'] ?? 'Invalid code';
+      state = AsyncValue.data(state.value!.copyWith(isLoading: false, error: msg));
+      return false;
     }
   }
 
