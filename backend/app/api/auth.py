@@ -79,7 +79,27 @@ async def get_current_active_user(
 ) -> User:
     if current_user.status != UserStatus.ACTIVE:
         raise HTTPException(status_code=403, detail="User account is not active")
+    return user
+
+
+async def require_admin(
+    current_user: User = Depends(get_current_active_user),
+) -> User:
+    """Gate for admin-only endpoints (blog publishing, user management,
+    etc.). Returns the admin user on success; raises 403 otherwise.
+
+    Note: we keep this dependency here in auth.py even though it's
+    consumed by other routers, so all the auth-shape helpers live in
+    one place. Other routers `from app.api.auth import require_admin`.
+    """
+    if not current_user.is_admin:
+        raise HTTPException(
+            status_code=403,
+            detail="Admin privileges required for this action.",
+        )
     return current_user
+
+
 
 
 @router.post(
