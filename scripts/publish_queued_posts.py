@@ -51,6 +51,13 @@ SITE_ID_CACHE_PATH = Path(__file__).resolve().parent / "_seeds" / ".site_id"
 def fresh_access_token() -> tuple[str | None, str]:
     """Exchange the stored refresh token for a fresh access token.
 
+    We pass `rotate=False` so the refresh doesn't invalidate the
+    JTI in the GitHub secret. The /auth/refresh endpoint rotates
+    by default (best practice for browser sessions) but for
+    service tokens that need to be re-usable across workflow
+    runs we explicitly opt out — see the comment in
+    backend/app/api/auth.py for the security trade-off.
+
     Returns (access_token, error). One of the two is non-None.
     """
     if not PROPDFS_ADMIN_TOKEN:
@@ -59,7 +66,7 @@ def fresh_access_token() -> tuple[str | None, str]:
         try:
             r = c.post(
                 f"{PROPDFS_API}/auth/refresh",
-                json={"refresh_token": PROPDFS_ADMIN_TOKEN},
+                json={"refresh_token": PROPDFS_ADMIN_TOKEN, "rotate": False},
             )
             r.raise_for_status()
             return r.json().get("access_token"), ""

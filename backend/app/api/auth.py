@@ -227,13 +227,24 @@ async def refresh_token(data: RefreshTokenRequest, db: AsyncSession = Depends(ge
     if not user or user.status != UserStatus.ACTIVE:
         raise HTTPException(status_code=401, detail="User not found or inactive")
 
-    new_jti = str(uuid.uuid4())
+    # Token rotation: by default we rotate the JTI on every refresh
+    # (revoke old session, mint new one) — this is the right default
+    # for browser sessions because a stolen refresh token can only be
+    # used once. For service tokens (CI workflows, scripts that
+    # store the refresh token in a secret store and reuse it across
+    # runs) the caller sets rotate=False so the JTI stays stable
+    # and the GitHub secret doesn't need to be re-minted after every
+    # workflow run.
+    if data.rotate:
+        new_jti = str(uuid.uuid4())
+        await revoke_user_session(db, jti)
+        await create_user_session(db, user.id, new_jti)
+        jti = new_jti
+
     access_token = create_access_token(
-        {"sub": str(user.id), "jti": new_jti, "email": user.email}
+        {"sub": str(user.id), "jti": jti, "email": user.email}
     )
-    refresh_token = create_refresh_token({"sub": str(user.id), "jti": new_jti})
-    await revoke_user_session(db, jti)
-    await create_user_session(db, user.id, new_jti)
+    refresh_token = create_refresh_token({"sub": str(user.id), "jti": jti})
 
     return TokenResponse(
         access_token=access_token,

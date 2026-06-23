@@ -44,6 +44,15 @@ class UserResponse(BaseModel):
 
 class RefreshTokenRequest(BaseModel):
     refresh_token: str
+    # Token rotation is on by default — every refresh mints a new
+    # JTI and revokes the old one. That's the right behaviour for
+    # browser sessions (replay protection) but it's a footgun for
+    # long-lived service tokens (CI workflows, scripts) that store
+    # the refresh token and reuse it across runs. Set rotate=False
+    # for those use cases — the JTI stays stable, the original
+    # 7-day TTL applies, and the GitHub secret doesn't need to be
+    # re-minted after every workflow run.
+    rotate: bool = True
 
 
 # ─── MFA / 2FA Schemas ───
