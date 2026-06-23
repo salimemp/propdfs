@@ -136,16 +136,35 @@ jobs:
           # async engine in app.db.session doesn't get reused here).
           pip install -q "sqlalchemy>=2.0" "asyncpg>=0.27" "psycopg2-binary" httpx pyotp qrcode
 
-      - name: Bootstrap admin (register + promote to admin)
+      - name: Bootstrap admin (register + DB-promote instructions)
         working-directory: backend
         env:
           PROPDFS_API: ${{ secrets.PROPDFS_API }}
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
           ADMIN_EMAIL: ${{ inputs.admin_email }}
           ADMIN_PASSWORD: ${{ inputs.admin_password }}
           ADMIN_NAME: ${{ inputs.admin_full_name }}
+        # We use --register-only here because DATABASE_URL points at
+        # `postgres.railway.internal`, the Railway-internal DNS
+        # hostname that only resolves from inside Railway's network.
+        # The GitHub Actions runner cannot reach it. The user runs
+        # the resulting `UPDATE users SET is_admin = TRUE ...`
+        # statement manually in the Railway Postgres "Data" tab
+        # (Postgres plugin → Data → New query). The token printed
+        # by the next step is valid for 7 days; the user becomes
+        # admin whenever they run the SQL, and the harborseo
+        # publishing workflow will see is_admin=true from then on.
         run: |
-          python ../scripts/create_admin.py
+          python ../scripts/create_admin.py --register-only
+          echo ""
+          echo "================================================================"
+          echo "NEXT STEP (manual, ~30s):"
+          echo "  1. Open https://railway.app/dashboard"
+          echo "  2. ProPDFs project → Postgres service → Data tab"
+          echo "  3. Run the UPDATE printed above against the users table"
+          echo "  (the token below is valid regardless — admin status is"
+          echo "   only checked when the harborseo workflow POSTs to"
+          echo "   /blog/posts, which won't happen until next cron tick.)"
+          echo "================================================================"
 
       - name: Mint refresh token
         working-directory: backend
