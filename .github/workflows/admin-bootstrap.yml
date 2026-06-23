@@ -84,16 +84,38 @@ jobs:
           fi
           echo "  ✓ $HOST resolves"
 
-          echo "Checking $BASE/health …"
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$BASE/health" || echo "000")
+          # Health endpoint lives at the ROOT of the FastAPI app
+          # (registered in app/main.py with @app.get('/health')), not under
+          # /api/v1 — the /api/v1 prefix is only on the feature routers.
+          ROOT_URL=$(echo "$BASE" | sed -E 's#/api/v1$##')
+          echo "Checking $ROOT_URL/health …"
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$ROOT_URL/health" || echo "000")
           if [[ "$STATUS" != 2* ]]; then
-            echo "::error::$BASE/health returned HTTP $STATUS"
+            echo "::error::$ROOT_URL/health returned HTTP $STATUS"
             echo "  Expected 2xx. If 401, the API requires an auth header on health."
-            echo "  If 404, /api/v1/health doesn't exist (check the router list in"
-            echo "  backend/app/main.py)."
+            echo "  If 404, the /health route isn't registered (check"
+            echo "  backend/app/main.py — look for @app.get('/health'))."
             exit 1
           fi
           echo "  ✓ health endpoint returned $STATUS"
+
+          # Also probe one of the /api/v1 routes to confirm the prefix
+          # is correct. We use /auth/register which the script will hit
+          # in a moment — if it 404s here, the same script will fail
+          # the same way, so we catch it up front.
+          echo "Checking $BASE/auth/register …"
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 -X POST "$BASE/auth/register" -H "Content-Type: application/json" -d '{}' || echo "000")
+          # 422 = valid route, validation error (what we want — proves
+          #       the route exists and the JSON shape is being checked)
+          # 400 = valid route, bad input (also fine)
+          # 405 = wrong method (would mean route exists but POST isn't allowed)
+          if [[ "$STATUS" == "404" ]]; then
+            echo "::error::$BASE/auth/register returned HTTP 404"
+            echo "  The route doesn't exist. Either PROPDFS_API is missing the"
+            echo "  /api/v1 suffix, or the auth router isn't mounted in main.py."
+            exit 1
+          fi
+          echo "  ✓ /api/v1/auth/register responds (got $STATUS)"
 
       - name: Set up Python
         uses: actions/setup-python@v5
