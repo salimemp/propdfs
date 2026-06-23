@@ -38,6 +38,16 @@ on:
         options:
           - "true"
           - "false"
+      limit:
+        description: "Max topics to publish this run (default: 5; free plan needs ~4-5 min per article)"
+        required: false
+        default: "5"
+        type: string
+      offset:
+        description: "Skip the first N topics in the queue (use after a partial run to continue)"
+        required: false
+        default: "0"
+        type: string
 
 jobs:
   audit:
@@ -90,6 +100,10 @@ jobs:
         # each via harborseo (or local fallback if no key), and
         # POSTs to the backend. Idempotent — already-published
         # slugs are skipped. Per-topic error handling: one
-        # failure doesn't abort the batch.
+        # failure doesn't abort the batch. --limit/--offset
+        # come from the workflow_dispatch inputs so the operator
+        # can throttle to ~3 topics per day on the free plan.
         run: |
-          python scripts/publish_queued_posts.py
+          python scripts/publish_queued_posts.py \
+            --limit "${{ inputs.limit }}" \
+            --offset "${{ inputs.offset }}"

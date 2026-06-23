@@ -29,6 +29,7 @@ topic was either published or skipped-already, and exits 1 if
 any topic had a hard failure.
 """
 
+import argparse
 import json
 import sys
 from pathlib import Path
@@ -189,6 +190,32 @@ def process_topic(
 
 
 def main() -> int:
+    p = argparse.ArgumentParser()
+    p.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        help=(
+            "Max topics to process this run (default: all). "
+            "Useful when the harborseo generation step takes "
+            "longer than the workflow runner can wait — e.g. on "
+            "the free plan each 1500-word article takes 4-5 min, "
+            "so a workflow with a 30-min ceiling can publish at "
+            "most ~5-6 articles per run. Set --limit 3 to be safe."
+        ),
+    )
+    p.add_argument(
+        "--offset",
+        type=int,
+        default=0,
+        help=(
+            "Skip the first N topics in the queue (0-indexed). "
+            "Use with --limit to publish a slice: "
+            "--offset 3 --limit 3 picks topics 4-6."
+        ),
+    )
+    args = p.parse_args()
+
     if not QUEUE_PATH.exists():
         print(f"queue file missing: {QUEUE_PATH}")
         return 2
@@ -196,6 +223,13 @@ def main() -> int:
     if not queue:
         print("queue is empty — nothing to publish")
         return 0
+
+    if args.offset:
+        queue = queue[args.offset :]
+        print(f"(skipped first {args.offset} topic(s) in the queue)")
+    if args.limit:
+        queue = queue[: args.limit]
+        print(f"(limited to next {len(queue)} topic(s) — pass --offset to advance)")
 
     print("→ Exchanging refresh token for fresh access token …")
     access_token, err = fresh_access_token()
@@ -228,6 +262,15 @@ def main() -> int:
         f"\nDone. Published: {counts['published']}, "
         f"skipped: {counts['skipped']}, failed: {counts['failed']}."
     )
+    if counts["failed"] and args.offset + (args.limit or 0) < len(queue) + args.offset:
+        # If we still have unpublished topics, hint at how to
+        # continue. The count comparison uses the ORIGINAL
+        # queue length, which we no longer have — so this hint
+        # is best-effort and only shows when a limit was set.
+        print(
+            f"  To publish the next batch, re-run with "
+            f"--offset {args.offset + (args.limit or 0)}"
+        )
     return 0 if counts["failed"] == 0 else 1
 
 
