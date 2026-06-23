@@ -27,6 +27,19 @@
   <link rel="alternate" hreflang="x-default" href="https://propdfs.com/">
   <!-- Per-locale alternates are listed in the sitemap.xml -->
 
+  <!-- Feed autodiscovery. RSS readers (Feedly, NetNewsWire, Inoreader,
+       browser extensions) look for these <link rel="alternate"> tags
+       in the page head to subscribe the user without them having to
+       paste a URL. Ship RSS 2.0 and Atom 1.0 — every major reader
+       accepts at least one. /feed.xml is a mirror of rss.xml for
+       readers that only check that path. -->
+  <link rel="alternate" type="application/rss+xml"
+        title="ProPDFs Blog (RSS 2.0)"
+        href="https://propdfs.com/rss.xml">
+  <link rel="alternate" type="application/atom+xml"
+        title="ProPDFs Blog (Atom 1.0)"
+        href="https://propdfs.com/atom.xml">
+
   <!-- ===== Open Graph ===== -->
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="ProPDFs">

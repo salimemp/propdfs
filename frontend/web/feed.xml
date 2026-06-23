@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>ProPDFs — Blog</title>
+    <link>https://propdfs.com/blog</link>
+    <atom:link href="https://propdfs.com/rss.xml" rel="self" type="application/rss+xml" />
+    <description>32 PDF tools in one place — merge, split, compress, convert, edit, sign, OCR, and translate. Runs in your browser, end-to-end encrypted, GDPR-ready, WCAG 2.1 AA.</description>
+    <language>en</language>
+    <lastBuildDate>Mon, 20 Jan 2025 00:00:00 GMT</lastBuildDate>
+    <managingEditor>team@propdfs.com (ProPDFs Editorial Team)</managingEditor>
+    <webMaster>team@propdfs.com (ProPDFs Editorial Team)</webMaster>
+
+    <item>
+      <title>Best PDF Tools in 2025: A Comprehensive Comparison</title>
+      <link>https://propdfs.com/blog/best-pdf-tools-2025-comparison</link>
+      <guid isPermaLink="true">https://propdfs.com/blog/best-pdf-tools-2025-comparison</guid>
+      <pubDate>Wed, 01 Jan 2025 00:00:00 GMT</pubDate>
+      <author>team@propdfs.com (ProPDFs Editorial Team)</author>
+      <category>comparison</category>
+      <description><![CDATA[Compare the top PDF tools of 2025 including ProPDFs, SmallPDF, ILovePDF, PDFgear, and Adobe Acrobat. Feature, pricing, and free-tier breakdown.]]></description>
+    </item>
+
+    <item>
+      <title>How to Compress PDFs Without Losing Quality: A Complete Guide</title>
+      <link>https://propdfs.com/blog/how-to-compress-pdf-without-losing-quality</link>
+      <guid isPermaLink="true">https://propdfs.com/blog/how-to-compress-pdf-without-losing-quality</guid>
+      <pubDate>Sun, 05 Jan 2025 00:00:00 GMT</pubDate>
+      <author>team@propdfs.com (ProPDFs Editorial Team)</author>
+      <category>tutorial</category>
+      <description><![CDATA[Reduce PDF file size by up to 90% without losing quality. Image optimisation, font subsetting, metadata stripping, and a tool-by-tool comparison.]]></description>
+    </item>
+
+    <item>
+      <title>PDF Security Best Practices in 2025: Protect Your Documents</title>
+      <link>https://propdfs.com/blog/pdf-security-best-practices-2025</link>
+      <guid isPermaLink="true">https://propdfs.com/blog/pdf-security-best-practices-2025</guid>
+      <pubDate>Fri, 10 Jan 2025 00:00:00 GMT</pubDate>
+      <author>team@propdfs.com (ProPDFs Editorial Team)</author>
+      <category>security</category>
+      <description><![CDATA[Essential PDF security for 2025: AES-256 encryption, password protection, digital signatures, redaction, and compliance (HIPAA, GDPR, SOC 2, CCPA).]]></description>
+    </item>
+
+    <item>
+      <title>AI in Document Processing: 2025 Trends and Transformations</title>
+      <link>https://propdfs.com/blog/ai-in-document-processing-2025</link>
+      <guid isPermaLink="true">https://propdfs.com/blog/ai-in-document-processing-2025</guid>
+      <pubDate>Wed, 15 Jan 2025 00:00:00 GMT</pubDate>
+      <author>team@propdfs.com (ProPDFs Editorial Team)</author>
+      <category>technology</category>
+      <description><![CDATA[How AI is reshaping document workflows in 2025: summarisation, translation, smart form-filling, and Gemini-powered extraction.]]></description>
+    </item>
+
+    <item>
+      <title>ProPDFs vs. Competitors: Fact-Checked Feature Comparison</title>
+      <link>https://propdfs.com/blog/propdfs-vs-competitors-fact-check</link>
+      <guid isPermaLink="true">https://propdfs.com/blog/propdfs-vs-competitors-fact-check</guid>
+      <pubDate>Mon, 20 Jan 2025 00:00:00 GMT</pubDate>
+      <author>team@propdfs.com (ProPDFs Editorial Team)</author>
+      <category>comparison</category>
+      <description><![CDATA[Side-by-side, fact-checked comparison of ProPDFs against the leading competitors. Pricing, free-tier limits, OCR languages, AI features, and security posture.]]></description>
+    </item>
+
+  </channel>
+</rss>
