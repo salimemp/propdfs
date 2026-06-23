@@ -35,9 +35,7 @@ the icon size, centered.
 from __future__ import annotations
 
 import os
-import subprocess
 import sys
-import textwrap
 from pathlib import Path
 
 BRAND_DIR = Path("frontend/assets/brand")
@@ -191,8 +189,8 @@ def _cairo_render(svg_bytes: bytes, w: int, h: int, out: Path) -> None:
     except OSError as e:
         print(f"  ✗ cairosvg import failed: {e}", file=sys.stderr)
         print(
-            f"  Hint: install libcairo (brew install cairo) "
-            f"or set DYLD_LIBRARY_PATH to the libcairo dir.",
+            "  Hint: install libcairo (brew install cairo) "
+            "or set DYLD_LIBRARY_PATH to the libcairo dir.",
             file=sys.stderr,
         )
         raise

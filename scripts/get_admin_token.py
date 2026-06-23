@@ -32,7 +32,6 @@ password manager or copy from the GUI:
 """
 import os
 import sys
-from pathlib import Path
 
 import httpx
 

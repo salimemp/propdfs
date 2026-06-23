@@ -3,25 +3,30 @@ name: SEO audit + auto-publish
 # Runs the harborseo.ai integration on a schedule and on demand.
 #
 # Two jobs:
-#   - audit: posts an artifact with findings (no PR opened yet — the
-#     safe fixes ship via PR if --apply is set; otherwise the run is
-#     informative only).
-#   - blog:  picks up `scripts/_seeds/topics.json` and generates + POSTs
-#     one article per topic. Topics are gated on a manual dispatch so
-#     we don't accidentally spam the live blog.
+#   - audit: runs `harborseo.py audit --domain propdfs.com` (sites +
+#     article health), uploads the result as a workflow artifact.
+#     No PR is opened automatically — the operator reviews the
+#     artifact and applies any safe fixes via a follow-up PR.
+#   - blog:  picks up `scripts/_seeds/topics.json` and POSTs each
+#     one to the backend's /blog/posts endpoint. Gated on manual
+#     dispatch + `publish=true` so we don't accidentally spam
+#     the live blog.
 #
 # Secrets required:
-#   - HARBORSEO_API_KEY         — harborseo.ai API key (ask the user)
-#   - PROPDFS_API               — base URL of the backend, defaults to
-#                                 https://api.propdfs.com
-#   - PROPDFS_ADMIN_TOKEN       — long-lived bearer token for an admin
-#                                 user (used to POST to /blog/posts)
+#   - HARBORSEO_API_KEY         — harborseo.ai API key (create at
+#                                 https://harborseo.ai/dashboard)
+#   - PROPDFS_API               — base URL of the ProPDFs backend
+#                                 (e.g. https://backend-production-fd1c0
+#                                 .up.railway.app/api/v1)
+#   - PROPDFS_ADMIN_TOKEN       — long-lived bearer refresh token
+#                                 (mint via the admin-bootstrap
+#                                 workflow)
 
 on:
   schedule:
-    # Run the audit weekly on Monday at 09:00 UTC. The auto-blog job
-    # is `workflow_dispatch` only — we don't want a cron to silently
-    # publish posts.
+    # Run the audit weekly on Monday at 09:00 UTC. The auto-blog
+    # job is `workflow_dispatch` only — we don't want a cron to
+    # silently publish posts.
     - cron: "0 9 * * 1"
   workflow_dispatch:
     inputs:
@@ -49,16 +54,21 @@ jobs:
       - name: Audit propdfs.com
         env:
           HARBORSEO_API_KEY: ${{ secrets.HARBORSEO_API_KEY }}
+        # Run audit, tee to the artifact file. Non-zero exit (e.g.
+        # harborseo 5xx) does NOT fail the workflow — the audit
+        # job is informational, we want to see the failure in the
+        # log even if no findings were produced.
         run: |
-          python scripts/harborseo.py audit \
-            --domain propdfs.com \
-            --domain app.getpdfpro.com \
-            --json > audit-report.json
+          set +e
+          python scripts/harborseo.py audit --domain propdfs.com \
+            | tee audit-report.txt
+          echo "exit=$?" >> audit-report.txt
       - name: Upload audit report
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: seo-audit-${{ github.run_id }}
-          path: audit-report.json
+          path: audit-report.txt
           retention-days: 90
 
   blog:
@@ -71,14 +81,15 @@ jobs:
           python-version: "3.11"
       - name: Install deps
         run: pip install httpx
-      - name: Generate and publish blog post
+      - name: Generate and publish blog posts
         env:
           HARBORSEO_API_KEY: ${{ secrets.HARBORSEO_API_KEY }}
           PROPDFS_API: ${{ secrets.PROPDFS_API || 'https://api.propdfs.com/api/v1' }}
           PROPDFS_ADMIN_TOKEN: ${{ secrets.PROPDFS_ADMIN_TOKEN }}
+        # Reads topics from scripts/_seeds/topics.json, generates
+        # each via harborseo (or local fallback if no key), and
+        # POSTs to the backend. Idempotent — already-published
+        # slugs are skipped. Per-topic error handling: one
+        # failure doesn't abort the batch.
         run: |
-          # Reads topics from scripts/_seeds/topics.json and publishes
-          # each in turn. The seed file is committed to the repo so the
-          # queue is reproducible — remove a topic by deleting its line.
-          python -m pip install -q httpx
           python scripts/publish_queued_posts.py

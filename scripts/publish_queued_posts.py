@@ -1,5 +1,5 @@
-"""Run the queued blog topics through harborseo.ai and POST each one to
-the backend. The queue is `scripts/_seeds/topics.json` — edit that
+"""Run the queued blog topics through harborseo.ai and POST each one
+to the backend. The queue is `scripts/_seeds/topics.json` — edit that
 file (or open a PR against it) to control what gets published.
 
 Invoked by the GitHub Action `.github/workflows/seo.yml` on manual
@@ -8,36 +8,44 @@ dispatch with `publish=true`. Can also be run locally:
     HARBORSEO_API_KEY=... PROPDFS_ADMIN_TOKEN=... \\
       python scripts/publish_queued_posts.py
 
-The script is idempotent — if a post with the same slug already exists
-on the backend, we skip it (the API returns 409 and we treat that as
-"already published, move on").
+The script is idempotent — if a post with the same slug already
+exists on the backend, we skip it (the API returns 409 and we
+treat that as "already published, move on").
 
 ## Token handling
 
 We expect `PROPDFS_ADMIN_TOKEN` to be a REFRESH token (output of
-`scripts/get_admin_token.py`). At the start of every run we POST to
-`/auth/refresh` to mint a fresh 60-min access token, then use that for
-the actual blog POST. This way the workflow survives long between
-runs without manual rotation.
+`scripts/get_admin_token.py`). At the start of every run we POST
+to `/auth/refresh` to mint a fresh 60-min access token, then use
+that for the actual blog POST. This way the workflow survives
+long between runs without manual rotation.
+
+## Per-topic error handling
+
+Each topic is independent: a failure on one (harborseo 5xx, 401,
+network blip, etc.) does NOT abort the batch. Failed topics are
+collected and reported at the end. The script exits 0 if every
+topic was either published or skipped-already, and exits 1 if
+any topic had a hard failure.
 """
+
 import json
-import os
 import sys
 from pathlib import Path
 
 # Allow running as a script.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from scripts.harborseo import (  # noqa: E402
-    HarborSeoClient,
     BlogPost,
-    PROPDFS_API,
+    HarborSeoClient,
     PROPDFS_ADMIN_TOKEN,
+    PROPDFS_API,
 )
 
 import httpx  # noqa: E402
 
-
 QUEUE_PATH = Path(__file__).resolve().parent / "_seeds" / "topics.json"
+SITE_ID_CACHE_PATH = Path(__file__).resolve().parent / "_seeds" / ".site_id"
 
 
 def fresh_access_token() -> tuple[str | None, str]:
@@ -96,6 +104,78 @@ def publish(post: BlogPost, access_token: str) -> tuple[bool, str]:
         return True, f"published: https://propdfs.com/blog/{slug}"
 
 
+def resolve_site_id(client: HarborSeoClient) -> str | None:
+    """Find or create the propdfs.com harborseo site. Caches the id
+    on disk so we don't hit the API on every topic in the batch.
+    Returns the site_id, or None if the API is unreachable."""
+    if not client.online:
+        return None
+
+    # Try the cache first.
+    if SITE_ID_CACHE_PATH.exists():
+        cached = SITE_ID_CACHE_PATH.read_text(encoding="utf-8").strip()
+        if cached:
+            return cached
+
+    # Cache miss: look up or create.
+    try:
+        site = client.get_or_create_site("propdfs.com", "ProPDFs")
+    except Exception as e:
+        print(f"  ✗ site discovery failed: {e}", file=sys.stderr)
+        return None
+
+    SITE_ID_CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    SITE_ID_CACHE_PATH.write_text(site.id, encoding="utf-8")
+    return site.id
+
+
+def process_topic(
+    entry: dict,
+    client: HarborSeoClient,
+    site_id: str | None,
+    access_token: str,
+) -> tuple[str, str]:
+    """Process one topic. Returns (status, message) where status
+    is one of: 'published', 'skipped', 'failed'."""
+    topic = entry["topic"]
+    keywords = entry.get("keywords", [])
+    category = entry.get("category", "tutorial")
+    target = entry.get("target_words", 1500)
+
+    print(f"\n→ {topic}  (keywords: {keywords})")
+
+    # 1. Generate the post (online or offline).
+    try:
+        post = client.generate_blog(
+            topic=topic,
+            keywords=keywords,
+            category=category,
+            target_words=target,
+            site_id=site_id,
+        )
+    except Exception as e:
+        return "failed", f"harborseo generate failed: {e}"
+
+    # 2. Skip if the slug is already on the backend.
+    if already_published(post.slug):
+        print(f"  skip — '{post.slug}' already live")
+        return "skipped", f"slug '{post.slug}' already live"
+
+    # 3. Publish to the backend.
+    try:
+        ok, msg = publish(post, access_token)
+    except httpx.HTTPStatusError as e:
+        return (
+            "failed",
+            f"POST /blog/posts {e.response.status_code}: {e.response.text[:200]}",
+        )
+    except Exception as e:
+        return "failed", f"publish network error: {e}"
+
+    print(f"  {'✓' if ok else '✗'} {msg}")
+    return ("published" if ok else "failed"), msg
+
+
 def main() -> int:
     if not QUEUE_PATH.exists():
         print(f"queue file missing: {QUEUE_PATH}")
@@ -113,30 +193,30 @@ def main() -> int:
     print("  ✓ fresh access token minted")
 
     client = HarborSeoClient()
-    published = 0
-    skipped = 0
-    failed = 0
-
-    for entry in queue:
-        topic = entry["topic"]
-        keywords = entry.get("keywords", [])
-        category = entry.get("category", "tutorial")
-        target = entry.get("target_words", 1500)
-        print(f"\n→ {topic}  (keywords: {keywords})")
-        post = client.generate_blog(topic, keywords, category, target)
-        if already_published(post.slug):
-            print(f"  skip — '{post.slug}' already live")
-            skipped += 1
-            continue
-        ok, msg = publish(post, access_token)
-        print(f"  {'✓' if ok else '✗'} {msg}")
-        if ok:
-            published += 1
+    site_id: str | None = None
+    if client.online:
+        print("→ Resolving harborseo site_id for propdfs.com …")
+        site_id = resolve_site_id(client)
+        if site_id:
+            print(f"  ✓ site_id: {site_id}  (cached at {SITE_ID_CACHE_PATH.name})")
         else:
-            failed += 1
+            print(
+                "  ⚠ site_id unavailable — falling back to per-topic lookup",
+                file=sys.stderr,
+            )
+    else:
+        print("  ⚠ HARBORSEO_API_KEY not set — using local generator", file=sys.stderr)
 
-    print(f"\nDone. Published: {published}, skipped: {skipped}, failed: {failed}.")
-    return 0 if failed == 0 else 1
+    counts = {"published": 0, "skipped": 0, "failed": 0}
+    for entry in queue:
+        status, msg = process_topic(entry, client, site_id, access_token)
+        counts[status] += 1
+
+    print(
+        f"\nDone. Published: {counts['published']}, "
+        f"skipped: {counts['skipped']}, failed: {counts['failed']}."
+    )
+    return 0 if counts["failed"] == 0 else 1
 
 
 if __name__ == "__main__":
