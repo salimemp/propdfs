@@ -9,6 +9,13 @@ import '../presentation/screens/register_screen.dart';
 import '../presentation/screens/home_screen.dart';
 import '../presentation/screens/document_list_screen.dart';
 import '../presentation/screens/pdf_tools_screen.dart';
+import '../presentation/screens/tools/tool_page.dart';
+import '../presentation/screens/tools/coming_soon_tool_page.dart';
+import '../presentation/screens/tools/repair_pdf_page.dart';
+import '../presentation/screens/tools/ocr_pdf_page.dart';
+import '../presentation/screens/tools/esign_pdf_page.dart';
+import '../presentation/screens/tools/comment_pdf_page.dart';
+import '../presentation/screens/tools/edit_pdf_page.dart';
 import '../presentation/screens/settings_screen.dart';
 import '../presentation/screens/scan/document_scanner_screen.dart';
 import '../presentation/screens/beta_program_screen.dart';
@@ -21,7 +28,9 @@ import '../presentation/screens/delete_account_screen.dart';
 import '../presentation/screens/my_data_screen.dart';
 import '../presentation/screens/pricing_screen.dart';
 import '../presentation/screens/about_screen.dart';
+import '../presentation/screens/forgot_password_screen.dart';
 import '../presentation/providers/auth_provider.dart';
+import '../core/tools/tool_registry.dart';
 
 import 'dart:async';
 
@@ -100,6 +109,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const LoginScreen(),
       ),
       GoRoute(
+        // Public password reset request screen. Always shows a generic
+        // "check your inbox" message to avoid leaking which emails are
+        // registered (account enumeration protection).
+        path: '/forgot-password',
+        builder: (context, state) => const ForgotPasswordScreen(),
+      ),
+      GoRoute(
         path: '/register',
         builder: (context, state) => const RegisterScreen(),
       ),
@@ -131,11 +147,47 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const DocumentListScreen(),
       ),
       GoRoute(
-        // Public PDF tools catalog. `?tool=merge` query param pre-selects a tool.
+        // Public PDF tools catalog. `?tool=<id>` legacy compat — redirects
+        // to the per-tool page. See [PdfToolsScreen.initState].
         path: '/tools',
         builder: (context, state) => PdfToolsScreen(
           initialTool: state.uri.queryParameters['tool'],
         ),
+      ),
+      GoRoute(
+        // Per-tool page. The `:toolId` slug is resolved against
+        // [ToolRegistry]. Routing rules:
+        // 1. Frontend-only implemented tools (Repair / OCR / eSign /
+        //    Comment / Edit) get their own dedicated page widget that
+        //    does the work in the browser via [PdfEditorService].
+        // 2. Other implemented tools (with a backend task_type) use the
+        //    upload+process [ToolPage].
+        // 3. Unimplemented tools render [ComingSoonToolPage].
+        // 4. Unknown slugs fall back to the catalog rather than 404.
+        path: '/tools/:toolId',
+        builder: (context, state) {
+          final toolId = state.pathParameters['toolId']!;
+          switch (toolId) {
+            case 'repair':
+              return const RepairPdfPage();
+            case 'ocr':
+              return const OcrPdfPage();
+            case 'sign':
+              return const EsignPdfPage();
+            case 'comment':
+              return const CommentPdfPage();
+            case 'edit':
+              return const EditPdfPage();
+          }
+          final tool = ToolRegistry.findById(toolId);
+          if (tool == null) {
+            return const PdfToolsScreen();
+          }
+          if (tool.status == ToolStatus.implemented) {
+            return ToolPage(tool: tool);
+          }
+          return ComingSoonToolPage(tool: tool);
+        },
       ),
       GoRoute(
         path: '/settings',

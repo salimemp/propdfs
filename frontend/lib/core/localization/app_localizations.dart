@@ -99,8 +99,14 @@ class AppLocalizations {
   final Locale locale;
   AppLocalizations(this.locale);
 
-  static AppLocalizations? of(BuildContext context) {
-    return Localizations.of<AppLocalizations>(context, AppLocalizations);
+  /// Returns the active [AppLocalizations], or an English fallback when no
+  /// [Localizations] ancestor is in the tree (e.g. a widget rendered in a
+  /// test that didn't wrap it with `localizationsDelegates`). Returning a
+  /// non-null fallback lets screens drop the `!` bang — every previous
+  /// `AppLocalizations.of(context)!` call site is safe to use without it.
+  static AppLocalizations of(BuildContext context) {
+    return Localizations.of<AppLocalizations>(context, AppLocalizations) ??
+        AppLocalizations(const Locale('en'));
   }
 
   static const LocalizationsDelegate<AppLocalizations> delegate =

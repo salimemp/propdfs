@@ -84,8 +84,16 @@ dependencies:
   uuid: ^4.4.0
   mime: ^1.0.0
   url_launcher: ^6.2.0
-  share_plus: ^9.0.0
+  share_plus: ^12.0.2
   package_info_plus: ^8.0.0
+
+  # PDF editing, repair, eSign, comment overlays. Syncfusion's community
+  # license is free for individuals and small businesses; commercial use
+  # needs a paid key (https://www.syncfusion.com/sales/communitylicense).
+  # If you don't want Syncfusion, swap with `pdf` + `pdf_manipulator`
+  # — but you'll lose the open-existing-pdf capability Repair needs.
+  syncfusion_flutter_pdf: ^28.2.7
+  syncfusion_flutter_pdfviewer: ^28.2.7
 
 dev_dependencies:
   flutter_test:

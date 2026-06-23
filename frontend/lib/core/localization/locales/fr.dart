@@ -41,7 +41,7 @@ const Map<String, String> localeFr = {
   'help': 'Centre d\'aide',
   'privacy': 'Politique de confidentialité',
   'terms': 'Conditions d\'utilisation',
-  'beta_program': 'Programme bêta',
+  'beta_program': 'Programme Bêta',
   'scan_document': 'Scanner un document',
   'voice_commands': 'Commandes vocales',
   'read_aloud': 'Lire à voix haute',

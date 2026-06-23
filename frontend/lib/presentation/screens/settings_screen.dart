@@ -13,7 +13,7 @@ class SettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authStateProvider);
     final user = authState.value?.user;
-    final l10n = AppLocalizations.of(context)!;
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
         backgroundColor: AppColors.surfaceLight,
@@ -225,9 +225,17 @@ class SettingsScreen extends ConsumerWidget {
                       child: Text(l10n.get('cancel')),
                     ),
                     FilledButton(
-                      onPressed: () {
-                        ref.read(authStateProvider.notifier).logout();
+                      onPressed: () async {
                         Navigator.pop(context);
+                        await ref.read(authStateProvider.notifier).logout();
+                        if (context.mounted) {
+                          // GoRouter redirect logic in `app_router.dart`
+                          // already moves auth-only pages to /home when
+                          // authenticated, but we also want to wipe the
+                          // back-stack (so back-button doesn't return to
+                          // /settings) and show the public landing page.
+                          context.go('/home');
+                        }
                       },
                       style: FilledButton.styleFrom(backgroundColor: Colors.red),
                       child: Text(l10n.get('logout')),

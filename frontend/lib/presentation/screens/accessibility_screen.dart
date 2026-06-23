@@ -41,13 +41,13 @@ class _AccessibilityScreenState extends ConsumerState<AccessibilityScreen> {
 
   Future<void> _testTTS() async {
     final voiceService = ref.read(voiceServiceProvider);
-    final l10n = AppLocalizations.of(context)!;
+    final l10n = AppLocalizations.of(context);
     await voiceService.speak(l10n.get('welcome'));
   }
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
+    final l10n = AppLocalizations.of(context);
     final accessibility = ref.watch(accessibilityProvider);
     final notifier = ref.read(accessibilityProvider.notifier);
 

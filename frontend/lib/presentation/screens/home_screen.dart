@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme.dart';
+import '../../core/tools/tool_registry.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/app_footer.dart';
 
@@ -28,6 +29,12 @@ class HomeScreen extends ConsumerWidget {
             child: SingleChildScrollView(
               child: Column(
                 children: [
+                  // Email verification nudge — only for signed-in users
+                  // who haven't verified yet. Dismissible per-session.
+                  if (isLoggedIn &&
+                      authState.value?.user != null &&
+                      !authState.value!.user!.isEmailVerified)
+                    const _EmailVerificationBanner(),
                   _HeroSection(isWide: isWide),
                   const SizedBox(height: 64),
                   _ToolsSection(isWide: isWide),
@@ -287,7 +294,7 @@ class _HeroSection extends StatelessWidget {
                 runSpacing: 12,
                 children: [
                   FilledButton.icon(
-                    onPressed: () => context.go('/tools?tool=merge'),
+                    onPressed: () => context.go('/tools/merge'),
                     icon: const Icon(Icons.merge_type),
                     label: const Text('Merge PDFs — Free'),
                     style: FilledButton.styleFrom(
@@ -306,7 +313,7 @@ class _HeroSection extends StatelessWidget {
                   OutlinedButton.icon(
                     onPressed: () => context.go('/tools'),
                     icon: const Icon(Icons.apps),
-                    label: const Text('Explore all 35 tools'),
+                    label: Text('Explore all ${ToolRegistry.all.length} tools'),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.textLight,
                       side: const BorderSide(color: AppColors.borderLight, width: 1.5),
@@ -383,13 +390,21 @@ class _ToolsSection extends StatefulWidget {
 class _ToolsSectionState extends State<_ToolsSection> {
   String _activeCategory = 'All';
 
-  static const _categories = ['All', 'Organize', 'Optimize', 'Convert', 'Edit', 'Security', 'AI'];
+  static const _categories = [
+    'All',
+    'Organize',
+    'Optimize',
+    'Convert',
+    'Edit',
+    'Security',
+    'AI',
+  ];
 
   @override
   Widget build(BuildContext context) {
     final filteredTools = _activeCategory == 'All'
-        ? _allTools
-        : _allTools.where((t) => t.category == _activeCategory).toList();
+        ? ToolRegistry.all
+        : ToolRegistry.byCategory(_activeCategory);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -399,9 +414,9 @@ class _ToolsSectionState extends State<_ToolsSection> {
           child: Column(
             children: [
               // Section title
-              const Text(
-                '35 PDF tools. One click each.',
-                style: TextStyle(
+              Text(
+                '${ToolRegistry.all.length} PDF tools. One click each.',
+                style: const TextStyle(
                   fontSize: 36,
                   fontWeight: FontWeight.w800,
                   color: AppColors.textLight,
@@ -490,21 +505,22 @@ class _CategoryChip extends StatelessWidget {
 }
 
 class _ToolCard extends StatelessWidget {
-  final _ToolSpec tool;
+  final ToolConfig tool;
   const _ToolCard({required this.tool});
 
   @override
   Widget build(BuildContext context) {
     final cardWidth = ((MediaQuery.of(context).size.width - 48 - 48 - (3 * 16)) / 4).clamp(160.0, 280.0);
+    final isComingSoon = tool.status == ToolStatus.comingSoon;
     return SizedBox(
       width: cardWidth,
-      height: 160,
+      height: 170,
       child: Material(
         color: AppColors.surfaceLight,
         elevation: 0,
         borderRadius: BorderRadius.circular(12),
         child: InkWell(
-          onTap: () => context.go(tool.route),
+          onTap: () => context.go('/tools/${tool.id}'),
           borderRadius: BorderRadius.circular(12),
           child: Container(
             decoration: BoxDecoration(
@@ -516,14 +532,36 @@ class _ToolCard extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: tool.color.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(tool.icon, color: tool.color, size: 22),
+                Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: tool.color.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(tool.icon, color: tool.color, size: 22),
+                    ),
+                    const Spacer(),
+                    if (isComingSoon)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: AppColors.warning.withOpacity(0.10),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: const Text(
+                          'Soon',
+                          style: TextStyle(
+                            color: AppColors.warning,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
                 const SizedBox(height: 12),
                 Text(
@@ -555,67 +593,6 @@ class _ToolCard extends StatelessWidget {
     );
   }
 }
-
-class _ToolSpec {
-  final String title;
-  final String description;
-  final IconData icon;
-  final Color color;
-  final String route;
-  final String category;
-  const _ToolSpec(this.title, this.description, this.icon, this.color, this.route, this.category);
-}
-
-// Tool catalog. Used by category tabs on home and as data source for
-// individual tool pages.
-final List<_ToolSpec> _allTools = [
-  // Organize (indigo)
-  _ToolSpec('Merge PDF', 'Combine multiple PDFs into one file.', Icons.merge_type, AppColors.catOrganize, '/tools?tool=merge', 'Organize'),
-  _ToolSpec('Split PDF', 'Extract or split pages from your PDF.', Icons.call_split, AppColors.catOrganize, '/tools?tool=split', 'Organize'),
-  _ToolSpec('Organize PDF', 'Reorder pages visually with drag & drop.', Icons.dashboard_customize, AppColors.catOrganize, '/tools?tool=merge', 'Organize'),
-  _ToolSpec('Remove pages', 'Delete unwanted pages from your PDF.', Icons.delete_sweep, AppColors.catOrganize, '/tools?tool=extract', 'Organize'),
-  _ToolSpec('Extract pages', 'Save specific pages as a new PDF.', Icons.content_copy, AppColors.catOrganize, '/tools?tool=extract', 'Organize'),
-
-  // Optimize (cyan)
-  _ToolSpec('Compress PDF', 'Reduce file size while keeping quality.', Icons.compress, AppColors.catOptimize, '/tools?tool=compress', 'Optimize'),
-  _ToolSpec('Repair PDF', 'Recover damaged or unreadable PDFs.', Icons.build, AppColors.catOptimize, '/tools?tool=merge', 'Optimize'),
-  _ToolSpec('OCR PDF', 'Make scanned PDFs searchable with OCR.', Icons.document_scanner, AppColors.catOptimize, '/tools?tool=merge', 'Optimize'),
-
-  // Convert to PDF (violet)
-  _ToolSpec('Word to PDF', 'Convert .docx files to PDF.', Icons.description, AppColors.catConvertTo, '/tools?tool=convert', 'Convert'),
-  _ToolSpec('Excel to PDF', 'Convert .xlsx files to PDF.', Icons.table_chart, AppColors.catConvertTo, '/tools?tool=convert', 'Convert'),
-  _ToolSpec('PowerPoint to PDF', 'Convert .pptx files to PDF.', Icons.slideshow, AppColors.catConvertTo, '/tools?tool=convert', 'Convert'),
-  _ToolSpec('JPG to PDF', 'Convert images to a single PDF.', Icons.image, AppColors.catConvertTo, '/tools?tool=convert', 'Convert'),
-  _ToolSpec('HTML to PDF', 'Convert web pages to PDF.', Icons.code, AppColors.catConvertTo, '/tools?tool=convert', 'Convert'),
-
-  // Convert from PDF (pink)
-  _ToolSpec('PDF to Word', 'Convert PDFs to editable .docx.', Icons.picture_as_pdf, AppColors.catConvertFrom, '/tools?tool=convert', 'Convert'),
-  _ToolSpec('PDF to Excel', 'Extract tables as editable .xlsx.', Icons.picture_as_pdf, AppColors.catConvertFrom, '/tools?tool=convert', 'Convert'),
-  _ToolSpec('PDF to PowerPoint', 'Convert PDFs to .pptx slides.', Icons.picture_as_pdf, AppColors.catConvertFrom, '/tools?tool=convert', 'Convert'),
-  _ToolSpec('PDF to JPG', 'Extract each page as an image.', Icons.photo_library, AppColors.catConvertFrom, '/tools?tool=convert', 'Convert'),
-
-  // Edit (amber)
-  _ToolSpec('Edit PDF', 'Add text, shapes, comments to any PDF.', Icons.edit, AppColors.catEdit, '/tools?tool=merge', 'Edit'),
-  _ToolSpec('Rotate PDF', 'Rotate pages to any angle.', Icons.rotate_right, AppColors.catEdit, '/tools?tool=rotate', 'Edit'),
-  _ToolSpec('Watermark', 'Add text or image watermarks.', Icons.water_drop, AppColors.catEdit, '/tools?tool=watermark', 'Edit'),
-  _ToolSpec('Page numbers', 'Stamp page numbers anywhere.', Icons.format_list_numbered, AppColors.catEdit, '/tools?tool=watermark', 'Edit'),
-  _ToolSpec('Crop PDF', 'Adjust margins and trim pages.', Icons.crop, AppColors.catEdit, '/tools?tool=merge', 'Edit'),
-  _ToolSpec('Sign PDF', 'Draw, type, or upload a signature.', Icons.draw, AppColors.catEdit, '/tools?tool=merge', 'Edit'),
-  _ToolSpec('Compare PDF', 'Highlight differences between two files.', Icons.compare, AppColors.catEdit, '/tools?tool=merge', 'Edit'),
-
-  // Security (emerald)
-  _ToolSpec('Protect PDF', 'Add a password to lock your PDF.', Icons.lock, AppColors.catSecurity, '/tools?tool=merge', 'Security'),
-  _ToolSpec('Unlock PDF', 'Remove the password from a PDF.', Icons.lock_open, AppColors.catSecurity, '/tools?tool=merge', 'Security'),
-  _ToolSpec('Redact PDF', 'Permanently black out sensitive content.', Icons.visibility_off, AppColors.catSecurity, '/tools?tool=merge', 'Security'),
-  _ToolSpec('PDF to PDF/A', 'Convert to archival-grade PDF/A format.', Icons.verified, AppColors.catSecurity, '/tools?tool=merge', 'Security'),
-
-  // AI (red)
-  _ToolSpec('AI Summarize', 'Get instant AI summaries of any PDF.', Icons.auto_awesome, AppColors.catAi, '/tools?tool=merge', 'AI'),
-  _ToolSpec('AI Translate', 'Translate PDFs into 25+ languages.', Icons.translate, AppColors.catAi, '/tools?tool=merge', 'AI'),
-  _ToolSpec('Chat with PDF', 'Ask questions, get cited answers.', Icons.chat_bubble_outline, AppColors.catAi, '/tools?tool=merge', 'AI'),
-  _ToolSpec('AI Fill Forms', 'Auto-fill PDF forms from context.', Icons.assignment_turned_in, AppColors.catAi, '/tools?tool=merge', 'AI'),
-  _ToolSpec('AI Extract Data', 'Pull structured data from any PDF.', Icons.data_object, AppColors.catAi, '/tools?tool=extract', 'AI'),
-];
 
 // ---------- WHY PROPDFS ----------
 
@@ -853,6 +830,64 @@ class _Stat extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _EmailVerificationBanner extends StatefulWidget {
+  const _EmailVerificationBanner();
+
+  @override
+  State<_EmailVerificationBanner> createState() => _EmailVerificationBannerState();
+}
+
+class _EmailVerificationBannerState extends State<_EmailVerificationBanner> {
+  bool _dismissed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    if (_dismissed) return const SizedBox.shrink();
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      color: const Color(0xFFF59E0B).withOpacity(0.12),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1200),
+          child: Row(
+            children: [
+              const Icon(Icons.mark_email_unread_outlined,
+                  size: 20, color: Color(0xFFF59E0B)),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'Verify your email to unlock all ProPDFs features. Check your inbox for the confirmation link.',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF92400E),
+                  ),
+                ),
+              ),
+              TextButton(
+                onPressed: () {
+                  // TODO: wire to /api/v1/auth/resend-verification
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Resent verification email.')),
+                  );
+                },
+                child: const Text('Resend'),
+              ),
+              IconButton(
+                onPressed: () => setState(() => _dismissed = true),
+                icon: const Icon(Icons.close, size: 18),
+                tooltip: 'Dismiss',
+                visualDensity: VisualDensity.compact,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
