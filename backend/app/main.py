@@ -23,7 +23,6 @@ from app.api.waitlist import router as waitlist_router
 from app.db.session import engine, get_redis
 from app.models.database import Base
 from app.models.beta import Base as BetaBase
-from app.models.waitlist import Base as WaitlistBase  # noqa: F401  (registers ToolWaitlist)
 
 settings = get_settings()
 logger = structlog.get_logger()

@@ -4,9 +4,10 @@ Public endpoint — no auth required, since users browsing coming-soon
 pages aren't necessarily signed in yet. The unique constraint on
 (email, tool_id) is the only spam guard, plus the standard rate limiter.
 """
+
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError

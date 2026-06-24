@@ -10,7 +10,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.services.pdf_service import PDFProcessingService
-from app.services.conversion_service import ConversionService, ConversionError
+from app.services.conversion_service import ConversionService
 from app.services.storage_service import storage_service
 from app.core.config import get_settings
 from app.models.database import Document, ProcessingTask, DocumentStatus

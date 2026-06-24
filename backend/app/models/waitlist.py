@@ -5,6 +5,7 @@ still in the coming-soon phase. Used to send a "we just shipped X" email
 when the tool goes live. Separate from the beta program waitlist in
 `beta.py` — this one is tool-scoped and not gated on an enrollment cap.
 """
+
 import uuid
 from datetime import datetime
 from typing import Optional
