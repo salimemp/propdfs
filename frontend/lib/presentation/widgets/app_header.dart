@@ -23,7 +23,11 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
     return Container(
       height: 64,
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF0a0a0f) : Colors.white,
+        // Slightly lighter than the page background so the navy
+        // brand mark has enough contrast to read. Pure 0xFF0a0a0f
+        // is too close to the navy rect (#0F172A) inside the mark
+        // and the two blend into each other.
+        color: isDark ? const Color(0xFF1a1a2e) : Colors.white,
         border: Border(
           bottom: BorderSide(
             color: isDark ? Colors.grey[900]! : Colors.grey[200]!,

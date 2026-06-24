@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ProPDFs brand mark — dark-mode variant.
+  Same shape as logo-mark.svg but with the navy rect replaced
+  by a white rect so the icon reads on dark backgrounds (the
+  AppHeader in dark mode, the auth pages, etc.). The red corner
+  triangle and the navy "P" stay the same — both are visible
+  against the white rect, so the brand identity is preserved.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="ProPDFs mark">
+  <title>ProPDFs mark (dark mode)</title>
+  <rect x="0" y="0" width="64" height="64" rx="14" ry="14" fill="#FFFFFF"/>
+  <path d="M 64 0 L 64 16 L 48 0 Z" fill="#DC2626"/>
+  <path d="M 18 16
+           L 18 50
+           L 26 50
+           L 26 38
+           L 36 38
+           C 43 38 48 33 48 27
+           C 48 21 43 16 36 16
+           Z
+           M 26 23
+           L 35 23
+             C 38 23 40 25 40 27
+             C 40 29 38 31 35 31
+             L 26 31
+             Z" fill="#0F172A"/>
+</svg>

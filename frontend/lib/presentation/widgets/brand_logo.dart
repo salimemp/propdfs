@@ -42,16 +42,23 @@ class BrandLogo extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final fg = isDark ? Colors.white : const Color(0xFF0F172A);
+    // Two mark variants so the icon stays readable on both light
+    // and dark backgrounds. Light mode uses the navy rect; dark
+    // mode uses a white rect (with the same red corner + navy "P").
+    // Same brand identity, opposite polarity.
+    final markAsset = isDark
+        ? 'assets/brand/logo-mark-dark.svg'
+        : 'assets/brand/logo-mark.svg';
 
     switch (variant) {
       case BrandVariant.mark:
         final h = height ?? 28.0;
         return SvgPicture.asset(
-          'assets/brand/logo-mark.svg',
+          markAsset,
           height: h,
-          // Don't tint the mark — it has its own colors (navy page,
-          // red corner, white P). The corner is the only red element
-          // and the design depends on it for visual identity.
+          // No tint — the mark ships with its own colours and we
+          // pick the variant that already has the right polarity
+          // for the current theme.
         );
       case BrandVariant.inline:
         final h = height ?? 28.0;
@@ -60,7 +67,7 @@ class BrandLogo extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             SvgPicture.asset(
-              'assets/brand/logo-mark.svg',
+              markAsset,
               height: h,
             ),
             SizedBox(width: h * 0.32),

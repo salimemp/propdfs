@@ -257,7 +257,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFF0a0a0f),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF0a0a0f),
+        // Slightly lighter than the page background so the navy
+        // brand mark has enough contrast to read.
+        backgroundColor: const Color(0xFF1a1a2e),
         elevation: 0,
         title: const BrandLogo.inline(
           height: 24,
