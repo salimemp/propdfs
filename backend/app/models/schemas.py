@@ -1,16 +1,55 @@
 from datetime import datetime
 from typing import Optional, List
 from uuid import UUID
-from pydantic import BaseModel, EmailStr, Field, ConfigDict
+from pydantic import BaseModel, EmailStr, Field, field_validator, ConfigDict
 
+from app.core.password_policy import (
+    check_password_rules,
+    RULE_MIN_LENGTH,
+    RULE_UPPERCASE,
+    RULE_DIGIT,
+    RULE_SPECIAL,
+)
 from app.models.database import PlanTier, DocumentStatus
 
 
 # ─── Auth Schemas ───
 class UserRegisterRequest(BaseModel):
     email: EmailStr
+    # Hard limit is the same as before (8..128 chars); the
+    # deeper policy (digit / uppercase / special) is enforced
+    # in the field_validator below so we can return a single
+    # helpful 422 with a per-rule breakdown rather than a
+    # cryptic Pydantic error.
     password: str = Field(min_length=8, max_length=128)
     full_name: Optional[str] = Field(None, max_length=255)
+
+    @field_validator("password")
+    @classmethod
+    def _validate_password_policy(cls, value: str) -> str:
+        result = check_password_rules(value)
+        # The structural-rule failures — these are what we block
+        # signup on. The breach check happens at the route level
+        # so we can also return a useful "Found in N breaches" 422
+        # with the count.
+        structural = {RULE_MIN_LENGTH, RULE_UPPERCASE, RULE_DIGIT, RULE_SPECIAL}
+        missing = structural - set(result.passed)
+        if missing:
+            # Match the rule IDs to human-friendly messages so the
+            # Flutter form can render the right copy next to the
+            # failing rule. The client already validates locally;
+            # this is a server-side backstop.
+            labels = {
+                RULE_MIN_LENGTH: "at least 8 characters",
+                RULE_UPPERCASE: "at least 1 uppercase letter",
+                RULE_DIGIT: "at least 1 number",
+                RULE_SPECIAL: "at least 1 special character",
+            }
+            raise ValueError(
+                "Password does not meet the policy: "
+                + ", ".join(labels[m] for m in missing)
+            )
+        return value
 
 
 class UserLoginRequest(BaseModel):

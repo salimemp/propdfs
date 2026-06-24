@@ -26,7 +26,7 @@ class PrivacyPolicyScreen extends ConsumerWidget {
           children: [
             _SectionHeader(
               title: 'ProPDFs Privacy Policy',
-              subtitle: 'Effective Date: January 1, 2025 | Last Updated: January 1, 2025',
+              subtitle: 'Effective Date: January 1, 2026 | Last Updated: January 1, 2026',
             ),
             SizedBox(height: 24),
             _PolicySection(
@@ -119,7 +119,7 @@ class TermsOfServiceScreen extends ConsumerWidget {
           children: [
             _SectionHeader(
               title: 'ProPDFs Terms of Service',
-              subtitle: 'Effective Date: January 1, 2025 | Last Updated: January 1, 2025',
+              subtitle: 'Effective Date: January 1, 2026 | Last Updated: January 1, 2026',
             ),
             SizedBox(height: 24),
             _PolicySection(
@@ -301,7 +301,7 @@ class CookiesPolicyScreen extends ConsumerWidget {
             _SectionHeader(
               title: 'ProPDFs Cookie Policy',
               subtitle:
-                  'Effective Date: January 1, 2025 | Last Updated: January 1, 2025',
+                  'Effective Date: January 1, 2026 | Last Updated: January 1, 2026',
             ),
             SizedBox(height: 24),
             _PolicySection(

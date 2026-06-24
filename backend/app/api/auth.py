@@ -4,21 +4,27 @@ import secrets
 import uuid
 from datetime import datetime, timezone, timedelta
 
+import httpx
 import pyotp
 import qrcode
 from fastapi import (
     APIRouter,
     Depends,
     HTTPException,
-    status,
     Request,
+    status,
 )
+from pydantic import BaseModel
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
 
 import structlog
 from app.core.config import get_settings
+from app.core.password_policy import (
+    k_anonymity_prefix,
+    parse_hibp_range_response,
+)
 from app.core.security import (
     authenticate_user,
     create_access_token,
@@ -497,3 +503,73 @@ async def disable_mfa(
 @router.get("/me", response_model=UserResponse)
 async def get_me(current_user: User = Depends(get_current_active_user)):
     return current_user
+
+
+# -------- Password breach check (HaveIBeenPwned, k-anonymity) --------
+#
+# The Flutter register form calls this on every password change
+# (debounced) to render "Found in N breaches" in the strength
+# meter. We never send the plaintext password to HIBP — only the
+# first 5 chars of the SHA-1 hash. HIBP's /range/{prefix}
+# endpoint returns ~500 hash suffixes per prefix; we look ours
+# up locally to get the breach count.
+#
+# No auth required: the input is a password candidate, not a
+# user identity, and an attacker who can call this endpoint can
+# already brute-force SHA-1 prefixes themselves. Rate-limited
+# via the global RateLimitMiddleware.
+
+
+class PasswordBreachCheckResponse(BaseModel):
+    """Response shape for /auth/password-breach-check.
+
+    `breach_count` is the number of times this exact password
+    appears in known breach corpora (0 = clean).
+    `checked` is False when we couldn't reach HIBP or the
+    password was empty — the client should treat that as
+    "unknown" rather than "clean".
+    """
+
+    breach_count: int = 0
+    checked: bool = True
+
+
+@router.post(
+    "/password-breach-check",
+    response_model=PasswordBreachCheckResponse,
+)
+async def password_breach_check(body: dict) -> PasswordBreachCheckResponse:
+    """Check a password candidate against HIBP's breach corpus.
+
+    Body: `{"password": "<candidate>"}`. Returns the breach
+    count (0 if the password hasn't appeared in any known
+    breach). On any error talking to HIBP we return
+    `checked: false` so the client knows to render the breach
+    indicator in an "unknown" state rather than green.
+    """
+    password = (body or {}).get("password", "")
+    if not isinstance(password, str) or not password:
+        return PasswordBreachCheckResponse(breach_count=0, checked=False)
+
+    prefix, suffix = k_anonymity_prefix(password)
+    url = f"https://api.pwnedpasswords.com/range/{prefix}"
+    # Add the standard "padding" header so HIBP can't fingerprint
+    # exact hash counts. The padding entries use hashes we don't
+    # care about — they're stripped out by parse_hibp_range_response
+    # because we only match our own suffix.
+    headers = {
+        "User-Agent": "ProPDFs-PasswordChecker/1.0",
+        "Add-Padding": "true",
+    }
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.get(url, headers=headers)
+            resp.raise_for_status()
+            count = parse_hibp_range_response(resp.text, suffix)
+            return PasswordBreachCheckResponse(breach_count=count, checked=True)
+    except (httpx.HTTPError, httpx.TimeoutException) as exc:
+        # Don't fail the whole signup flow on a HIBP outage —
+        # the structural rules still apply, and the breach
+        # indicator just shows as "couldn't check".
+        logger.warning("hibp_breach_check_failed", error=str(exc))
+        return PasswordBreachCheckResponse(breach_count=0, checked=False)

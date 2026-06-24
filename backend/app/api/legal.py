@@ -44,8 +44,8 @@ async def get_privacy_policy():
     """Return the privacy policy content."""
     return {
         "title": "ProPDFs Privacy Policy",
-        "effective_date": "2025-01-01",
-        "last_updated": "2025-01-01",
+        "effective_date": "2026-01-01",
+        "last_updated": "2026-01-01",
         "version": "1.0",
         "sections": [
             "introduction",
@@ -82,8 +82,8 @@ async def get_terms_of_service():
     """Return the terms of service content."""
     return {
         "title": "ProPDFs Terms of Service",
-        "effective_date": "2025-01-01",
-        "last_updated": "2025-01-01",
+        "effective_date": "2026-01-01",
+        "last_updated": "2026-01-01",
         "version": "1.0",
         "sections": [
             "acceptance",

@@ -7,6 +7,7 @@ import '../../core/api_client.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/app_header.dart';
 import '../widgets/oauth_buttons.dart';
+import '../widgets/password_strength_meter.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -23,25 +24,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _obscurePassword = true;
   bool _agreeToTerms = false;
-  _PasswordStrength _passwordStrength = _PasswordStrength.none;
-
-  @override
-  void initState() {
-    super.initState();
-    // Live-update the strength meter as the user types.
-    _passwordController.addListener(_recomputePasswordStrength);
-  }
-
-  void _recomputePasswordStrength() {
-    final next = _scorePassword(_passwordController.text);
-    if (next != _passwordStrength) {
-      setState(() => _passwordStrength = next);
-    }
-  }
+  // Live password evaluation — updated by the [PasswordStrengthChecker]
+  // as the user types. Used to drive the submit button's enabled
+  // state and to surface "breached" copy in the validator.
+  PasswordEvaluation? _passwordEvaluation;
 
   @override
   void dispose() {
-    _passwordController.removeListener(_recomputePasswordStrength);
     _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
@@ -51,6 +40,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   Future<void> _register() async {
     if (!_formKey.currentState!.validate()) return;
+    if (!(_passwordEvaluation?.isAcceptable ?? false)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please address the password requirements below.'),
+        ),
+      );
+      return;
+    }
     if (!_agreeToTerms) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please agree to the terms and conditions')),
@@ -220,7 +217,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   _buildLabel('Password'),
                   _buildTextField(
                     controller: _passwordController,
-                    hint: 'At least 6 characters',
+                    hint: 'At least 8 characters, 1 number, 1 capital, 1 symbol',
                     icon: Icons.lock_outlined,
                     obscureText: _obscurePassword,
                     suffixIcon: IconButton(
@@ -231,11 +228,28 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                     ),
                     validator: (value) {
-                      if (value == null || value.length < 6) {
-                        return 'Password must be at least 6 characters';
+                      if (value == null || value.isEmpty) {
+                        return 'Password is required';
                       }
-                      if (_passwordStrength == _PasswordStrength.weak) {
-                        return 'Password is too weak — add length, numbers, or symbols';
+                      if (value.length < 8) {
+                        return 'Password must be at least 8 characters';
+                      }
+                      if (!RegExp(r'[A-Z]').hasMatch(value)) {
+                        return 'Add at least 1 uppercase letter';
+                      }
+                      if (!RegExp(r'[0-9]').hasMatch(value)) {
+                        return 'Add at least 1 number';
+                      }
+                      if (!RegExp(
+                              r'''[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>/?`~]''')
+                          .hasMatch(value)) {
+                        return 'Add at least 1 special character (!@#\$%^&*...)';
+                      }
+                      // Reject if breach-checked and breached.
+                      if (_passwordEvaluation != null &&
+                          _passwordEvaluation!.breachChecked &&
+                          (_passwordEvaluation!.breachCount ?? 0) > 0) {
+                        return 'This password was found in a known breach — pick another';
                       }
                       return null;
                     },
@@ -244,7 +258,18 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   // starts typing so we don't show an empty bar.
                   if (_passwordController.text.isNotEmpty) ...[
                     const SizedBox(height: 10),
-                    _PasswordStrengthMeter(strength: _passwordStrength),
+                    PasswordStrengthChecker(
+                      passwordController: _passwordController,
+                      onChanged: (eval) {
+                        // Keep our parent's `_passwordEvaluation` in
+                        // sync so the submit button + validator can
+                        // react to changes (e.g. disable submit until
+                        // `isAcceptable`).
+                        if (mounted) {
+                          setState(() => _passwordEvaluation = eval);
+                        }
+                      },
+                    ),
                   ],
                   const SizedBox(height: 20),
 
@@ -324,10 +349,21 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   SizedBox(
                     height: 52,
                     child: ElevatedButton(
-                      onPressed: isLoading ? null : _register,
+                      // Disabled until the password passes every
+                      // structural rule + the breach check. The
+                      // HIBP check is async; while it's in-flight
+                      // we keep the button disabled so users don't
+                      // submit a breached password in the brief
+                      // window before the result comes back.
+                      onPressed: (isLoading ||
+                              !(_passwordEvaluation?.isAcceptable ?? false))
+                          ? null
+                          : _register,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF2563EB),
                         foregroundColor: Colors.white,
+                        disabledBackgroundColor: const Color(0xFF1f2937),
+                        disabledForegroundColor: Colors.grey[500],
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         elevation: 0,
                       ),
@@ -421,139 +457,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       ),
       validator: validator,
-    );
-  }
-}
-
-/// Password strength buckets. Used by [_scorePassword] and surfaced in
-/// [_PasswordStrengthMeter] as both a coloured bar and a label.
-enum _PasswordStrength { none, weak, fair, good, strong }
-
-/// Heuristic password scoring. Not a substitute for server-side entropy
-/// checks (which the backend already enforces), but enough to nudge users
-/// away from `password123` at signup.
-///
-/// Score components:
-/// - length: 6+ → +1, 10+ → +2, 14+ → +3
-/// - mixed case letters → +1
-/// - digits → +1
-/// - symbols → +1
-///
-/// Max raw score = 8. Buckets:
-/// - 0-2 → weak
-/// - 3-4 → fair
-/// - 5-6 → good
-/// - 7+  → strong
-_PasswordStrength _scorePassword(String s) {
-  if (s.isEmpty) return _PasswordStrength.none;
-
-  int score = 0;
-  if (s.length >= 6) score += 1;
-  if (s.length >= 10) score += 1;
-  if (s.length >= 14) score += 1;
-
-  // Lower / upper case variety.
-  final hasLower = RegExp(r'[a-z]').hasMatch(s);
-  final hasUpper = RegExp(r'[A-Z]').hasMatch(s);
-  if (hasLower && hasUpper) score += 1;
-
-  if (RegExp(r'\d').hasMatch(s)) score += 1;
-  if (RegExp(r'[^A-Za-z0-9]').hasMatch(s)) score += 1;
-
-  // Common-password penalty — these should not score "fair" even with
-  // a digit or symbol appended.
-  const common = {
-    'password',
-    'password1',
-    'password123',
-    'qwerty',
-    'qwerty123',
-    '12345678',
-    '11111111',
-    'letmein',
-    'welcome',
-    'admin123',
-    'iloveyou',
-  };
-  if (common.contains(s.toLowerCase())) {
-    return _PasswordStrength.weak;
-  }
-
-  if (score <= 2) return _PasswordStrength.weak;
-  if (score <= 4) return _PasswordStrength.fair;
-  if (score <= 6) return _PasswordStrength.good;
-  return _PasswordStrength.strong;
-}
-
-class _PasswordStrengthMeter extends StatelessWidget {
-  final _PasswordStrength strength;
-  const _PasswordStrengthMeter({required this.strength});
-
-  ({double fill, Color color, String label}) get _style {
-    switch (strength) {
-      case _PasswordStrength.none:
-        return (fill: 0.0, color: Colors.transparent, label: '');
-      case _PasswordStrength.weak:
-        return (fill: 0.25, color: const Color(0xFFEF4444), label: 'Weak');
-      case _PasswordStrength.fair:
-        return (fill: 0.5, color: const Color(0xFFF59E0B), label: 'Fair');
-      case _PasswordStrength.good:
-        return (fill: 0.75, color: const Color(0xFF3B82F6), label: 'Good');
-      case _PasswordStrength.strong:
-        return (fill: 1.0, color: const Color(0xFF10B981), label: 'Strong');
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final s = _style;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // 4-segment bar. Empty segments use a faint outline.
-        ClipRRect(
-          borderRadius: BorderRadius.circular(3),
-          child: Row(
-            children: List.generate(4, (i) {
-              final lit = s.fill > (i / 4);
-              return Expanded(
-                child: Container(
-                  height: 4,
-                  margin: EdgeInsets.only(right: i < 3 ? 4 : 0),
-                  color: lit
-                      ? s.color
-                      : const Color(0xFF1a1a2e),
-                ),
-              );
-            }),
-          ),
-        ),
-        const SizedBox(height: 6),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              s.label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: s.color == Colors.transparent
-                    ? Colors.grey[500]
-                    : s.color,
-              ),
-            ),
-            if (strength == _PasswordStrength.weak ||
-                strength == _PasswordStrength.fair)
-              Expanded(
-                child: Text(
-                  'Try 12+ chars, mix case, numbers, symbols.',
-                  style: TextStyle(fontSize: 11, color: Colors.grey[500]),
-                  textAlign: TextAlign.right,
-                ),
-              ),
-          ],
-        ),
-      ],
     );
   }
 }
