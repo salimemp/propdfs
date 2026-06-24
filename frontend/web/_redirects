@@ -33,6 +33,20 @@
 # with the <meta> tag in index.html.
 /googleBguSVNY65bi-pvRVGT8KqpBUnwMutY6BWAqkUBrKTR0.html /googleBguSVNY65bi-pvRVGT8KqpBUnwMutY6BWAqkUBrKTR0.html 200
 
+# iOS Universal Links + Android App Links. The .well-known/
+# directory is where the OS fetches these from, but Flutter's
+# build process strips "dotfiles" by default, so the static
+# files in /web/.well-known/ need to be served via a redirect
+# to bypass the SPA fallback. The file extensions are
+# .json-less for the iOS one (must be served as
+# application/json — see _headers) and .json for Android.
+#
+# The bundle ID / SHA-256 / team ID are placeholders. Update
+# them when the iOS + Android apps ship — see the README at
+# /web/.well-known/README.md.
+/.well-known/apple-app-site-association /.well-known/apple-app-site-association 200
+/.well-known/assetlinks.json             /.well-known/assetlinks.json             200
+
 # SPA fallback — every unknown path returns index.html so GoRouter
 # can take over on the client. Required with PathUrlStrategy so
 # /blog, /tools/merge, /pricing etc. all resolve correctly.

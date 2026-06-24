@@ -7,7 +7,7 @@ from typing import List, Optional
 import fitz  # PyMuPDF
 import pikepdf
 import structlog
-from PIL import Image
+from PIL import Image, ImageDraw
 
 from app.core.config import get_settings
 
@@ -536,6 +536,136 @@ class PDFProcessingService:
                 "protects this PDF."
             ) from e
         return output_path
+
+    # ------------------------------------------------------------------
+    # Redact
+    #
+    # True redaction — not the marketing kind where you slap a black
+    # rectangle over text and call it a day (the text underneath is
+    # still in the content stream and copy-paste recovers it). The
+    # secure flow is:
+    #   1. Find every occurrence of every search term on every page
+    #      using pymupdf's `search_for`, which returns actual bboxes
+    #      (including multi-word phrases).
+    #   2. Rasterise the page to a high-res image. Drawing on a
+    #      raster is destructive — there's no longer a content
+    #      stream underneath to recover.
+    #   3. Burn the rectangles onto the image.
+    #   4. Replace the page contents with a fresh single-image page
+    #      sized to match the original.
+    #
+    # The trade-off: rasterised output is bigger than vector text
+    # and not selectable. For a security tool that's the right
+    # trade-off. If the user wants to keep selectable text in the
+    # non-redacted parts they'd need a per-region pixel-burner
+    # inside the original content stream — significantly more
+    # code; not in scope.
+    # ------------------------------------------------------------------
+    def redact_pdf(
+        self,
+        file_path: str,
+        terms: List[str],
+        output_path: Optional[str] = None,
+        dpi: int = 200,
+    ) -> str:
+        """Permanently redact search terms from a PDF.
+
+        Returns the path to the redacted PDF. Every occurrence of
+        every term in `terms` is replaced with a black rectangle;
+        the underlying text is destroyed by rasterising the page.
+
+        Raises PDFServiceError on:
+          * missing file
+          * empty `terms` (caller mistake — silent no-op would be
+            worse than a clear error)
+        """
+        if not os.path.exists(file_path):
+            raise PDFServiceError(f"File not found: {file_path}")
+        # Filter empty / whitespace-only terms so users can paste
+        # line-separated lists with blank lines without crashing.
+        clean_terms = [t.strip() for t in terms if t and t.strip()]
+        if not clean_terms:
+            raise PDFServiceError(
+                "Enter at least one term to redact. One per line is fine."
+            )
+
+        output_path = output_path or self._get_temp_path()
+        src = fitz.open(file_path)
+        out = fitz.open()
+        try:
+            for page in src:
+                # Collect every match on this page across all terms.
+                # `search_for` is case-insensitive by default and
+                # handles multi-word phrases.
+                matches = []
+                for term in clean_terms:
+                    matches.extend(page.search_for(term))
+
+                if not matches:
+                    # Nothing to redact on this page — copy the
+                    # original page contents over so we keep text
+                    # selectability for the un-touched pages.
+                    out.insert_pdf(src, from_page=page.number, to_page=page.number)
+                    continue
+
+                # Rasterise the page at the requested DPI. 200 is
+                # a good default — high enough that the redacted
+                # output is sharp, low enough that file size stays
+                # sensible for a multi-page document.
+                zoom = dpi / 72
+                mat = fitz.Matrix(zoom, zoom)
+                pix = page.get_pixmap(matrix=mat, alpha=False)
+                img = Image.frombytes("RGB", (pix.width, pix.height), pix.samples)
+                draw = ImageDraw.Draw(img)
+                for r in matches:
+                    # `r` is a pymupdf Rect in PDF points (1/72 inch).
+                    # The raster is at `zoom` × the point resolution,
+                    # so scale the bbox up to pixel space before
+                    # drawing.
+                    draw.rectangle(
+                        [
+                            r.x0 * zoom,
+                            r.y0 * zoom,
+                            r.x1 * zoom,
+                            r.y1 * zoom,
+                        ],
+                        fill=(0, 0, 0),
+                    )
+
+                # Encode + embed. We use JPEG at 95% quality to keep
+                # file size reasonable; PNG would balloon multi-page
+                # redacted documents. 95% is visually indistinguishable
+                # from the source at 200 DPI for a text document.
+                img_buf = io.BytesIO()
+                if img.mode == "RGB":
+                    img.save(img_buf, format="JPEG", quality=95)
+                else:
+                    img.save(img_buf, format="PNG")
+                img_buf.seek(0)
+
+                # New page sized to match the original so the
+                # output page dimensions don't drift.
+                new_page = out.new_page(width=page.rect.width, height=page.rect.height)
+                new_page.insert_image(new_page.rect, stream=img_buf.getvalue())
+                # Drop any text annotations / AcroForm fields on
+                # the original page — the redacted output is
+                # purely visual. This is the same behaviour as
+                # Adobe's "Apply Redactions" — text-bearing layers
+                # of the original are gone, full stop.
+                try:
+                    if "/Annots" in new_page.keys():
+                        del new_page.Annots
+                except Exception:
+                    # If the Annots cleanup fails for any reason,
+                    # don't fail the whole redaction. The image
+                    # replacement is the security guarantee; this
+                    # is just hygiene.
+                    pass
+            out.save(output_path, garbage=4, deflate=True)
+            return output_path
+        finally:
+            src.close()
+            out.close()
 
 
 pdf_service = PDFProcessingService()

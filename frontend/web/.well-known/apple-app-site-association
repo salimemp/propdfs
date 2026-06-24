@@ -1,0 +1,47 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appIDs": [
+          "ABCDE12345.com.propdfs.app"
+        ],
+        "components": [
+          {
+            "/": "/tools/*",
+            "comment": "Match every PDF tool page (merge, split, etc.)"
+          },
+          {
+            "/": "/blog/*",
+            "comment": "Match every blog article"
+          },
+          {
+            "/": "/home",
+            "comment": "Match the home / landing page"
+          },
+          {
+            "/": "/pricing",
+            "comment": "Match the pricing page"
+          },
+          {
+            "/": "/about",
+            "comment": "Match the about page"
+          },
+          {
+            "/": "/compare",
+            "comment": "Match the 'vs alternatives' comparison pages"
+          },
+          {
+            "/": "/documents",
+            "comment": "Match the user's document list (deep link only for authenticated installs)"
+          }
+        ]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": [
+      "ABCDE12345.com.propdfs.app"
+    ]
+  }
+}

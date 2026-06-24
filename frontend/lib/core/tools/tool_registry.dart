@@ -462,13 +462,20 @@ class ToolRegistry {
       title: 'Redact PDF',
       description: 'Permanently black out sensitive content.',
       longDescription: 'Permanently black out text or images so the '
-          'underlying data can\'t be recovered.',
+          'underlying data can\'t be recovered. True redaction: '
+          'every matching term is replaced with a black rectangle '
+          'AND the page is rasterised so the original text is '
+          'destroyed, not just covered. Multi-word phrases work '
+          '("John Smith").',
       icon: Icons.visibility_off,
       color: AppColors.catSecurity,
       category: 'Security',
-      taskType: null,
+      // pikepdf-driven: pymupdf search_for() locates the matches
+      // by bbox, then we rasterise the page and burn black
+      // rectangles onto the image. params is {"terms": [...]}.
+      taskType: 'redact',
       acceptMode: ToolAcceptMode.singlePdf,
-      status: ToolStatus.comingSoon,
+      status: ToolStatus.implemented,
     ),
     ToolConfig(
       id: 'pdfa',
@@ -490,11 +497,15 @@ class ToolRegistry {
       title: 'AI Summarize',
       description: 'Get instant AI summaries of any PDF.',
       longDescription: 'Upload a PDF and get a concise AI-generated summary '
-          'powered by Google Gemini.',
+          'powered by Google Gemini. The page renders a structured '
+          'summary (overview + key points + topics).',
       icon: Icons.auto_awesome,
       color: AppColors.catAi,
       category: 'AI',
-      taskType: null, // routed through /api/v1/ai/summarize (different flow)
+      // Routed through /api/v1/ai/summarize (synchronous,
+      // not the celery task pipeline). The dedicated page
+      // handles the upload + result render.
+      taskType: null,
       acceptMode: ToolAcceptMode.singlePdf,
       status: ToolStatus.implemented,
     ),
@@ -502,8 +513,11 @@ class ToolRegistry {
       id: 'ai-translate',
       title: 'AI Translate',
       description: 'Translate PDFs into 25+ languages.',
-      longDescription: 'Upload a PDF, pick a target language, and download '
-          'a translated version. Powered by Gemini.',
+      longDescription: 'Upload a PDF, pick a target language, and read '
+          'the translated text. Powered by Gemini. (Translated text '
+          'only — formatting, images, and tables are not preserved '
+          'in this flow. Use "PDF to Word" or "PDF to Markdown" if '
+          'you need a translated file you can save.)',
       icon: Icons.translate,
       color: AppColors.catAi,
       category: 'AI',
@@ -517,31 +531,30 @@ class ToolRegistry {
       id: 'ai-fill-forms',
       title: 'AI Fill Forms',
       description: 'Auto-fill PDF forms from context.',
-      longDescription: 'Upload a PDF form and let Gemini fill in the blanks '
-          'based on the document\'s context. Reads the form fields, infers '
-          'the answers from the surrounding content, and writes them back '
-          'into the PDF so you get a ready-to-sign document.',
+      longDescription: 'Upload a PDF form, let Gemini suggest values for '
+          'each AcroForm field based on the document\'s content, '
+          'review + edit anything that looks wrong, then download '
+          'the filled PDF. Two-step flow so you always see what '
+          'the model wants to write before it lands in the file.',
       icon: Icons.assignment_turned_in,
       color: AppColors.catAi,
       category: 'AI',
+      // Routed through /api/v1/ai/fill-forms (synchronous).
       taskType: null,
       acceptMode: ToolAcceptMode.singlePdf,
-      // Backend endpoint not wired yet — the AI tools go through a
-      // synchronous /api/v1/ai/* flow rather than the standard
-      // celery task pipeline, so the generic ToolPage wouldn't work.
-      // Marked comingSoon so it lands on the polished placeholder
-      // page with a launch timeline instead of crashing on submit.
-      status: ToolStatus.comingSoon,
+      status: ToolStatus.implemented,
     ),
     ToolConfig(
       id: 'ai-extract',
       title: 'AI Extract Data',
       description: 'Pull structured data from any PDF.',
       longDescription: 'Upload a PDF and Gemini will extract structured '
-          'fields (invoices, receipts, contracts) as JSON.',
+          'fields (named entities, key data, tables, contact info) '
+          'as JSON.',
       icon: Icons.data_object,
       color: AppColors.catAi,
       category: 'AI',
+      // Routed through /api/v1/ai/extract (synchronous).
       taskType: null,
       acceptMode: ToolAcceptMode.singlePdf,
       status: ToolStatus.implemented,

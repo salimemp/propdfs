@@ -1,0 +1,19 @@
+# Cloudflare Pages custom response headers.
+#
+# iOS + Android need the deep-link files served with the right
+# Content-Type, or the OS won't parse them. iOS wants
+# application/json for the apple-app-site-association; Android
+# wants application/json for assetlinks.json.
+
+/.well-known/apple-app-site-association
+  Content-Type: application/json
+
+/.well-known/assetlinks.json
+  Content-Type: application/json
+
+# Long-cache the brand assets so we don't burn bandwidth on
+# every deploy. The /favicon*.png + /icon-*.png are immutable
+# across deploys; the .well-known files are too once they're
+# stable. Everything else uses Cloudflare's default cache.
+/
+  X-ProPDFs-CDN: cloudflare-pages

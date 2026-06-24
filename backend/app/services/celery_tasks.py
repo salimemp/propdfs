@@ -165,6 +165,14 @@ def process_pdf_task(
             if not pw:
                 raise ValueError("unlock requires a password in params")
             output_path = pdf_service.decrypt_pdf(temp_paths[0], password=pw)
+        elif task_type == "redact":
+            # True redaction: rasterises the page so the redacted
+            # text is gone, not just covered. params is
+            # {"terms": ["John Smith", "123-45-6789", ...]}.
+            # Empty terms list is rejected at the API layer so
+            # this branch is always non-empty in practice.
+            terms = params.get("terms") or []
+            output_path = pdf_service.redact_pdf(temp_paths[0], terms=terms)
         # ---- Office ↔ PDF conversions via LibreOffice ----
         # The XLSX paths are known-broken in the current LibreOffice
         # build (Calc can't parse Writer HTML on import; can't parse

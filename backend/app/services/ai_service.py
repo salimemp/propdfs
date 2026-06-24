@@ -1,4 +1,5 @@
 from typing import Dict, List
+import json
 import structlog
 import fitz
 import google.generativeai as genai
@@ -301,6 +302,170 @@ class AIService:
         return {
             "task": f"vision_{task}",
             "result": response.text,
+        }
+
+    # ------------------------------------------------------------------
+    # AI Fill Forms
+    #
+    # Two-phase flow:
+    #   1. Read the PDF's AcroForm fields (name + nearby text) and
+    #      the document body for context.
+    #   2. Hand both to Gemini; ask for one suggested value per
+    #      field, returned as a JSON map.
+    #
+    # The actual write-back to the PDF happens at the API layer
+    # (see api/ai.py::ai_fill_forms) so the service stays
+    # format-agnostic and easy to test in isolation.
+    # ------------------------------------------------------------------
+    async def fill_forms(self, pdf_path: str) -> Dict:
+        """Read AcroForm fields + doc text, ask Gemini for values.
+
+        Returns a dict shaped as:
+          {
+              "fields": [
+                  {"name": "applicant_name", "value": "Jane Doe",
+                   "type": "Tx", "page": 1, "reason": "..."},
+                  ...
+              ],
+              "context_chars": 12345,
+          }
+
+        Empty / non-form PDFs return an empty `fields` list with
+        a note in `reason`.
+        """
+        import pikepdf  # local import: keeps the top of the file
+
+        # clean for callers that don't need form handling.
+
+        # Pull the form field names from the AcroForm dictionary.
+        # pikepdf gives us the names without doing a text-extract
+        # pass first, so this is fast even for big documents.
+        field_names: list[dict] = []
+        try:
+            with pikepdf.open(pdf_path) as pdf:
+                root = pdf.Root
+                if "/AcroForm" in root:
+                    acroform = root.Acroform
+                    if "/Fields" in acroform:
+                        # The field list is a tree — flatten it so
+                        # the response is just a flat list of
+                        # concrete fields (Tx, Btn, Ch, Sig).
+                        stack = list(acroform.Fields)
+                        while stack:
+                            f = stack.pop()
+                            # Sub-form groups have /Kids but no /T
+                            # (or /FT); recurse into them.
+                            if "/Kids" in f and "/FT" not in f:
+                                stack.extend(f.Kids)
+                                continue
+                            name = str(f.T) if "/T" in f else None
+                            if not name:
+                                continue
+                            ft = str(f.FT) if "/FT" in f else "Tx"
+                            # 0-indexed page reference: /P is the
+                            # page object the field lives on. We
+                            # convert to a 1-based page number for
+                            # the user-facing response.
+                            page_num = None
+                            if "/P" in f:
+                                try:
+                                    # Find the page index in the
+                                    # parent pdf.pages list.
+                                    pages = list(pdf.pages)
+                                    page_num = (
+                                        pages.index(f.P) + 1 if f.P in pages else None
+                                    )
+                                except Exception:
+                                    page_num = None
+                            field_names.append(
+                                {
+                                    "name": name,
+                                    "type": ft,
+                                    "page": page_num,
+                                }
+                            )
+        except Exception:
+            # If pikepdf can't open the file, just return empty —
+            # the API layer will surface a 500 if the file is
+            # truly unreadable.
+            field_names = []
+
+        if not field_names:
+            return {
+                "fields": [],
+                "context_chars": 0,
+                "reason": "No AcroForm fields found in this PDF.",
+            }
+
+        # Pull a manageable slice of the document text as
+        # context. Same 30k cap the other AI endpoints use.
+        text = self._extract_text_from_pdf(pdf_path)
+        if len(text) > 30000:
+            text = text[:30000] + "..."
+
+        field_list = "\n".join(
+            f"- {f['name']} (type={f['type']}, page={f['page']})" for f in field_names
+        )
+
+        prompt = f"""You are filling in an AcroForm PDF based on the document's own content.
+
+Document content (may be truncated):
+\"\"\"
+{text}
+\"\"\"
+
+Form fields to fill:
+{field_list}
+
+For each field, suggest a value derived from the document content.
+If the document does not contain enough information to fill a
+field, return an empty string for that field.
+
+Return ONLY a JSON object in this exact shape — no commentary, no markdown fences:
+{{
+  "<field_name>": "<value or empty string>",
+  ...
+}}
+"""
+
+        response = await self._get_model().generate_content_async(prompt)
+        raw = response.text.strip()
+
+        # Gemini sometimes wraps the JSON in ```json ... ``` fences
+        # even when asked not to. Strip them defensively.
+        if raw.startswith("```"):
+            raw = raw.split("```", 2)[1]
+            if raw.startswith("json"):
+                raw = raw[4:]
+            raw = raw.rsplit("```", 1)[0].strip()
+
+        try:
+            values = json.loads(raw)
+        except json.JSONDecodeError:
+            # If Gemini returned something we can't parse, fall
+            # back to "fill nothing" rather than 500. The user
+            # can retry; the issue is usually a malformed response
+            # from a model hiccup.
+            return {
+                "fields": [
+                    {**f, "value": "", "reason": "Model returned non-JSON."}
+                    for f in field_names
+                ],
+                "context_chars": len(text),
+                "reason": "The model returned a non-JSON response. "
+                "Try again with a smaller document.",
+            }
+
+        merged = []
+        for f in field_names:
+            val = values.get(f["name"], "")
+            if not isinstance(val, str):
+                val = str(val) if val is not None else ""
+            merged.append({**f, "value": val})
+
+        return {
+            "fields": merged,
+            "context_chars": len(text),
         }
 
 

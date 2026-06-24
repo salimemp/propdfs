@@ -3,6 +3,8 @@ import os
 import tempfile
 from typing import Optional, List, Dict
 
+import pikepdf
+
 from fastapi import (
     APIRouter,
     Depends,
@@ -12,6 +14,7 @@ from fastapi import (
     Form,
     Body,
 )
+from fastapi.responses import Response
 from pydantic import BaseModel
 
 import structlog
@@ -242,3 +245,151 @@ async def ai_vision(
     finally:
         if os.path.exists(temp_input):
             os.remove(temp_input)
+
+
+# ------------------------------------------------------------------
+# AI Fill Forms
+#
+# Two-step flow for the Flutter page:
+#   1. POST /ai/fill-forms (multipart, file=<pdf>) →
+#        {"fields": [{name, value, type, page, reason?}, ...],
+#         "context_chars": int, "reason"?: str}
+#      The page renders the suggested values in editable form so
+#      the user can correct anything before committing.
+#   2. POST /ai/fill-forms/apply (multipart, file=<pdf>,
+#        fields=<json of {name: value}>) → application/pdf
+#      (the filled PDF as a download).
+#
+# The two-step shape matters: we never want to silently trust
+# Gemini's answers for a form someone is about to sign. Always
+# show the human what the model proposed.
+# ------------------------------------------------------------------
+@router.post("/fill-forms")
+async def ai_fill_forms(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_active_user),
+):
+    """Read AcroForm fields + ask Gemini for suggested values.
+
+    Returns the suggestions as JSON. The Flutter page lets the
+    user review + edit them, then POSTs to /ai/fill-forms/apply
+    to commit.
+    """
+    content = await file.read()
+    await file.seek(0)
+
+    temp_input = os.path.join(tempfile.gettempdir(), f"{uuid.uuid4().hex}.pdf")
+    with open(temp_input, "wb") as f:
+        f.write(content)
+
+    try:
+        result = await ai_service.fill_forms(temp_input)
+        return result
+    except Exception as e:
+        logger.error("ai_fill_forms_failed", error=str(e))
+        raise HTTPException(status_code=500, detail=f"AI fill-forms failed: {str(e)}")
+    finally:
+        if os.path.exists(temp_input):
+            os.remove(temp_input)
+
+
+@router.post("/fill-forms/apply")
+async def ai_fill_forms_apply(
+    file: UploadFile = File(...),
+    fields: str = Form(...),
+    current_user: User = Depends(get_current_active_user),
+):
+    """Write the user-approved field values back into the PDF.
+
+    `fields` is a JSON string of {name: value}. The endpoint opens
+    the source PDF with pikepdf, walks the AcroForm tree, sets
+    /V on each matching field, and returns the filled PDF as
+    a download.
+    """
+    import json as _json
+
+    try:
+        values = _json.loads(fields)
+    except _json.JSONDecodeError as e:
+        raise HTTPException(status_code=400, detail=f"fields must be valid JSON: {e}")
+    if not isinstance(values, dict):
+        raise HTTPException(status_code=400, detail="fields must be a JSON object")
+
+    content = await file.read()
+    await file.seek(0)
+
+    src_path = os.path.join(tempfile.gettempdir(), f"{uuid.uuid4().hex}_src.pdf")
+    out_path = os.path.join(tempfile.gettempdir(), f"{uuid.uuid4().hex}_filled.pdf")
+    with open(src_path, "wb") as f:
+        f.write(content)
+
+    try:
+        with pikepdf.open(src_path) as pdf:
+            if "/AcroForm" not in pdf.Root:
+                raise HTTPException(
+                    status_code=400,
+                    detail="This PDF has no AcroForm fields to fill.",
+                )
+            acroform = pdf.Root.Acroform
+            if "/Fields" not in acroform:
+                raise HTTPException(
+                    status_code=400,
+                    detail="This PDF has no AcroForm fields to fill.",
+                )
+
+            # Walk the field tree. Set /V on each concrete field
+            # whose /T matches a key in the user's values dict.
+            # Empty-string values are still applied (a user might
+            # want to clear a field).
+            written = 0
+            stack = list(acroform.Fields)
+            while stack:
+                f = stack.pop()
+                if "/Kids" in f and "/FT" not in f:
+                    stack.extend(f.Kids)
+                    continue
+                if "/T" not in f:
+                    continue
+                name = str(f.T)
+                if name in values:
+                    val = values[name]
+                    if val is None or val == "":
+                        # Clear the field by deleting /V.
+                        if "/V" in f:
+                            del f.V
+                    else:
+                        f.V = str(val)
+                    written += 1
+
+            # Mark the form as needing a re-render so the new
+            # values show up in any viewer.
+            if "/NeedAppearances" in acroform:
+                acroform.NeedAppearances = True
+            else:
+                acroform.NeedAppearances = True
+
+            pdf.save(out_path)
+
+        with open(out_path, "rb") as f:
+            filled_bytes = f.read()
+
+        return Response(
+            content=filled_bytes,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": 'attachment; filename="filled.pdf"',
+                "X-ProPDFs-Fields-Written": str(written),
+            },
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("ai_fill_forms_apply_failed", error=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to apply field values: {str(e)}",
+        )
+    finally:
+        for p in (src_path, out_path):
+            if os.path.exists(p):
+                os.remove(p)

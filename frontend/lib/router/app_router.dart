@@ -16,6 +16,11 @@ import '../presentation/screens/tools/ocr_pdf_page.dart';
 import '../presentation/screens/tools/crop_pdf_page.dart';
 import '../presentation/screens/tools/protect_pdf_page.dart';
 import '../presentation/screens/tools/unlock_pdf_page.dart';
+import '../presentation/screens/tools/redact_pdf_page.dart';
+import '../presentation/screens/tools/ai_summarize_page.dart';
+import '../presentation/screens/tools/ai_translate_page.dart';
+import '../presentation/screens/tools/ai_extract_page.dart';
+import '../presentation/screens/tools/ai_fill_forms_page.dart';
 import '../presentation/screens/tools/esign_pdf_page.dart';
 import '../presentation/screens/tools/comment_pdf_page.dart';
 import '../presentation/screens/tools/edit_pdf_page.dart';
@@ -188,6 +193,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               return const ProtectPdfPage();
             case 'unlock':
               return const UnlockPdfPage();
+            case 'redact':
+              return const RedactPdfPage();
+            case 'ai-summarize':
+              return const AiSummarizePage();
+            case 'ai-translate':
+              return const AiTranslatePage();
+            case 'ai-extract':
+              return const AiExtractPage();
+            case 'ai-fill-forms':
+              return const AiFillFormsPage();
           }
           final tool = ToolRegistry.findById(toolId);
           if (tool == null) {
