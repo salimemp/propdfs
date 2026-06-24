@@ -113,6 +113,8 @@ flutter:
   assets:
     - assets/images/
     - assets/icons/
+    - assets/brand/
+    - assets/oauth/
 
 # Platform specific
 flutter_intl:

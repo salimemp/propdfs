@@ -9,6 +9,22 @@ import '../../core/api_client.dart';
 import '../../core/content/blog_seed.dart';
 import '../widgets/brand_logo.dart';
 
+/// Resolve a blog image path against the API base URL so the
+/// browser always fetches from the same host the JSON came from.
+/// Backend stores paths like `/assets/blog/pdf-tools-2025.jpg`;
+/// prepending the API base gives the absolute URL.
+String _resolveImageUrl(String path) {
+  if (path.isEmpty) return path;
+  if (path.startsWith('http://') || path.startsWith('https://')) return path;
+  // Strip a leading slash before joining with the base — Uri.parse
+  // treats `path` and `basePath/` differently when concatenating.
+  final base = ApiBaseUrl.value.endsWith('/')
+      ? ApiBaseUrl.value.substring(0, ApiBaseUrl.value.length - 1)
+      : ApiBaseUrl.value;
+  final tail = path.startsWith('/') ? path.substring(1) : path;
+  return '$base/$tail';
+}
+
 class BlogScreen extends ConsumerStatefulWidget {
   const BlogScreen({super.key});
 
@@ -253,39 +269,123 @@ class _BlogScreenState extends ConsumerState<BlogScreen> {
                                   child: InkWell(
                                     onTap: () => context.push('/blog/${p.slug}'),
                                     borderRadius: BorderRadius.circular(12),
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(16),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Row(
-                                            children: [
-                                              Container(
-                                                padding: const EdgeInsets
-                                                    .symmetric(
-                                                    horizontal: 8, vertical: 4),
-                                                decoration: BoxDecoration(
-                                                  color: Theme.of(context)
-                                                      .colorScheme
-                                                      .primaryContainer,
-                                                  borderRadius:
-                                                      BorderRadius.circular(12),
-                                                ),
-                                                child: Text(
-                                                  p.category,
-                                                  style: TextStyle(
-                                                    fontSize: 12,
-                                                    color: Theme.of(context)
-                                                        .colorScheme
-                                                        .primary,
-                                                    fontWeight: FontWeight.w500,
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        if (p.featuredImage.isNotEmpty)
+                                          ClipRRect(
+                                            borderRadius:
+                                                const BorderRadius.vertical(
+                                              top: Radius.circular(12),
+                                            ),
+                                            child: AspectRatio(
+                                              aspectRatio: 16 / 9,
+                                              child: Image.network(
+                                                _resolveImageUrl(
+                                                    p.featuredImage),
+                                                fit: BoxFit.cover,
+                                                errorBuilder: (_, __, ___) =>
+                                                    Container(
+                                                  color: AppColors
+                                                      .surfaceMutedLight,
+                                                  alignment:
+                                                      Alignment.center,
+                                                  child: const Icon(
+                                                    Icons.article_outlined,
+                                                    size: 40,
+                                                    color: AppColors
+                                                        .textMutedLight,
                                                   ),
                                                 ),
+                                                loadingBuilder: (context,
+                                                    child, progress) {
+                                                  if (progress == null) {
+                                                    return child;
+                                                  }
+                                                  return Container(
+                                                    color: AppColors
+                                                        .surfaceMutedLight,
+                                                    alignment:
+                                                        Alignment.center,
+                                                    child:
+                                                        const CircularProgressIndicator(
+                                                      color: AppColors
+                                                          .primaryLight,
+                                                      strokeWidth: 2,
+                                                    ),
+                                                  );
+                                                },
                                               ),
-                                              const Spacer(),
+                                            ),
+                                          ),
+                                        Padding(
+                                          padding: const EdgeInsets.all(16),
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Row(
+                                                children: [
+                                                  Container(
+                                                    padding: const EdgeInsets
+                                                        .symmetric(
+                                                        horizontal: 8,
+                                                        vertical: 4),
+                                                    decoration:
+                                                        BoxDecoration(
+                                                      color: Theme.of(context)
+                                                          .colorScheme
+                                                          .primaryContainer,
+                                                      borderRadius:
+                                                          BorderRadius
+                                                              .circular(12),
+                                                    ),
+                                                    child: Text(
+                                                      p.category,
+                                                      style: TextStyle(
+                                                        fontSize: 12,
+                                                        color: Theme.of(context)
+                                                            .colorScheme
+                                                            .primary,
+                                                        fontWeight:
+                                                            FontWeight.w500,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  const Spacer(),
+                                                  Text(
+                                                    '${p.readingTime} min read',
+                                                    style: TextStyle(
+                                                      fontSize: 12,
+                                                      color: Colors.grey[500],
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                              const SizedBox(height: 12),
                                               Text(
-                                                '${p.readingTime} min read',
+                                                p.title,
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .titleLarge
+                                                    ?.copyWith(
+                                                        fontWeight:
+                                                            FontWeight.bold),
+                                              ),
+                                              const SizedBox(height: 8),
+                                              Text(
+                                                p.metaDescription,
+                                                style: TextStyle(
+                                                    color: Colors.grey[600],
+                                                    height: 1.4),
+                                                maxLines: 3,
+                                                overflow:
+                                                    TextOverflow.ellipsis,
+                                              ),
+                                              const SizedBox(height: 8),
+                                              Text(
+                                                'by ${p.author} · ${p.publishedAt.split('T').first}',
                                                 style: TextStyle(
                                                   fontSize: 12,
                                                   color: Colors.grey[500],
@@ -293,35 +393,8 @@ class _BlogScreenState extends ConsumerState<BlogScreen> {
                                               ),
                                             ],
                                           ),
-                                          const SizedBox(height: 12),
-                                          Text(
-                                            p.title,
-                                            style: Theme.of(context)
-                                                .textTheme
-                                                .titleLarge
-                                                ?.copyWith(
-                                                    fontWeight:
-                                                        FontWeight.bold),
-                                          ),
-                                          const SizedBox(height: 8),
-                                          Text(
-                                            p.metaDescription,
-                                            style: TextStyle(
-                                                color: Colors.grey[600],
-                                                height: 1.4),
-                                            maxLines: 3,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                          const SizedBox(height: 8),
-                                          Text(
-                                            'by ${p.author} · ${p.publishedAt.split('T').first}',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: Colors.grey[500],
-                                            ),
-                                          ),
-                                        ],
-                                      ),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 );
@@ -404,6 +477,20 @@ class _BlogDetailScreenState extends ConsumerState<BlogDetailScreen> {
         backgroundColor: AppColors.surfaceLight,
         elevation: 0,
         foregroundColor: AppColors.textLight,
+        titleSpacing: 12,
+        leadingWidth: 140,
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 12),
+          child: InkWell(
+            onTap: () => context.go('/home'),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                BrandLogo.inline(height: 22),
+              ],
+            ),
+          ),
+        ),
         title: Text(
           _post?.title ?? 'Article',
           style: const TextStyle(
@@ -425,28 +512,76 @@ class _BlogDetailScreenState extends ConsumerState<BlogDetailScreen> {
                       child: ConstrainedBox(
                         constraints: const BoxConstraints(maxWidth: 800),
                         child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
+                            // Featured image. The backend stores
+                            // `/assets/blog/<slug>.jpg`; we resolve
+                            // that against the app's base URL so the
+                            // image always loads from the same host
+                            // as the API call.
+                            if (_post!.featuredImage.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 24),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(16),
+                                  child: Image.network(
+                                    _resolveImageUrl(_post!.featuredImage),
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) =>
+                                        const SizedBox.shrink(),
+                                    loadingBuilder:
+                                        (context, child, progress) {
+                                      if (progress == null) return child;
+                                      return AspectRatio(
+                                        aspectRatio: 16 / 9,
+                                        child: Container(
+                                          color: AppColors.surfaceMutedLight,
+                                          alignment: Alignment.center,
+                                          child: const CircularProgressIndicator(
+                                            color: AppColors.primaryLight,
+                                            strokeWidth: 2,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ),
                             Text(
                               _post!.title,
+                              textAlign: TextAlign.center,
                               style: Theme.of(context)
                                   .textTheme
                                   .headlineMedium
                                   ?.copyWith(fontWeight: FontWeight.bold),
                             ),
                             const SizedBox(height: 12),
-                            Row(
+                            Wrap(
+                              alignment: WrapAlignment.center,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              spacing: 12,
+                              runSpacing: 4,
                               children: [
                                 Text(
                                   'by ${_post!.author}',
-                                  style: TextStyle(color: Colors.grey[600]),
+                                  style:
+                                      TextStyle(color: Colors.grey[600]),
                                 ),
-                                const SizedBox(width: 12),
+                                Text(
+                                  '·',
+                                  style:
+                                      TextStyle(color: Colors.grey[400]),
+                                ),
                                 Text(
                                   _post!.publishedAt.split('T').first,
-                                  style: TextStyle(color: Colors.grey[600]),
+                                  style:
+                                      TextStyle(color: Colors.grey[600]),
                                 ),
-                                const SizedBox(width: 12),
+                                Text(
+                                  '·',
+                                  style:
+                                      TextStyle(color: Colors.grey[400]),
+                                ),
                                 Container(
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 8, vertical: 2),
@@ -469,9 +604,42 @@ class _BlogDetailScreenState extends ConsumerState<BlogDetailScreen> {
                               ],
                             ),
                             const SizedBox(height: 24),
-                            MarkdownBody(
-                              data: _post!.content,
-                              selectable: true,
+                            // MarkdownBody — left-aligned text reads
+                            // better than center-aligned for long-form
+                            // content. The image + title above stay
+                            // centered for visual punch.
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: MarkdownBody(
+                                data: _post!.content,
+                                selectable: true,
+                                imageBuilder: (uri, title, alt) {
+                                  // Resolve relative image URLs from
+                                  // the markdown body against the API
+                                  // base, just like the featured
+                                  // image above.
+                                  final resolved = uri.scheme.isEmpty
+                                      ? Uri.parse(_resolveImageUrl(
+                                          uri.toString(),
+                                        ))
+                                      : uri;
+                                  return Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 12,
+                                    ),
+                                    child: ClipRRect(
+                                      borderRadius:
+                                          BorderRadius.circular(12),
+                                      child: Image.network(
+                                        resolved.toString(),
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, __, ___) =>
+                                            const SizedBox.shrink(),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
                             ),
                           ],
                         ),

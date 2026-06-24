@@ -1,11 +1,13 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../providers/auth_provider.dart';
 import '../../core/api_client.dart';
+import '../widgets/brand_logo.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -257,7 +259,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       appBar: AppBar(
         backgroundColor: const Color(0xFF0a0a0f),
         elevation: 0,
-        title: const Text('ProPDFs', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+        title: const BrandLogo.inline(
+          height: 24,
+          textSize: 18,
+          fontWeight: FontWeight.w800,
+        ),
         iconTheme: const IconThemeData(color: Colors.white),
       ),
       // The body has to be a layout widget that gives its child a definite
@@ -636,31 +642,14 @@ class _BrandIcon extends StatelessWidget {
 class _GoogleIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
+    // Brand-coloured Google "G" — multi-stroke path so the four
+    // colours of the official mark survive even at 20×20. The
+    // SvgPicture is fixed at 20 logical pixels; the call site
+    // wraps it in a SizedBox for layout.
+    return SvgPicture.asset(
+      'assets/oauth/google.svg',
       width: 20,
       height: 20,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Container(
-            width: 20,
-            height: 20,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-          Text(
-            'G',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-              color: Colors.grey[800],
-              height: 1,
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -668,19 +657,17 @@ class _GoogleIcon extends StatelessWidget {
 class _GitHubIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Container(
+    // GitHub Octocat mark, single-colour. Tinted to match the
+    // host button's foreground so the icon stays readable in both
+    // light and dark OAuth buttons.
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return SvgPicture.asset(
+      'assets/oauth/github.svg',
       width: 20,
       height: 20,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Center(
-        child: Icon(
-          Icons.pets,
-          size: 12,
-          color: Colors.grey[800],
-        ),
+      colorFilter: ColorFilter.mode(
+        isDark ? Colors.white : const Color(0xFF0F172A),
+        BlendMode.srcIn,
       ),
     );
   }
