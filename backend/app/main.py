@@ -19,9 +19,11 @@ from app.api.ocr import router as ocr_router
 from app.api.ai import router as ai_router
 from app.api.legal import router as legal_router
 from app.api.blog import router as blog_router
+from app.api.waitlist import router as waitlist_router
 from app.db.session import engine, get_redis
 from app.models.database import Base
 from app.models.beta import Base as BetaBase
+from app.models.waitlist import Base as WaitlistBase  # noqa: F401  (registers ToolWaitlist)
 
 settings = get_settings()
 logger = structlog.get_logger()
@@ -231,6 +233,7 @@ app.include_router(ai_router, prefix="/api/v1")
 app.include_router(beta_router, prefix="/api/v1")
 app.include_router(legal_router, prefix="/api/v1")
 app.include_router(blog_router, prefix="/api/v1")
+app.include_router(waitlist_router, prefix="/api/v1")
 
 
 # Global exception handler — keep last so it wraps everything.

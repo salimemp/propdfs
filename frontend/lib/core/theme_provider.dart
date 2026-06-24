@@ -7,7 +7,10 @@ enum AppThemeMode { light, dark, system }
 class ThemeSettings {
   final AppThemeMode mode;
 
-  ThemeSettings({this.mode = AppThemeMode.system});
+  // Default to LIGHT so the app opens in the brand-default look regardless
+  // of the OS / browser preference. The user can switch to dark from the
+  // header toggle, and we persist that choice.
+  ThemeSettings({this.mode = AppThemeMode.light});
 
   ThemeSettings copyWith({AppThemeMode? mode}) {
     return ThemeSettings(mode: mode ?? this.mode);
@@ -34,11 +37,11 @@ class ThemeNotifier extends StateNotifier<ThemeSettings> {
 
   Future<void> _load() async {
     final prefs = await SharedPreferences.getInstance();
-    final saved = prefs.getString('theme_mode') ?? 'system';
+    final saved = prefs.getString('theme_mode') ?? 'light';
     state = ThemeSettings(
       mode: AppThemeMode.values.firstWhere(
         (e) => e.name == saved,
-        orElse: () => AppThemeMode.system,
+        orElse: () => AppThemeMode.light,
       ),
     );
   }

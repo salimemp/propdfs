@@ -507,13 +507,20 @@ class ToolRegistry {
       title: 'AI Fill Forms',
       description: 'Auto-fill PDF forms from context.',
       longDescription: 'Upload a PDF form and let Gemini fill in the blanks '
-          'based on the document\'s context.',
+          'based on the document\'s context. Reads the form fields, infers '
+          'the answers from the surrounding content, and writes them back '
+          'into the PDF so you get a ready-to-sign document.',
       icon: Icons.assignment_turned_in,
       color: AppColors.catAi,
       category: 'AI',
       taskType: null,
       acceptMode: ToolAcceptMode.singlePdf,
-      status: ToolStatus.implemented,
+      // Backend endpoint not wired yet — the AI tools go through a
+      // synchronous /api/v1/ai/* flow rather than the standard
+      // celery task pipeline, so the generic ToolPage wouldn't work.
+      // Marked comingSoon so it lands on the polished placeholder
+      // page with a launch timeline instead of crashing on submit.
+      status: ToolStatus.comingSoon,
     ),
     ToolConfig(
       id: 'ai-extract',

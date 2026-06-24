@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/theme.dart';
 import '../../core/tools/tool_registry.dart';
 import '../widgets/app_footer.dart';
+import '../widgets/brand_logo.dart';
 
 /// Catalog view — lists every tool registered in [ToolRegistry] as a
 /// clickable card. Reached at `/tools` (no slug).
@@ -110,37 +111,7 @@ class _Header extends StatelessWidget {
             children: [
               InkWell(
                 onTap: () => context.go('/home'),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [AppColors.primary, AppColors.accent],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(
-                        Icons.picture_as_pdf,
-                        color: Colors.white,
-                        size: 18,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    const Text(
-                      'ProPDFs',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.textLight,
-                        letterSpacing: -0.3,
-                      ),
-                    ),
-                  ],
-                ),
+                child: const BrandLogo.inline(height: 26),
               ),
               const Spacer(),
               Text(

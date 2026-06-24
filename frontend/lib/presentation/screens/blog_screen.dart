@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/theme.dart';
 import '../../core/api_client.dart';
 import '../../core/content/blog_seed.dart';
+import '../widgets/brand_logo.dart';
 
 class BlogScreen extends ConsumerStatefulWidget {
   const BlogScreen({super.key});
@@ -138,6 +139,20 @@ class _BlogScreenState extends ConsumerState<BlogScreen> {
         backgroundColor: AppColors.surfaceLight,
         elevation: 0,
         foregroundColor: AppColors.textLight,
+        titleSpacing: 12,
+        leadingWidth: 140,
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 12),
+          child: InkWell(
+            onTap: () => context.go('/home'),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                BrandLogo.inline(height: 22),
+              ],
+            ),
+          ),
+        ),
         title: const Text(
           'Blog',
           style: TextStyle(

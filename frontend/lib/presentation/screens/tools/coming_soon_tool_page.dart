@@ -1,8 +1,10 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme.dart';
+import '../../../core/api_client.dart';
 import '../../../core/tools/tool_registry.dart';
 
 /// Per-tool "coming soon" page. Renders for every [ToolConfig] whose
@@ -14,13 +16,74 @@ import '../../../core/tools/tool_registry.dart';
 /// Each tool gets its own URL (`/tools/<id>`) and a tailored placeholder
 /// that shows the tool's actual title, icon, color, and long description —
 /// not a generic "coming soon" stub.
-class ComingSoonToolPage extends ConsumerWidget {
+class ComingSoonToolPage extends ConsumerStatefulWidget {
   final ToolConfig tool;
 
   const ComingSoonToolPage({super.key, required this.tool});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ComingSoonToolPage> createState() => _ComingSoonToolPageState();
+}
+
+class _ComingSoonToolPageState extends ConsumerState<ComingSoonToolPage> {
+  final _emailCtl = TextEditingController();
+  bool _submitting = false;
+  String? _submitMessage;
+  bool _alreadyOnList = false;
+
+  @override
+  void dispose() {
+    _emailCtl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submitEmail() async {
+    final email = _emailCtl.text.trim();
+    if (email.isEmpty || !email.contains('@')) {
+      setState(() => _submitMessage = 'Please enter a valid email.');
+      return;
+    }
+    setState(() {
+      _submitting = true;
+      _submitMessage = null;
+    });
+    try {
+      final dio = ref.read(apiClientProvider);
+      final resp = await dio.post(
+        '/api/v1/waitlist/tools',
+        data: {
+          'email': email,
+          'tool_id': widget.tool.id,
+          'source': 'coming_soon_page',
+        },
+      );
+      final data = resp.data as Map<String, dynamic>? ?? const {};
+      if (!mounted) return;
+      setState(() {
+        _submitMessage = data['message'] as String? ??
+            "You're on the list. We'll email you when this ships.";
+        _alreadyOnList = data['already_on_list'] as bool? ?? false;
+        if (!_alreadyOnList) _emailCtl.clear();
+      });
+    } on DioException catch (e) {
+      if (!mounted) return;
+      final detail = e.response?.data is Map
+          ? (e.response!.data as Map)['detail']?.toString()
+          : null;
+      setState(() => _submitMessage =
+          detail ?? 'Could not save your email. Please try again in a minute.');
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _submitMessage =
+          'Could not save your email. Please try again in a minute.');
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tool = widget.tool;
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -197,6 +260,13 @@ class ComingSoonToolPage extends ConsumerWidget {
 
                   const SizedBox(height: 24),
 
+                  // Notify-me waitlist. The form is the smallest viable
+                  // commitment for a user who landed on a coming-soon page
+                  // and actually wants this tool.
+                  _buildWaitlistCard(),
+
+                  const SizedBox(height: 24),
+
                   TextButton.icon(
                     onPressed: () => context.go('/tools'),
                     icon: const Icon(Icons.apps),
@@ -285,5 +355,111 @@ class ComingSoonToolPage extends ConsumerWidget {
           label: Text('Try ${related.title}'),
         ),
     ];
+  }
+
+  Widget _buildWaitlistCard() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceMutedLight,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.borderLight),
+      ),
+      child: Column(
+        children: [
+          Icon(
+            Icons.notifications_active_outlined,
+            color: widget.tool.color,
+            size: 28,
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'Get notified when this launches',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textLight,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Drop your email and we\'ll send a one-line ping the day this '
+            'tool goes live. No newsletter, no follow-ups.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 13,
+              color: AppColors.textMutedLight,
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 16),
+          if (_submitMessage != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Text(
+                _submitMessage!,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: _alreadyOnList
+                      ? AppColors.primary
+                      : AppColors.textMutedLight,
+                ),
+              ),
+            ),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _emailCtl,
+                  keyboardType: TextInputType.emailAddress,
+                  enabled: !_submitting && !_alreadyOnList,
+                  decoration: InputDecoration(
+                    hintText: 'you@example.com',
+                    fillColor: Colors.white,
+                    filled: true,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide(color: AppColors.borderLight),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              FilledButton(
+                onPressed:
+                    (_submitting || _alreadyOnList) ? null : _submitEmail,
+                style: FilledButton.styleFrom(
+                  backgroundColor: widget.tool.color,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 14,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: _submitting
+                    ? const SizedBox(
+                        height: 18,
+                        width: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : Text(_alreadyOnList ? 'On the list' : 'Notify me'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 }

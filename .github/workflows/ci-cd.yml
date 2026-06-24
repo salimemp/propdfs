@@ -83,6 +83,7 @@ jobs:
         run: |
           cd frontend
           flutter build web --release \
+            --dart-define=API_BASE_URL=https://backend-staging-fd1c0.up.railway.app \
             --dart-define=SENTRY_DSN=${{ secrets.SENTRY_DSN_STAGING }} \
             --dart-define=APP_VERSION=propdfs@${{ github.sha }} \
             --dart-define=ENVIRONMENT=staging
@@ -142,6 +143,7 @@ jobs:
         run: |
           cd frontend
           flutter build web --release \
+            --dart-define=API_BASE_URL=https://backend-production-fd1c0.up.railway.app \
             --dart-define=SENTRY_DSN=${{ secrets.SENTRY_DSN_PRODUCTION }} \
             --dart-define=APP_VERSION=propdfs@${{ github.sha }} \
             --dart-define=ENVIRONMENT=production

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme.dart';
@@ -80,31 +81,14 @@ class _Header extends StatelessWidget {
                 onTap: () => context.go('/home'),
                 child: Row(
                   children: [
-                    Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [AppColors.primary, AppColors.accent],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(
-                        Icons.picture_as_pdf,
-                        color: Colors.white,
-                        size: 18,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    const Text(
-                      'ProPDFs',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.textLight,
-                        letterSpacing: -0.3,
+                    SvgPicture.asset(
+                      'assets/brand/logo-horizontal.svg',
+                      height: 28,
+                      colorFilter: ColorFilter.mode(
+                        Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white
+                            : AppColors.textLight,
+                        BlendMode.srcIn,
                       ),
                     ),
                   ],

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -52,10 +53,13 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                     color: Theme.of(context).colorScheme.primaryContainer,
                     borderRadius: BorderRadius.circular(24),
                   ),
-                  child: Icon(
-                    Icons.picture_as_pdf,
-                    size: 50,
-                    color: Theme.of(context).colorScheme.primary,
+                  padding: const EdgeInsets.all(20),
+                  child: SvgPicture.asset(
+                    'assets/brand/logo-mark.svg',
+                    colorFilter: ColorFilter.mode(
+                      Theme.of(context).colorScheme.primary,
+                      BlendMode.srcIn,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 24),
