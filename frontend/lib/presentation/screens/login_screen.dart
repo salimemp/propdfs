@@ -642,10 +642,9 @@ class _BrandIcon extends StatelessWidget {
 class _GoogleIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    // Brand-coloured Google "G" — multi-stroke path so the four
-    // colours of the official mark survive even at 20×20. The
-    // SvgPicture is fixed at 20 logical pixels; the call site
-    // wraps it in a SizedBox for layout.
+    // Multi-colour Google "G" — the official 4-colour brand mark
+    // (blue / green / yellow / red). No tinting at the call site;
+    // the SVG ships with the brand colours baked in.
     return SvgPicture.asset(
       'assets/oauth/google.svg',
       width: 20,
@@ -657,16 +656,15 @@ class _GoogleIcon extends StatelessWidget {
 class _GitHubIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    // GitHub Octocat mark, single-colour. Tinted to match the
-    // host button's foreground so the icon stays readable in both
-    // light and dark OAuth buttons.
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    // GitHub Octocat mark, single-colour. Always white because
+    // the OAuth button background is dark; the white-on-dark
+    // matches the screenshot design.
     return SvgPicture.asset(
       'assets/oauth/github.svg',
       width: 20,
       height: 20,
-      colorFilter: ColorFilter.mode(
-        isDark ? Colors.white : const Color(0xFF0F172A),
+      colorFilter: const ColorFilter.mode(
+        Colors.white,
         BlendMode.srcIn,
       ),
     );

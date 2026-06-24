@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/api_client.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/app_header.dart';
+import '../widgets/oauth_buttons.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -63,6 +66,50 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     );
   }
 
+  // -------- OAuth / passkey handlers --------
+  //
+  // We mirror the login page's OAuth flow on register so the
+  // first-run experience is identical. The backend supports the
+  // /api/v1/auth/{provider}/login start endpoint either way
+  // — register just routes the user into a separate flow that
+  // collects the rest of the profile after OAuth.
+
+  Future<void> _registerWithGoogle() async {
+    await _launchOAuth('google');
+  }
+
+  Future<void> _registerWithGitHub() async {
+    await _launchOAuth('github');
+  }
+
+  Future<void> _launchOAuth(String provider) async {
+    try {
+      final uri = Uri.parse(ApiBaseUrl.oauthStart(provider));
+      if (!await canLaunchUrl(uri)) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not open $provider sign-in.')),
+        );
+        return;
+      }
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Sign-up with $provider failed: $e')),
+      );
+    }
+  }
+
+  void _showPasskeyComingSoon() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Passkey registration is coming soon. '
+            'Use Google or GitHub for now.'),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authStateProvider);
@@ -104,6 +151,33 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           ),
                         ),
                         const SizedBox(height: 32),
+
+                  // ---- OAuth stack (mirrors login page) ----
+                  // Passkey first (matches the screenshot design),
+                  // then Google, then GitHub. Each opens the
+                  // provider's OAuth flow in a new tab; the
+                  // callback returns to /oauth/callback and
+                  // finishes setup.
+                  SocialButton(
+                    onPressed: _showPasskeyComingSoon,
+                    icon: Icons.key_outlined,
+                    label: 'Sign up with passkey',
+                  ),
+                  const SizedBox(height: 12),
+                  BrandButton(
+                    onPressed: _registerWithGoogle,
+                    brand: BrandKind.google,
+                    label: 'Continue with Google',
+                  ),
+                  const SizedBox(height: 12),
+                  BrandButton(
+                    onPressed: _registerWithGitHub,
+                    brand: BrandKind.github,
+                    label: 'Continue with GitHub',
+                  ),
+                  const SizedBox(height: 24),
+                  const AuthDivider(),
+                  const SizedBox(height: 16),
 
                   if (error != null) ...[
                     Container(
@@ -202,9 +276,45 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         }),
                       ),
                       Expanded(
-                        child: Text(
-                          'I agree to the Terms of Service and Privacy Policy',
-                          style: TextStyle(fontSize: 13, color: Colors.grey[400]),
+                        child: Wrap(
+                          children: [
+                            const Text(
+                              'I agree to the ',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Color(0xFF9CA3AF),
+                              ),
+                            ),
+                            InkWell(
+                              onTap: () => context.go('/terms'),
+                              child: const Text(
+                                'Terms of Service',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Color(0xFF60A5FA),
+                                  decoration: TextDecoration.underline,
+                                ),
+                              ),
+                            ),
+                            const Text(
+                              ' and ',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Color(0xFF9CA3AF),
+                              ),
+                            ),
+                            InkWell(
+                              onTap: () => context.go('/privacy'),
+                              child: const Text(
+                                'Privacy Policy',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Color(0xFF60A5FA),
+                                  decoration: TextDecoration.underline,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],

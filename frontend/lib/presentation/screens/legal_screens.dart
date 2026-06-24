@@ -280,3 +280,82 @@ class _PolicySection extends StatelessWidget {
     );
   }
 }
+
+/// Cookies Policy — what we set in the browser, why, how to opt out.
+class CookiesPolicyScreen extends ConsumerWidget {
+  const CookiesPolicyScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Scaffold(
+      backgroundColor: AppColors.surfaceLight,
+      appBar: AppBar(
+        backgroundColor: AppColors.surfaceLight,
+        title: const Text('Cookie Policy'),
+      ),
+      body: const SingleChildScrollView(
+        padding: EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _SectionHeader(
+              title: 'ProPDFs Cookie Policy',
+              subtitle:
+                  'Effective Date: January 1, 2025 | Last Updated: January 1, 2025',
+            ),
+            SizedBox(height: 24),
+            _PolicySection(
+              number: '1',
+              title: 'What are cookies?',
+              content:
+                  'Cookies are small text files stored on your device by your browser when you visit a website. They are widely used to make sites work, improve performance, and provide information to the site operators. We use cookies and similar technologies (localStorage, IndexedDB, sessionStorage) for the purposes described below.',
+            ),
+            _PolicySection(
+              number: '2',
+              title: 'Strictly necessary cookies',
+              content:
+                  'These cookies are essential for the site to function. They include session tokens, CSRF tokens, and authentication cookies. Without them you cannot sign in, upload files, or use the PDF tools. The legal basis for these is our legitimate interest in providing a working service.',
+            ),
+            _PolicySection(
+              number: '3',
+              title: 'Preference cookies',
+              content:
+                  'These remember your choices — theme (light / dark), language, accessibility settings, the last tool you used. They make your repeat visits more pleasant. You can clear them from your browser at any time and the site will fall back to defaults.',
+            ),
+            _PolicySection(
+              number: '4',
+              title: 'Analytics cookies',
+              content:
+                  'We use Plausible Analytics, a privacy-friendly service that does not set cross-site tracking cookies. Plausible collects anonymised, aggregated page-view counts with no per-user identifiers. We never sell or share analytics data.',
+            ),
+            _PolicySection(
+              number: '5',
+              title: 'Cookies we do NOT use',
+              content:
+                  'No advertising cookies, no Facebook / Google ad-network pixels, no cross-site tracking. We do not embed third-party ad-tech on propdfs.com or in the mobile apps.',
+            ),
+            _PolicySection(
+              number: '6',
+              title: 'How to control cookies',
+              content:
+                  'You can block or delete cookies in your browser settings. The exact steps depend on your browser; common paths are Chrome → Settings → Privacy and security → Cookies, Safari → Preferences → Privacy, Firefox → Preferences → Privacy & Security. Blocking strictly necessary cookies will sign you out and break core functionality.',
+            ),
+            _PolicySection(
+              number: '7',
+              title: 'Changes to this policy',
+              content:
+                  'We may update this Cookie Policy from time to time. Material changes will be announced via a banner on the site and (for signed-in users) an in-product notice. The "Last Updated" date at the top of this page reflects the current version.',
+            ),
+            _PolicySection(
+              number: '8',
+              title: 'Contact',
+              content:
+                  'Questions about cookies? Email privacy@propdfs.com. We respond within 5 business days.',
+            ),
+            SizedBox(height: 48),
+          ],
+        ),
+      ),
+    );
+  }
+}

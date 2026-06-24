@@ -20,6 +20,7 @@ from app.api.ai import router as ai_router
 from app.api.legal import router as legal_router
 from app.api.blog import router as blog_router
 from app.api.waitlist import router as waitlist_router
+from app.api.assets import router as assets_router
 from app.db.session import engine, get_redis
 from app.models.database import Base
 from app.models.beta import Base as BetaBase
@@ -233,6 +234,12 @@ app.include_router(beta_router, prefix="/api/v1")
 app.include_router(legal_router, prefix="/api/v1")
 app.include_router(blog_router, prefix="/api/v1")
 app.include_router(waitlist_router, prefix="/api/v1")
+# /assets/* is intentionally NOT under /api/v1 — it gets
+# resolved by the frontend's _resolveImageUrl which prepends
+# the bare API base URL. The frontend reads it as a relative
+# path against the same origin, so the file lives at the
+# root of the API host.
+app.include_router(assets_router)
 
 
 # Global exception handler — keep last so it wraps everything.

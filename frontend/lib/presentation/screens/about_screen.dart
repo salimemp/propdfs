@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/theme.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/app_footer.dart';
+import '../widgets/brand_logo.dart';
 
 /// About page — public marketing screen. Same shell as HomeScreen + PricingScreen
 /// so navigation stays seamless.
@@ -316,35 +317,7 @@ class _MarketingHeader extends StatelessWidget {
             children: [
               InkWell(
                 onTap: () => context.go('/home'),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 32,
-                      height: 32,
-                      decoration: const BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            AppColors.primaryLight,
-                            AppColors.accent
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.all(Radius.circular(8)),
-                      ),
-                      child: const Icon(Icons.description,
-                          color: Colors.white, size: 18),
-                    ),
-                    const SizedBox(width: 10),
-                    const Text(
-                      'ProPDFs',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
+                child: const BrandLogo.inline(height: 32),
               ),
               const Spacer(),
               if (MediaQuery.of(context).size.width >= 600) ...[

@@ -245,16 +245,30 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const LanguageScreen(),
       ),
       GoRoute(
-        path: '/privacy-policy',
+        path: '/privacy',
         builder: (context, state) => const PrivacyPolicyScreen(),
       ),
       GoRoute(
-        path: '/terms-of-service',
+        path: '/terms',
         builder: (context, state) => const TermsOfServiceScreen(),
       ),
       GoRoute(
+        path: '/cookies',
+        builder: (context, state) => const CookiesPolicyScreen(),
+      ),
+      // Older URL aliases — kept so any inbound links from search
+      // engines, app stores, or older emails still resolve.
+      GoRoute(
+        path: '/privacy-policy',
+        redirect: (_, __) => '/privacy',
+      ),
+      GoRoute(
+        path: '/terms-of-service',
+        redirect: (_, __) => '/terms',
+      ),
+      GoRoute(
         path: '/cookie-policy',
-        builder: (context, state) => const TermsOfServiceScreen(),
+        redirect: (_, __) => '/cookies',
       ),
       GoRoute(
         path: '/blog',
