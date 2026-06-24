@@ -22,6 +22,11 @@ python-magic==0.4.27
 pymupdf==1.24.0
 pillow==10.3.0
 pypdf==4.2.0
+# pikepdf is a qpdf-backed library used for the crop / protect / unlock
+# tools. 10.x bundles qpdf's C++ runtime, but the system libqpdf is
+# faster and what pikepdf's wheels prefer on Linux. The Dockerfile
+# installs libqpdf alongside the rest of the system deps.
+pikepdf==10.9.1
 reportlab==4.2.0
 python-docx==1.1.0
 openpyxl==3.1.0

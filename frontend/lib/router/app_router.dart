@@ -13,6 +13,9 @@ import '../presentation/screens/tools/tool_page.dart';
 import '../presentation/screens/tools/coming_soon_tool_page.dart';
 import '../presentation/screens/tools/repair_pdf_page.dart';
 import '../presentation/screens/tools/ocr_pdf_page.dart';
+import '../presentation/screens/tools/crop_pdf_page.dart';
+import '../presentation/screens/tools/protect_pdf_page.dart';
+import '../presentation/screens/tools/unlock_pdf_page.dart';
 import '../presentation/screens/tools/esign_pdf_page.dart';
 import '../presentation/screens/tools/comment_pdf_page.dart';
 import '../presentation/screens/tools/edit_pdf_page.dart';
@@ -179,6 +182,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               return const CommentPdfPage();
             case 'edit':
               return const EditPdfPage();
+            case 'crop':
+              return const CropPdfPage();
+            case 'protect':
+              return const ProtectPdfPage();
+            case 'unlock':
+              return const UnlockPdfPage();
           }
           final tool = ToolRegistry.findById(toolId);
           if (tool == null) {

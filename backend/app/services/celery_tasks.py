@@ -136,6 +136,35 @@ def process_pdf_task(
             # Remove specific pages. params is {"pages_to_remove": [2, 4]}.
             pages_to_remove = set(params.get("pages_to_remove", []))
             output_path = pdf_service.remove_pages(temp_paths[0], pages_to_remove)
+        # ---- Crop / protect / unlock (pikepdf-backed) ----
+        # See [PDFProcessingService] for the underlying primitives.
+        # These three were added in the 2026-06-24 "remaining tools"
+        # push to clear the last three unimplemented items in the
+        # Edit + Security categories of the registry.
+        elif task_type == "crop":
+            # Margins (preferred) or explicit rect. See pdf_service.crop_pdf.
+            margins = params.get("margins")
+            rect = params.get("rect")
+            output_path = pdf_service.crop_pdf(
+                temp_paths[0], margins=margins, rect=rect
+            )
+        elif task_type == "protect":
+            # params is {"user_password": "...",
+            #            "owner_password": "..." (optional)}.
+            user_pw = params.get("user_password")
+            if not user_pw:
+                raise ValueError("protect requires a user_password in params")
+            output_path = pdf_service.encrypt_pdf(
+                temp_paths[0],
+                user_password=user_pw,
+                owner_password=params.get("owner_password"),
+            )
+        elif task_type == "unlock":
+            # params is {"password": "..."} — the open password.
+            pw = params.get("password")
+            if not pw:
+                raise ValueError("unlock requires a password in params")
+            output_path = pdf_service.decrypt_pdf(temp_paths[0], password=pw)
         # ---- Office ↔ PDF conversions via LibreOffice ----
         # The XLSX paths are known-broken in the current LibreOffice
         # build (Calc can't parse Writer HTML on import; can't parse

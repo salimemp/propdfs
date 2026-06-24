@@ -30,6 +30,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libreoffice-calc \
     libreoffice-impress \
     ghostscript \
+    libqpdf29 \
     imagemagick \
     tesseract-ocr \
     tesseract-ocr-eng \

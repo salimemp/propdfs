@@ -368,13 +368,18 @@ class ToolRegistry {
       title: 'Crop PDF',
       description: 'Adjust margins and trim pages.',
       longDescription: 'Crop every page of your PDF to a custom rectangle '
-          '— useful for removing headers, footers, or margins.',
+          '— useful for removing headers, footers, or margins. Pick the '
+          'trim amount in each direction and the new boundary is applied '
+          'to every page.',
       icon: Icons.crop,
       color: AppColors.catEdit,
       category: 'Edit',
-      taskType: null,
+      // pikepdf rewrites MediaBox per page. Params: {"margins": {top,
+      // right, bottom, left}} OR {"rect": [x0, y0, x1, y1]}. The
+      // dedicated CropPdfPage collects the margins from the user.
+      taskType: 'crop',
       acceptMode: ToolAcceptMode.singlePdf,
-      status: ToolStatus.comingSoon,
+      status: ToolStatus.implemented,
     ),
     ToolConfig(
       id: 'sign',
@@ -424,27 +429,33 @@ class ToolRegistry {
       id: 'protect',
       title: 'Protect PDF',
       description: 'Add a password to lock your PDF.',
-      longDescription: 'Encrypt your PDF with a password so only people who '
-          'know it can open the file.',
+      longDescription: 'Encrypt your PDF with AES-256 + a password so only '
+          'people who know it can open the file. Owner password is set to '
+          'match the user password by default — pass a separate one if you '
+          'want viewers to be locked out of permission changes.',
       icon: Icons.lock,
       color: AppColors.catSecurity,
       category: 'Security',
-      taskType: null, // needs pikepdf/qpdf encryption
+      // pikepdf.Encryption(owner, user, aes=True, R=6). Params:
+      // {"user_password": "...", "owner_password": "..." (optional)}.
+      taskType: 'protect',
       acceptMode: ToolAcceptMode.singlePdf,
-      status: ToolStatus.comingSoon,
+      status: ToolStatus.implemented,
     ),
     ToolConfig(
       id: 'unlock',
       title: 'Unlock PDF',
       description: 'Remove the password from a PDF.',
       longDescription: 'Upload a password-protected PDF (you must know the '
-          'password) and download an unprotected copy.',
+          'password) and download an unprotected copy. Uses AES-256 + '
+          'qpdf under the hood; works on every modern PDF.',
       icon: Icons.lock_open,
       color: AppColors.catSecurity,
       category: 'Security',
-      taskType: null,
+      // pikepdf.open(..., password=...). Params: {"password": "..."}.
+      taskType: 'unlock',
       acceptMode: ToolAcceptMode.singlePdf,
-      status: ToolStatus.comingSoon,
+      status: ToolStatus.implemented,
     ),
     ToolConfig(
       id: 'redact',
