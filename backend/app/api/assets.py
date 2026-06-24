@@ -100,14 +100,17 @@ def _wrap_title(
 
 def _slug_from_filename(filename: str) -> Optional[str]:
     """`pdf-tools-2025.jpg` → `pdf-tools-2025`. Returns None
-    if the filename doesn't look like a blog asset."""
+    if the filename is empty or doesn't have a recognised
+    image extension.
+
+    The "blog/" prefix is part of the route (we're mounted at
+    `/assets/blog/`), so the parameter here is just the bare
+    filename.
+    """
     # Strip query string if any (defensive — should never be
     # present since the API base URL is the origin).
     filename = filename.split("?", 1)[0]
-    if not filename.startswith("blog/"):
-        return None
-    stem = filename[len("blog/") :]
-    stem = re.sub(r"\.(jpg|jpeg|png|webp)$", "", stem, flags=re.IGNORECASE)
+    stem = re.sub(r"\.(jpg|jpeg|png|webp)$", "", filename, flags=re.IGNORECASE)
     if not stem:
         return None
     return stem
