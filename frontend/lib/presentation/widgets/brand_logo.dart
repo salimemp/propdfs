@@ -17,16 +17,29 @@ class BrandLogo extends StatelessWidget {
   final double textSize;
   final FontWeight fontWeight;
 
+  /// Force the dark-variant mark + white text regardless of the
+  /// surrounding theme. Useful on auth pages where the body
+  /// background is hardcoded dark even though the app theme is
+  /// light. `Theme.of(context).brightness` alone won't catch
+  /// that case — the theme is light, the body is dark.
+  final bool forceDark;
+
   const BrandLogo({
     super.key,
     this.variant = BrandVariant.mark,
     this.height,
     this.textSize = 20,
     this.fontWeight = FontWeight.w800,
+    this.forceDark = false,
   });
 
-  const BrandLogo.mark({super.key, this.height, this.textSize = 20, this.fontWeight = FontWeight.w800})
-      : variant = BrandVariant.mark;
+  const BrandLogo.mark({
+    super.key,
+    this.height,
+    this.textSize = 20,
+    this.fontWeight = FontWeight.w800,
+    this.forceDark = false,
+  }) : variant = BrandVariant.mark;
 
   /// Inline brand mark. Renders the icon + a "ProPDFs" wordmark in the
   /// current theme's foreground color. The icon is sized by [height] (or
@@ -36,11 +49,17 @@ class BrandLogo extends StatelessWidget {
     this.height,
     this.textSize = 20,
     this.fontWeight = FontWeight.w800,
+    this.forceDark = false,
   }) : variant = BrandVariant.inline;
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    // The app theme drives the default. `forceDark: true` overrides
+    // it for auth screens where the body is hardcoded dark — the
+    // app theme is light, so Theme.of would otherwise pick the
+    // navy mark and lose it against the dark page bg.
+    final themeBrightness = Theme.of(context).brightness;
+    final isDark = forceDark || themeBrightness == Brightness.dark;
     final fg = isDark ? Colors.white : const Color(0xFF0F172A);
     // Two mark variants so the icon stays readable on both light
     // and dark backgrounds. Light mode uses the navy rect; dark

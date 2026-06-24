@@ -16,23 +16,21 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final themeNotifier = ref.read(themeProvider.notifier);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final fgColor = isDark ? Colors.white : const Color(0xFF0F172A);
-    final mutedColor = isDark ? Colors.grey[400]! : Colors.grey[600]!;
+
+    // AppHeader is currently only used on the auth pages, which
+    // are hardcoded dark. Render it in dark mode regardless of
+    // the surrounding theme — otherwise the body is dark but the
+    // header reads the app theme (light), and the foreground
+    // text + brand mark disappear against the dark bg.
+    const fgColor = Colors.white;
+    const mutedColor = Color(0xFF9CA3AF);
 
     return Container(
       height: 64,
-      decoration: BoxDecoration(
-        // Slightly lighter than the page background so the navy
-        // brand mark has enough contrast to read. Pure 0xFF0a0a0f
-        // is too close to the navy rect (#0F172A) inside the mark
-        // and the two blend into each other.
-        color: isDark ? const Color(0xFF1a1a2e) : Colors.white,
+      decoration: const BoxDecoration(
+        color: Color(0xFF1a1a2e),
         border: Border(
-          bottom: BorderSide(
-            color: isDark ? Colors.grey[900]! : Colors.grey[200]!,
-            width: 1,
-          ),
+          bottom: BorderSide(color: Color(0xFF1f2937), width: 1),
         ),
       ),
       child: Padding(
@@ -44,7 +42,7 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
               onTap: () => context.go('/'),
               child: Row(
                 children: [
-                  const BrandLogo.mark(height: 32),
+                  const BrandLogo.mark(height: 32, forceDark: true),
                   const SizedBox(width: 10),
                   Text(
                     'ProPDFs',
@@ -72,11 +70,13 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
               icon: Icon(Icons.language, color: mutedColor, size: 20),
               onPressed: () {},
             ),
-            // Theme toggle
+            // Theme toggle. Hardcoded for dark mode (the header is
+            // always rendered dark on auth pages) — the icon shows
+            // the sun to invite the user to switch to light.
             IconButton(
-              icon: Icon(
-                isDark ? Icons.wb_sunny_outlined : Icons.dark_mode_outlined,
-                color: mutedColor,
+              icon: const Icon(
+                Icons.wb_sunny_outlined,
+                color: Color(0xFF9CA3AF),
                 size: 20,
               ),
               onPressed: () => themeNotifier.toggle(),

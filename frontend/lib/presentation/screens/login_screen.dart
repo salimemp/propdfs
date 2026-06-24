@@ -265,6 +265,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           height: 24,
           textSize: 18,
           fontWeight: FontWeight.w800,
+          forceDark: true,
         ),
         iconTheme: const IconThemeData(color: Colors.white),
       ),
