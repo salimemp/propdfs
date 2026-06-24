@@ -188,9 +188,11 @@
        window.propdfs.ocr(imageDataUrl, lang) for running Tesseract.js
        text recognition. Loaded BEFORE flutter_bootstrap.js so the
        Dart side can call into it without race conditions. -->
-  <script src="propdfs_shim.js"></script>
+<script src="propdfs_shim.js"></script>
+   <script src="turnstile_shim.js"></script>
 
-  <link rel="manifest" href="manifest.json">
+   <link rel="manifest" href="manifest.json">
+</head>
 </head>
 <body>
   <!--

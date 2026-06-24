@@ -101,12 +101,18 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
   /// When MFA is enabled the server returns `{mfa_required: true, mfa_token: ...}`
   /// instead of a normal token pair. We persist that token temporarily
   /// so [verifyMfa] can POST it along with the 6-digit code.
-  Future<bool> login(String email, String password) async {
+  Future<bool> login(
+    String email,
+    String password, {
+    String? turnstileToken,
+  }) async {
     state = AsyncValue.data(state.value!.copyWith(isLoading: true, error: null));
     try {
       final response = await _dio.post('/api/v1/auth/login', data: {
         'email': email,
         'password': password,
+        if (turnstileToken != null && turnstileToken.isNotEmpty)
+          'turnstile_token': turnstileToken,
       });
       final body = response.data as Map<String, dynamic>;
 
@@ -177,13 +183,20 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
     }
   }
 
-  Future<void> register(String email, String password, {String? fullName}) async {
+  Future<void> register(
+    String email,
+    String password, {
+    String? fullName,
+    String? turnstileToken,
+  }) async {
     state = AsyncValue.data(state.value!.copyWith(isLoading: true, error: null));
     try {
       final response = await _dio.post('/api/v1/auth/register', data: {
         'email': email,
         'password': password,
         'full_name': fullName,
+        if (turnstileToken != null && turnstileToken.isNotEmpty)
+          'turnstile_token': turnstileToken,
       });
       final tokens = response.data as Map<String, dynamic>;
       await _saveTokens(tokens);

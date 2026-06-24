@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -8,6 +9,7 @@ import '../providers/auth_provider.dart';
 import '../widgets/app_header.dart';
 import '../widgets/oauth_buttons.dart';
 import '../widgets/password_strength_meter.dart';
+import '../widgets/turnstile_widget.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -29,6 +31,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   // state and to surface "breached" copy in the validator.
   PasswordEvaluation? _passwordEvaluation;
 
+  /// Most recent Turnstile token. Empty string until the user finishes
+  /// the challenge (or forever, on dev/mobile builds where Turnstile is
+  /// off). Backend treats empty + disabled as a no-op.
+  String _turnstileToken = '';
+
   @override
   void dispose() {
     _nameController.dispose();
@@ -36,6 +43,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     _passwordController.dispose();
     _confirmController.dispose();
     super.dispose();
+  }
+
+  void _onTurnstileToken(String token) {
+    if (!mounted) return;
+    setState(() {
+      _turnstileToken = token;
+    });
   }
 
   Future<void> _register() async {
@@ -60,6 +74,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       _emailController.text.trim(),
       _passwordController.text,
       fullName: _nameController.text.trim(),
+      turnstileToken: _turnstileToken,
     );
   }
 
@@ -345,6 +360,21 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     ],
                   ),
                   const SizedBox(height: 24),
+
+                  // Cloudflare Turnstile widget. Renders only on
+                  // Flutter web when the site key is configured;
+                  // short-circuits to an empty token otherwise. The
+                  // backend's TURNSTILE_ENABLED flag is the source
+                  // of truth — both must agree before any challenge
+                  // runs.
+                  if (kIsWeb) ...[
+                    TurnstileWidget(
+                      siteKey: TurnstileConfig.siteKey,
+                      enabled: TurnstileConfig.enabled,
+                      onToken: _onTurnstileToken,
+                    ),
+                    const SizedBox(height: 16),
+                  ],
 
                   SizedBox(
                     height: 52,

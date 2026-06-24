@@ -4,6 +4,7 @@ import tempfile
 from typing import Optional, List, Dict
 
 import pikepdf
+from fastapi import Request
 
 from fastapi import (
     APIRouter,
@@ -22,6 +23,7 @@ from app.api.auth import get_current_active_user
 from app.models.database import User
 from app.services.ai_service import ai_service
 from app.core.config import get_settings
+from app.core.quota import QuotaFeature, check_and_increment
 
 logger = structlog.get_logger()
 router = APIRouter(prefix="/ai", tags=["AI Features"])
@@ -39,11 +41,34 @@ class TranslateRequest(BaseModel):
 
 @router.post("/summarize")
 async def ai_summarize(
+    request: Request,
     file: UploadFile = File(...),
     max_length: int = Form(500),
     current_user: User = Depends(get_current_active_user),
 ):
+
+    # Per-user daily quota — increments atomically, 429 if over cap.
+    redis_client = getattr(request.app.state, "redis", None)
+    if redis_client is not None:
+        await check_and_increment(
+            redis_client,
+            user_id=str(current_user.id),
+            plan=current_user.plan_tier,
+            feature=QuotaFeature.AI,
+        )
+
     """Generate AI summary of a document."""
+    # Per-user daily quota — counter increments atomically,
+    # 429 with structured detail if the user is over their cap.
+    redis_client = getattr(request.app.state, "redis", None)
+    if redis_client is not None:
+        await check_and_increment(
+            redis_client,
+            user_id=str(current_user.id),
+            plan=current_user.plan_tier,
+            feature=QuotaFeature.AI,
+        )
+
     content = await file.read()
     await file.seek(0)
 
@@ -93,10 +118,22 @@ async def ai_translate(
 
 @router.post("/extract")
 async def ai_extract(
+    request: Request,
     file: UploadFile = File(...),
     extraction_type: str = Form("entities"),
     current_user: User = Depends(get_current_active_user),
 ):
+
+    # Per-user daily quota — increments atomically, 429 if over cap.
+    redis_client = getattr(request.app.state, "redis", None)
+    if redis_client is not None:
+        await check_and_increment(
+            redis_client,
+            user_id=str(current_user.id),
+            plan=current_user.plan_tier,
+            feature=QuotaFeature.AI,
+        )
+
     """Extract structured information from document."""
     content = await file.read()
     await file.seek(0)
@@ -145,8 +182,21 @@ async def ai_chat(
 
 @router.post("/metadata")
 async def ai_metadata(
-    file: UploadFile = File(...), current_user: User = Depends(get_current_active_user)
+    request: Request,
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_active_user),
 ):
+
+    # Per-user daily quota — increments atomically, 429 if over cap.
+    redis_client = getattr(request.app.state, "redis", None)
+    if redis_client is not None:
+        await check_and_increment(
+            redis_client,
+            user_id=str(current_user.id),
+            plan=current_user.plan_tier,
+            feature=QuotaFeature.AI,
+        )
+
     """Generate AI-powered metadata for document."""
     content = await file.read()
     await file.seek(0)
@@ -170,7 +220,9 @@ async def ai_metadata(
 
 @router.post("/proofread")
 async def ai_proofread(
-    file: UploadFile = File(...), current_user: User = Depends(get_current_active_user)
+    request: Request,
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_active_user),
 ):
     """AI proofreading and suggestions."""
     content = await file.read()
@@ -193,8 +245,21 @@ async def ai_proofread(
 
 @router.post("/insights")
 async def ai_insights(
-    file: UploadFile = File(...), current_user: User = Depends(get_current_active_user)
+    request: Request,
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_active_user),
 ):
+
+    # Per-user daily quota — increments atomically, 429 if over cap.
+    redis_client = getattr(request.app.state, "redis", None)
+    if redis_client is not None:
+        await check_and_increment(
+            redis_client,
+            user_id=str(current_user.id),
+            plan=current_user.plan_tier,
+            feature=QuotaFeature.AI,
+        )
+
     """Get AI-powered document insights."""
     content = await file.read()
     await file.seek(0)
@@ -224,10 +289,22 @@ async def get_supported_languages():
 
 @router.post("/vision")
 async def ai_vision(
+    request: Request,
     file: UploadFile = File(...),
     task: str = Form("describe"),
     current_user: User = Depends(get_current_active_user),
 ):
+
+    # Per-user daily quota — increments atomically, 429 if over cap.
+    redis_client = getattr(request.app.state, "redis", None)
+    if redis_client is not None:
+        await check_and_increment(
+            redis_client,
+            user_id=str(current_user.id),
+            plan=current_user.plan_tier,
+            feature=QuotaFeature.AI,
+        )
+
     """Process images with AI vision."""
     content = await file.read()
     await file.seek(0)
@@ -295,10 +372,22 @@ async def ai_fill_forms(
 
 @router.post("/fill-forms/apply")
 async def ai_fill_forms_apply(
+    request: Request,
     file: UploadFile = File(...),
     fields: str = Form(...),
     current_user: User = Depends(get_current_active_user),
 ):
+
+    # Per-user daily quota — increments atomically, 429 if over cap.
+    redis_client = getattr(request.app.state, "redis", None)
+    if redis_client is not None:
+        await check_and_increment(
+            redis_client,
+            user_id=str(current_user.id),
+            plan=current_user.plan_tier,
+            feature=QuotaFeature.AI,
+        )
+
     """Write the user-approved field values back into the PDF.
 
     `fields` is a JSON string of {name: value}. The endpoint opens

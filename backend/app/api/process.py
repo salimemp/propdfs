@@ -1,6 +1,6 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
@@ -23,10 +23,25 @@ settings = get_settings()
     "/", response_model=ProcessingResponse, status_code=status.HTTP_202_ACCEPTED
 )
 async def create_processing_task(
+    http_request: Request,
     request: ProcessingRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ):
+    # Per-user daily quota — same pattern as the AI endpoints.
+    # We use `http_request` here because `request` is already
+    # claimed by the ProcessingRequest body parameter.
+    redis_client = getattr(http_request.app.state, "redis", None)
+    if redis_client is not None:
+        from app.core.quota import QuotaFeature, check_and_increment
+
+        await check_and_increment(
+            redis_client,
+            user_id=str(current_user.id),
+            plan=current_user.plan_tier,
+            feature=QuotaFeature.PROCESS,
+        )
+
     # Validate documents
     documents = []
     for doc_id in request.input_document_ids:

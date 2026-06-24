@@ -23,6 +23,10 @@ class UserRegisterRequest(BaseModel):
     # cryptic Pydantic error.
     password: str = Field(min_length=8, max_length=128)
     full_name: Optional[str] = Field(None, max_length=255)
+    # Cloudflare Turnstile token. Required when Turnstile is
+    # enabled (production). The endpoint verifies it server-side
+    # before creating the account.
+    turnstile_token: Optional[str] = Field(None, max_length=4096)
 
     @field_validator("password")
     @classmethod
@@ -55,6 +59,12 @@ class UserRegisterRequest(BaseModel):
 class UserLoginRequest(BaseModel):
     email: EmailStr
     password: str
+    # Cloudflare Turnstile token (required when Turnstile is
+    # enabled). Verified server-side before we touch the
+    # credentials. Putting it on login too means a leaked
+    # password + a Turnstile bypass is still not enough to
+    # log in.
+    turnstile_token: Optional[str] = Field(None, max_length=4096)
 
 
 class TokenResponse(BaseModel):

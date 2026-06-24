@@ -10,6 +10,18 @@ const String _baseUrl = String.fromEnvironment(
   defaultValue: 'http://localhost:8000',
 );
 
+/// Cloudflare Turnstile site key. Public by design — Cloudflare publishes
+/// it client-side on the widget. Only the matching SECRET_KEY (kept on
+/// the backend) can verify the resulting tokens.
+///
+/// When empty (e.g. local dev, mobile builds) the widget renders as a
+/// pass-through and the backend's TURNSTILE_ENABLED flag is the source
+/// of truth — both must agree before any challenge runs.
+const String _turnstileSiteKey = String.fromEnvironment(
+  'TURNSTILE_SITE_KEY',
+  defaultValue: '',
+);
+
 const String _tokenPrefsKey = 'auth_tokens';
 
 class ApiBaseUrl {
@@ -21,6 +33,23 @@ class ApiBaseUrl {
   /// Convenience: OAuth start URLs.
   static String oauthStart(String provider) =>
       '$_baseUrl/api/v1/auth/$provider/login';
+}
+
+/// Cloudflare Turnstile config. The widget is mounted on `/login` and
+/// `/register`; if the site key is empty (default for local dev), the
+/// widget short-circuits and the form submits without a token — the
+/// backend treats missing tokens as "no Turnstile required" when
+/// TURNSTILE_ENABLED is also false.
+class TurnstileConfig {
+  /// Public site key shipped in the bundle. Empty in dev / mobile.
+  static String get siteKey => _turnstileSiteKey;
+
+  /// Whether the widget should actually render. True only on web builds
+  /// where the site key is configured. Mobile never renders the widget
+  /// because Turnstile's iframe is a browser-only concept.
+  static bool get enabled =>
+      _turnstileSiteKey.isNotEmpty &&
+      const bool.fromEnvironment('dart.library.html'); // web-only
 }
 
 final apiClientProvider = Provider<Dio>((ref) {

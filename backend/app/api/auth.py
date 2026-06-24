@@ -111,6 +111,20 @@ async def require_admin(
 async def register(
     request: Request, data: UserRegisterRequest, db: AsyncSession = Depends(get_db)
 ):
+    # Bot verification first — don't leak whether an email is
+    # already registered until the request passes Turnstile.
+    # This blocks the "spray random emails, harvest which ones
+    # are taken" enumeration attack.
+    redis_client = getattr(request.app.state, "redis", None)
+    remote_ip = request.client.host if request.client else None
+    from app.core.turnstile import require_token
+
+    await require_token(
+        data.turnstile_token,
+        remote_ip=remote_ip,
+        redis_client=redis_client,
+    )
+
     # Check if user exists
     result = await db.execute(select(User).where(User.email == data.email.lower()))
     existing = result.scalar_one_or_none()
@@ -153,6 +167,20 @@ async def register(
 async def login(
     request: Request, data: UserLoginRequest, db: AsyncSession = Depends(get_db)
 ):
+    # Bot verification before credential check. We verify
+    # *before* the password so we don't burn CPU / leak
+    # timing info on credential-stuffing attempts by spammers
+    # who already know an email + are trying combos.
+    redis_client = getattr(request.app.state, "redis", None)
+    remote_ip = request.client.host if request.client else None
+    from app.core.turnstile import require_token
+
+    await require_token(
+        data.turnstile_token,
+        remote_ip=remote_ip,
+        redis_client=redis_client,
+    )
+
     user = await authenticate_user(db, data.email, data.password)
     if not user:
         raise HTTPException(status_code=401, detail="Invalid email or password")
@@ -503,6 +531,51 @@ async def disable_mfa(
 @router.get("/me", response_model=UserResponse)
 async def get_me(current_user: User = Depends(get_current_active_user)):
     return current_user
+
+
+# -------- Quota usage (read-only) --------
+#
+# The Flutter home page renders a "X of Y daily actions used" bar
+# on the home screen. This endpoint returns the user's current
+# daily counters + per-feature limits so the client can draw the
+# bar without having to compute the limits itself.
+
+
+@router.get("/quota-usage")
+async def get_quota_usage(
+    request: Request,
+    current_user: User = Depends(get_current_active_user),
+):
+    """Read-only view of today's quota usage."""
+    from app.core.quota import get_usage
+
+    redis_client = getattr(request.app.state, "redis", None)
+    if redis_client is None:
+        # Redis isn't configured (e.g. dev with no Redis).
+        # Return a stub with zeros + the configured limits so the
+        # UI still knows what the plan's limits are.
+        settings = get_settings()
+        return {
+            "plan": current_user.plan_tier.value,
+            "date": None,
+            "features": {
+                "ai": {
+                    "used": 0,
+                    "limit": settings.QUOTA_FREE_AI_PER_DAY,
+                    "unlimited": False,
+                },
+                "process": {
+                    "used": 0,
+                    "limit": settings.QUOTA_FREE_PROCESS_PER_DAY,
+                    "unlimited": False,
+                },
+            },
+        }
+    return await get_usage(
+        redis_client,
+        user_id=str(current_user.id),
+        plan=current_user.plan_tier,
+    )
 
 
 # -------- Password breach check (HaveIBeenPwned, k-anonymity) --------

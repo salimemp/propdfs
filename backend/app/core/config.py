@@ -48,6 +48,34 @@ class Settings(BaseSettings):
     ANTHROPIC_API_KEY: str = ""
     GEMINI_API_KEY: str = ""
 
+    # Bot protection — Cloudflare Turnstile
+    # Site key is PUBLIC (shipped in the Flutter web bundle).
+    # Secret key stays on the server. Both can be empty in dev —
+    # Turnstile is bypassed when TURNSTILE_ENABLED is false (or
+    # when the secret is empty). Production sets both via the env.
+    TURNSTILE_ENABLED: bool = False
+    TURNSTILE_SITE_KEY: str = ""
+    TURNSTILE_SECRET_KEY: str = ""
+    # Cloudflare's siteverify endpoint. Override only if you're
+    # routing through a regional proxy.
+    TURNSTILE_VERIFY_URL: str = (
+        "https://challenges.cloudflare.com/turnstile/v0/siteverify"
+    )
+    # How long we cache a "verified" token server-side (seconds).
+    # Same token can be re-used for a few minutes; caching stops
+    # a single token from being spent across multiple requests.
+    TURNSTILE_TOKEN_TTL_SECONDS: int = 180
+
+    # Per-user daily quota (Redis-backed counters).
+    # Quotas reset at 00:00 UTC. Each plan tier has its own ceiling.
+    # Set the value to 0 to disable a particular plan's quota.
+    QUOTA_FREE_AI_PER_DAY: int = 20
+    QUOTA_FREE_PROCESS_PER_DAY: int = 50
+    QUOTA_PRO_AI_PER_DAY: int = 200
+    QUOTA_PRO_PROCESS_PER_DAY: int = 1000
+    QUOTA_BUSINESS_AI_PER_DAY: int = 2000
+    QUOTA_BUSINESS_PROCESS_PER_DAY: int = 10000
+
     # OAuth
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: str = ""

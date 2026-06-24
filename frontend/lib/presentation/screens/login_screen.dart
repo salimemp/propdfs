@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -8,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../providers/auth_provider.dart';
 import '../../core/api_client.dart';
 import '../widgets/brand_logo.dart';
+import '../widgets/turnstile_widget.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -22,11 +24,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _obscurePassword = true;
 
+  /// Most recent Turnstile token. Empty string until the user finishes
+  /// the challenge (or forever, on dev builds where Turnstile is off).
+  /// We submit whatever we have at the time `_login()` fires — the
+  /// backend treats empty + disabled as a no-op.
+  String _turnstileToken = '';
+
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  void _onTurnstileToken(String token) {
+    if (!mounted) return;
+    setState(() {
+      _turnstileToken = token;
+    });
   }
 
   Future<void> _login() async {
@@ -36,6 +51,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final mfaRequired = await notifier.login(
       _emailController.text.trim(),
       _passwordController.text,
+      turnstileToken: _turnstileToken,
     );
 
     if (!mounted) return;
@@ -495,6 +511,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ),
                         ),
                         const SizedBox(height: 8),
+
+                        // Cloudflare Turnstile widget. Disabled in
+                        // dev/mobile builds — the widget short-circuits
+                        // to an empty token, and the backend's
+                        // TURNSTILE_ENABLED flag decides whether a
+                        // token is required. The widget itself only
+                        // renders on Flutter web when the site key is
+                        // configured via --dart-define.
+                        if (kIsWeb) ...[
+                          TurnstileWidget(
+                            siteKey: TurnstileConfig.siteKey,
+                            enabled: TurnstileConfig.enabled,
+                            onToken: _onTurnstileToken,
+                          ),
+                          const SizedBox(height: 16),
+                        ],
 
                         // Sign in button
                         SizedBox(

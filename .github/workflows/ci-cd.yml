@@ -145,6 +145,7 @@ jobs:
           flutter build web --release \
             --dart-define=API_BASE_URL=https://backend-production-fd1c0.up.railway.app \
             --dart-define=SENTRY_DSN=${{ secrets.SENTRY_DSN_PRODUCTION }} \
+            --dart-define=TURNSTILE_SITE_KEY=${{ secrets.TURNSTILE_SITE_KEY }} \
             --dart-define=APP_VERSION=propdfs@${{ github.sha }} \
             --dart-define=ENVIRONMENT=production
       - name: Upload Sentry source maps (Production)

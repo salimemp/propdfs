@@ -8,6 +8,7 @@ import '../../core/tools/tool_registry.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/app_footer.dart';
 import '../widgets/brand_logo.dart';
+import '../widgets/quota_bar.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -37,7 +38,7 @@ class HomeScreen extends ConsumerWidget {
                       authState.value?.user != null &&
                       !authState.value!.user!.isEmailVerified)
                     const _EmailVerificationBanner(),
-                  _HeroSection(isWide: isWide),
+                  _HeroSection(isWide: isWide, isLoggedIn: isLoggedIn),
                   const SizedBox(height: 64),
                   _ToolsSection(isWide: isWide),
                   const SizedBox(height: 80),
@@ -269,7 +270,8 @@ class _LocaleOption {
 
 class _HeroSection extends StatelessWidget {
   final bool isWide;
-  const _HeroSection({required this.isWide});
+  final bool isLoggedIn;
+  const _HeroSection({required this.isWide, required this.isLoggedIn});
 
   @override
   Widget build(BuildContext context) {
@@ -291,6 +293,14 @@ class _HeroSection extends StatelessWidget {
           constraints: const BoxConstraints(maxWidth: 900),
           child: Column(
             children: [
+              // Daily quota bar — only renders for authenticated users.
+              // Returns SizedBox.shrink() otherwise. Sits at the top of
+              // the hero so it's the first thing paying users see.
+              if (isLoggedIn) ...[
+                const QuotaBar(),
+                const SizedBox(height: 32),
+              ],
+
               // Eyebrow badge
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
