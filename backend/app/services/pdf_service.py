@@ -194,6 +194,57 @@ class PDFProcessingService:
         finally:
             doc.close()
 
+    def reorder_pages(
+        self, file_path: str, page_order: List[int], output_path: Optional[str] = None
+    ) -> str:
+        """Return a copy of the PDF with pages in the requested order.
+
+        page_order is a 1-indexed list of page numbers, e.g. [3, 1, 2]
+        means "page 3 first, then page 1, then page 2". Out-of-range
+        or duplicate entries are silently skipped.
+        """
+        if not os.path.exists(file_path):
+            raise PDFServiceError(f"File not found: {file_path}")
+        output_path = output_path or self._get_temp_path()
+        doc = fitz.open(file_path)
+        try:
+            new_doc = fitz.open()
+            seen = set()
+            for p in page_order:
+                if p in seen:
+                    continue
+                if 1 <= p <= doc.page_count:
+                    new_doc.insert_pdf(doc, from_page=p - 1, to_page=p - 1)
+                    seen.add(p)
+            new_doc.save(output_path, garbage=4, deflate=True)
+            new_doc.close()
+            return output_path
+        finally:
+            doc.close()
+
+    def remove_pages(
+        self, file_path: str, pages_to_remove: set, output_path: Optional[str] = None
+    ) -> str:
+        """Return a copy of the PDF with the given pages (1-indexed)
+        removed. Pages outside the document range are ignored.
+        """
+        if not os.path.exists(file_path):
+            raise PDFServiceError(f"File not found: {file_path}")
+        output_path = output_path or self._get_temp_path()
+        doc = fitz.open(file_path)
+        try:
+            new_doc = fitz.open()
+            for p in range(1, doc.page_count + 1):
+                if p in pages_to_remove:
+                    continue
+                new_doc.insert_pdf(doc, from_page=p - 1, to_page=p - 1)
+            new_doc.save(output_path, garbage=4, deflate=True)
+            new_doc.close()
+            return output_path
+        finally:
+            doc.close()
+            doc.close()
+
     def add_watermark(
         self,
         file_path: str,

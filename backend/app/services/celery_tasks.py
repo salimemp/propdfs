@@ -10,6 +10,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.services.pdf_service import PDFProcessingService
+from app.services.conversion_service import ConversionService, ConversionError
 from app.services.storage_service import storage_service
 from app.core.config import get_settings
 from app.models.database import Document, ProcessingTask, DocumentStatus
@@ -62,6 +63,7 @@ def get_db_session():
 
 
 pdf_service = PDFProcessingService()
+conversion_service = ConversionService()
 
 
 @celery_app.task(bind=True, max_retries=3)
@@ -121,6 +123,52 @@ def process_pdf_task(
             output_path = output_paths[0] if output_paths else None
         elif task_type == "images_to_pdf":
             output_path = pdf_service.images_to_pdf(temp_paths)
+        elif task_type == "add_page_numbers":
+            # PDF page numbering. Backend-supported since the
+            # 6-deferred-items push on 2026-06-23.
+            output_path = pdf_service.add_page_numbers(temp_paths[0])
+        elif task_type == "organize_pages":
+            # Re-arrange pages in a custom order. Input is a single
+            # PDF; params is {"page_order": [3, 1, 2, ...]}.
+            page_order = params.get("page_order", list(range(1, 100)))
+            output_path = pdf_service.reorder_pages(temp_paths[0], page_order)
+        elif task_type == "remove_pages":
+            # Remove specific pages. params is {"pages_to_remove": [2, 4]}.
+            pages_to_remove = set(params.get("pages_to_remove", []))
+            output_path = pdf_service.remove_pages(temp_paths[0], pages_to_remove)
+        # ---- Office ↔ PDF conversions via LibreOffice ----
+        # The XLSX paths are known-broken in the current LibreOffice
+        # build (Calc can't parse Writer HTML on import; can't parse
+        # PDF meaningfully on export). They raise ConversionError
+        # at runtime; the frontend marks them as coming-soon with
+        # a "Calc limitation" note. Everything else works per the
+        # 2026-06-21 verification matrix in the README.
+        elif task_type == "word_to_pdf":
+            output_path = conversion_service.convert_document(temp_paths[0], "pdf")
+        elif task_type == "excel_to_pdf":
+            output_path = conversion_service.convert_document(
+                temp_paths[0], "pdf"
+            )  # XLSX in: known limitation
+        elif task_type == "ppt_to_pdf":
+            output_path = conversion_service.convert_document(temp_paths[0], "pdf")
+        elif task_type == "html_to_pdf":
+            output_path = conversion_service.convert_document(temp_paths[0], "pdf")
+        elif task_type == "pdf_to_word":
+            output_path = conversion_service.convert_document(temp_paths[0], "docx")
+        elif task_type == "pdf_to_excel":
+            output_path = conversion_service.convert_document(
+                temp_paths[0], "xlsx"
+            )  # PDF → XLSX: known limitation
+        elif task_type == "pdf_to_ppt":
+            output_path = conversion_service.convert_document(temp_paths[0], "pptx")
+        elif task_type == "pdf_to_html":
+            output_path = conversion_service.convert_document(temp_paths[0], "html")
+        elif task_type == "pdf_to_md":
+            output_path = conversion_service.convert_document(temp_paths[0], "md")
+        elif task_type == "pdf_to_odt":
+            output_path = conversion_service.convert_document(temp_paths[0], "odt")
+        elif task_type == "pdf_to_rtf":
+            output_path = conversion_service.convert_document(temp_paths[0], "rtf")
         else:
             raise ValueError(f"Unknown task type: {task_type}")
 

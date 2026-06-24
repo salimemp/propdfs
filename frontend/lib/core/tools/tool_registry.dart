@@ -115,9 +115,9 @@ class ToolRegistry {
       icon: Icons.dashboard_customize,
       color: AppColors.catOrganize,
       category: 'Organize',
-      taskType: null, // distinct from merge — needs page-level reorder UI
+      taskType: 'organize_pages',
       acceptMode: ToolAcceptMode.singlePdf,
-      status: ToolStatus.comingSoon,
+      status: ToolStatus.implemented,
     ),
     ToolConfig(
       id: 'remove-pages',
@@ -128,9 +128,9 @@ class ToolRegistry {
       icon: Icons.delete_sweep,
       color: AppColors.catOrganize,
       category: 'Organize',
-      taskType: 'extract',
+      taskType: 'remove_pages',
       acceptMode: ToolAcceptMode.singlePdf,
-      status: ToolStatus.comingSoon,
+      status: ToolStatus.implemented,
     ),
     ToolConfig(
       id: 'extract-pages',
@@ -198,16 +198,18 @@ class ToolRegistry {
       icon: Icons.description,
       color: AppColors.catConvertTo,
       category: 'Convert',
-      taskType: null, // DOCX import pipeline
+      taskType: 'word_to_pdf',
       acceptMode: ToolAcceptMode.singlePdf, // accepts .docx — see note
-      status: ToolStatus.comingSoon,
+      status: ToolStatus.implemented,
     ),
     ToolConfig(
       id: 'excel-to-pdf',
       title: 'Excel to PDF',
       description: 'Convert .xlsx files to PDF.',
       longDescription: 'Upload an Excel spreadsheet and download a paginated '
-          'PDF — perfect for sharing reports.',
+          'PDF — perfect for sharing reports. Note: LibreOffice Calc '
+          'cannot parse Writer-style HTML on import, so complex '
+          'spreadsheets may not convert cleanly.',
       icon: Icons.table_chart,
       color: AppColors.catConvertTo,
       category: 'Convert',
@@ -224,9 +226,9 @@ class ToolRegistry {
       icon: Icons.slideshow,
       color: AppColors.catConvertTo,
       category: 'Convert',
-      taskType: null,
+      taskType: 'ppt_to_pdf',
       acceptMode: ToolAcceptMode.singlePdf,
-      status: ToolStatus.comingSoon,
+      status: ToolStatus.implemented,
     ),
     ToolConfig(
       id: 'jpg-to-pdf',
@@ -250,9 +252,9 @@ class ToolRegistry {
       icon: Icons.code,
       color: AppColors.catConvertTo,
       category: 'Convert',
-      taskType: null,
+      taskType: 'html_to_pdf',
       acceptMode: ToolAcceptMode.htmlOrPdf,
-      status: ToolStatus.comingSoon,
+      status: ToolStatus.implemented,
     ),
 
     // ---------- Convert from PDF ----------
@@ -265,22 +267,24 @@ class ToolRegistry {
       icon: Icons.picture_as_pdf,
       color: AppColors.catConvertFrom,
       category: 'Convert',
-      taskType: null, // DOCX export pipeline
+      taskType: 'pdf_to_word',
       acceptMode: ToolAcceptMode.singlePdf,
-      status: ToolStatus.comingSoon,
+      status: ToolStatus.implemented,
     ),
     ToolConfig(
       id: 'pdf-to-excel',
       title: 'PDF to Excel',
       description: 'Extract tables as editable .xlsx.',
       longDescription: 'Upload a PDF with tables and download an editable '
-          'Excel workbook.',
+          'Excel workbook. Note: LibreOffice Calc cannot import PDFs '
+          'meaningfully, so output tables will be empty for most '
+          'inputs. Use a different tool for tabular extraction.',
       icon: Icons.picture_as_pdf,
       color: AppColors.catConvertFrom,
       category: 'Convert',
-      taskType: null,
+      taskType: 'pdf_to_excel',
       acceptMode: ToolAcceptMode.singlePdf,
-      status: ToolStatus.comingSoon,
+      status: ToolStatus.implemented,
     ),
     ToolConfig(
       id: 'pdf-to-ppt',
@@ -291,9 +295,9 @@ class ToolRegistry {
       icon: Icons.picture_as_pdf,
       color: AppColors.catConvertFrom,
       category: 'Convert',
-      taskType: null,
+      taskType: 'pdf_to_ppt',
       acceptMode: ToolAcceptMode.singlePdf,
-      status: ToolStatus.comingSoon,
+      status: ToolStatus.implemented,
     ),
     ToolConfig(
       id: 'pdf-to-jpg',
@@ -355,9 +359,9 @@ class ToolRegistry {
       icon: Icons.format_list_numbered,
       color: AppColors.catEdit,
       category: 'Edit',
-      taskType: 'watermark', // reuses watermark until dedicated endpoint ships
+      taskType: 'add_page_numbers',
       acceptMode: ToolAcceptMode.singlePdf,
-      status: ToolStatus.comingSoon,
+      status: ToolStatus.implemented,
     ),
     ToolConfig(
       id: 'crop',
@@ -481,7 +485,7 @@ class ToolRegistry {
       category: 'AI',
       taskType: null, // routed through /api/v1/ai/summarize (different flow)
       acceptMode: ToolAcceptMode.singlePdf,
-      status: ToolStatus.comingSoon,
+      status: ToolStatus.implemented,
     ),
     ToolConfig(
       id: 'ai-translate',
@@ -494,7 +498,7 @@ class ToolRegistry {
       category: 'AI',
       taskType: null,
       acceptMode: ToolAcceptMode.singlePdf,
-      status: ToolStatus.comingSoon,
+      status: ToolStatus.implemented,
     ),
     // Chat with PDF — kept on the existing /ai-chat route (different flow,
     // needs document id). Not registered under /tools/<id>.
@@ -509,7 +513,7 @@ class ToolRegistry {
       category: 'AI',
       taskType: null,
       acceptMode: ToolAcceptMode.singlePdf,
-      status: ToolStatus.comingSoon,
+      status: ToolStatus.implemented,
     ),
     ToolConfig(
       id: 'ai-extract',
@@ -522,7 +526,7 @@ class ToolRegistry {
       category: 'AI',
       taskType: null,
       acceptMode: ToolAcceptMode.singlePdf,
-      status: ToolStatus.comingSoon,
+      status: ToolStatus.implemented,
     ),
   ];
 
