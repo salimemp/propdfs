@@ -52,18 +52,31 @@ jobs:
         # Catches XML errors (like '--' inside SVG comments, which is
         # forbidden by the XML spec) BEFORE the bundle ships. flutter_svg
         # throws 'Bad state: Invalid SVG data' at runtime when a bundled
-        # SVG fails to parse — easy to miss locally because xmllint isn't
-        # part of the default toolchain.
+        # SVG fails to parse. Uses Python's xml.etree instead of xmllint
+        # because the GitHub Actions runner doesn't ship xmllint by
+        # default — installing it would add a brittle apt step.
         run: |
-          set -e
-          for svg in $(find assets -name '*.svg'); do
-            if ! xmllint --noout "$svg" 2>/dev/null; then
-              echo "::error file=$svg::Invalid SVG (xmllint failed). Common cause: '--' inside an XML comment is forbidden by the spec."
-              xmllint --noout "$svg" || true
-              exit 1
-            fi
-          done
-          echo "All $(find assets -name '*.svg' | wc -l | tr -d ' ') SVG assets are XML-valid."
+          python3 - <<'PY'
+          import sys
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+
+          failed = []
+          count = 0
+          for svg in sorted(Path("assets").rglob("*.svg")):
+              count += 1
+              try:
+                  ET.parse(svg)
+              except ET.ParseError as e:
+                  failed.append((svg, str(e)))
+
+          if failed:
+              for svg, err in failed:
+                  print(f"::error file={svg}::Invalid SVG ({err}). Common cause: '--' inside an XML comment is forbidden by the XML spec.")
+              sys.exit(1)
+
+          print(f"All {count} SVG assets are XML-valid.")
+          PY
       - run: flutter build web --release
 
   # --- STAGING DEPLOY (develop branch) ---
