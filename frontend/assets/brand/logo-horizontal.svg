@@ -1,23 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  ProPDFs brand logo — master vector.
+  ProPDFs brand logo, master vector.
 
   Design language
-  ----------------
+  ================
   - The mark is a rounded square (the "page") in deep navy
     (#0F172A / Tailwind slate-900). A PDF-red corner fold
-    (#DC2626 / red-600) sits in the top-right — the universal
+    (#DC2626 / red-600) sits in the top-right, the universal
     visual signal for "this is a PDF / document".
   - A bold "P" in white occupies the center. The P is rendered
     as a path (not text) so the SVG renders identically across
     rasterizers, browsers, and PDF readers without depending
     on system font availability.
   - The wordmark "ProPDFs" uses an Inter-family fallback chain.
-    The kerning is hand-tuned (slightly tighter on the P→r
-    and D→s transitions) for the lockup proportions.
+    The kerning is hand-tuned (slightly tighter on the P to r
+    and D to s transitions) for the lockup proportions.
 
   Variants in this directory
-  --------------------------
+  ==========================
   - logo-mark.svg          Mark only (square). Use wherever a
                            full lockup doesn't fit.
   - logo-horizontal.svg    Mark + wordmark side by side. The
@@ -27,7 +27,7 @@
                            for square placements (avatars, OG
                            cards) where horizontal is too wide.
   - favicon.svg            Simplified mark for 16x16 / 32x32.
-                           No folded-corner triangle (it disap-
+                           No folded-corner triangle (it disap
                            pears at small sizes anyway) and the
                            P is slightly bolder.
   - logo-mono-light.svg    Single-colour version for light
@@ -36,10 +36,10 @@
                            backgrounds.
 
   Color tokens
-  ------------
-  --propdfs-navy:   #0F172A
-  --propdfs-red:    #DC2626
-  --propdfs-white:  #FFFFFF
+  ============
+  propdfs-navy:   #0F172A
+  propdfs-red:    #DC2626
+  propdfs-white:  #FFFFFF
 -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 64" width="240" height="64" role="img" aria-label="ProPDFs">
   <title>ProPDFs</title>

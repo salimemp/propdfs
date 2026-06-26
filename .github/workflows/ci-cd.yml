@@ -48,6 +48,22 @@ jobs:
           flutter-version: '3.32.0'
       - run: flutter pub get
       - run: flutter analyze
+      - name: Validate SVG assets
+        # Catches XML errors (like '--' inside SVG comments, which is
+        # forbidden by the XML spec) BEFORE the bundle ships. flutter_svg
+        # throws 'Bad state: Invalid SVG data' at runtime when a bundled
+        # SVG fails to parse — easy to miss locally because xmllint isn't
+        # part of the default toolchain.
+        run: |
+          set -e
+          for svg in $(find assets -name '*.svg'); do
+            if ! xmllint --noout "$svg" 2>/dev/null; then
+              echo "::error file=$svg::Invalid SVG (xmllint failed). Common cause: '--' inside an XML comment is forbidden by the spec."
+              xmllint --noout "$svg" || true
+              exit 1
+            fi
+          done
+          echo "All $(find assets -name '*.svg' | wc -l | tr -d ' ') SVG assets are XML-valid."
       - run: flutter build web --release
 
   # --- STAGING DEPLOY (develop branch) ---
