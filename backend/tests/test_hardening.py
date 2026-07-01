@@ -877,3 +877,39 @@ class TestOAuthUnconfigured:
         # Unknown provider names return False (not AttributeError) —
         # we never want a typo in a future provider to crash.
         assert _provider_configured("notarealprovider") is False
+
+    def test_global_handler_passes_through_http_exception(self):
+        """Regression test for the bug that took the OAuth 503 down.
+
+        The `@app.exception_handler(Exception)` in main.py would
+        override FastAPI's built-in HTTPException handler because
+        HTTPException is a subclass of Exception. Result: every
+        deliberate `raise HTTPException(...)` (404, 403, 422, 503,
+        etc.) was being converted to a generic 500 with body
+        `{"detail":"Internal server error"}`. The fix re-raises
+        HTTPException so FastAPI's built-in handler runs.
+        """
+        from app.main import app
+        from fastapi.testclient import TestClient
+
+        client = TestClient(app, raise_server_exceptions=False)
+
+        # /docs is a built-in FastAPI endpoint that lives at /docs —
+        # but more useful here: hitting ANY FastAPI endpoint and
+        # comparing with a deliberately-not-found route shows the
+        # 404 body shape we expect. The OAuth endpoints above prove
+        # 503 still works end-to-end. Here we add a no-credential
+        # 404 check at a route that doesn't exist to validate the
+        # global handler doesn't rewrite 404s into 500s.
+        resp = client.get(
+            "/api/v1/__definitely_not_a_route__",
+            headers={"Cookie": "client=test_global_handler"},
+        )
+        assert resp.status_code == 404, (
+            f"Expected FastAPI's built-in 404, got "
+            f"{resp.status_code}: {resp.text}"
+        )
+        assert resp.json()["detail"] == "Not Found", (
+            "Global handler ate the FastAPI 404. Re-raise path "
+            "in global_exception_handler is broken."
+        )

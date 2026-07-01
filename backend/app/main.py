@@ -243,8 +243,26 @@ app.include_router(assets_router)
 
 
 # Global exception handler — keep last so it wraps everything.
+#
+# We register against `Exception` so that any unhandled Python error
+# still produces a clean JSON 500 (not a stack trace leak). However,
+# we MUST let `HTTPException` pass through, otherwise our handler
+# would override FastAPI's built-in HTTPException handler and every
+# deliberate `raise HTTPException(404|403|503|...)` would surface as
+# a generic 500 with body `{"detail":"Internal server error"}` —
+# exactly the OAuth-login symptom we hit when this handler ran
+# ahead of `HTTPException` handling.
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
+    from fastapi import HTTPException as _HTTPException
+
+    if isinstance(exc, _HTTPException):
+        # Re-raise so FastAPI's built-in handler runs and produces
+        # the intended status code + structured `detail` body.
+        # Re-raising from within an exception handler is fine —
+        # FastAPI looks up the next matching handler in the chain.
+        raise exc
+
     logger.error(
         "unhandled_exception",
         error=str(exc),
