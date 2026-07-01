@@ -179,18 +179,26 @@ class _CookieConsentBannerState extends ConsumerState<CookieConsentBanner> {
               ],
             ),
             const SizedBox(height: 8),
+            // Use canonical paths (/privacy, /terms, /cookies) rather
+            // than the legacy aliases (/privacy-policy, /terms-of-
+            // service, /cookie-policy). The aliases work via
+            // `redirect` in the router, but `context.push()` to a
+            // redirect-target doesn't reliably produce a clean stack
+            // — the entry gets pushed then immediately redirected
+            // away, leaving an empty frame. Going straight to the
+            // canonical route is the supported pattern.
             Row(
               children: [
                 TextButton(
-                  onPressed: () => context.push('/privacy-policy'),
+                  onPressed: () => context.push('/privacy'),
                   child: const Text('Privacy Policy'),
                 ),
                 TextButton(
-                  onPressed: () => context.push('/terms-of-service'),
+                  onPressed: () => context.push('/terms'),
                   child: const Text('Terms of Service'),
                 ),
                 TextButton(
-                  onPressed: () => context.push('/cookie-policy'),
+                  onPressed: () => context.push('/cookies'),
                   child: const Text('Cookie Policy'),
                 ),
               ],

@@ -165,21 +165,21 @@ class SettingsScreen extends ConsumerWidget {
             icon: Icons.privacy_tip_outlined,
             title: 'Privacy Policy',
             subtitle: 'How we handle your data',
-            onTap: () => context.push('/privacy-policy'),
+            onTap: () => context.push('/privacy'),
           ),
           _buildListTile(
             context,
             icon: Icons.description_outlined,
             title: 'Terms of Service',
             subtitle: 'Rules and guidelines',
-            onTap: () => context.push('/terms-of-service'),
+            onTap: () => context.push('/terms'),
           ),
           _buildListTile(
             context,
             icon: Icons.cookie_outlined,
             title: 'Cookie Policy',
             subtitle: 'Cookie preferences and info',
-            onTap: () => context.push('/cookie-policy'),
+            onTap: () => context.push('/cookies'),
           ),
           // "Manage cookie preferences" — clears the saved consent
           // state and re-shows the consent banner. Required by
