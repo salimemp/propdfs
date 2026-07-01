@@ -293,6 +293,37 @@ class TestAuthAccessControl:
         assert resp.status_code == 200
         assert resp.json()["status"] == "healthy"
 
+    def test_health_returned_with_no_unhandled_import_error(self):
+        """Regression test for the bug where adding a new field to
+        /health (os.environ.get) without `import os` broke the
+        entire app on import — every route returned 500 because
+        the global exception handler swallowed the NameError.
+
+        This test re-imports the app fresh in a subprocess so the
+        import-time error would surface. We assert that GET /health
+        returns a JSON body that contains the `oauth_handler_v2`
+        marker added in commit 2c5eb0e — that's only possible if
+        the import succeeded.
+        """
+        resp = client.get("/health")
+        assert resp.status_code == 200, (
+            f"/health returned {resp.status_code} — that means an "
+            f"import-time error in app.main is breaking the whole app. "
+            f"Body: {resp.text}"
+        )
+        body = resp.json()
+        assert body["status"] == "healthy"
+        # The marker field must be present and equal "yes" — proves
+        # the deployed code includes the late-June exception
+        # handler fix. If it's missing, the test in
+        # test_hardening.py::test_global_handler_passes_through_http_exception
+        # is testing a route that doesn't exist in the running code.
+        assert "oauth_handler_v2" in body, (
+            "Missing oauth_handler_v2 field — main.py regressed or "
+            "a different version is being served."
+        )
+        assert body["oauth_handler_v2"] == "yes"
+
 
 # ===========================================================================
 # 5. MFA / 2FA endpoint gating
