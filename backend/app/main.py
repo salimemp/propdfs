@@ -210,7 +210,12 @@ async def attach_rate_limit(request: Request, call_next):
 # Health check (lightweight, no DB).
 @app.get("/health", tags=["Health"])
 async def health_check():
-    return {"status": "healthy", "version": settings.APP_VERSION}
+    return {
+        "status": "healthy",
+        "version": settings.APP_VERSION,
+        "git_sha": os.environ.get("RAILWAY_GIT_COMMIT_SHA", "unknown"),
+        "oauth_handler_v2": "yes",
+    }
 
 
 # Prometheus metrics endpoint. No auth — typically scraped over an
