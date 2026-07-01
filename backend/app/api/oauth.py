@@ -15,7 +15,54 @@ from app.core.security import (
 )
 from app.core.config import get_settings
 
-logger = structlog.get_logger()
+logger = structlog.get_logger(__name__)
+
+
+def _provider_configured(name: str) -> bool:
+    """Return True iff this provider's OAuth client is registered.
+
+    `oauth.register(...)` only runs when the relevant ID is set in
+    env. Hitting the login endpoint without credentials configured
+    used to raise AttributeError (and surface as a generic 500),
+    making it hard to tell whether the break was config or code.
+    Now we return a clear 503 instead.
+    """
+    try:
+        client = getattr(oauth, name, None)
+        return client is not None
+    except Exception:
+        return False
+
+
+def _provider_not_configured_response(provider: str) -> HTTPException:
+    """Friendly 503 telling the operator exactly which env var to set.
+
+    Goes to JSON, not a render page, so curl/Sentry/browsers all see
+    the same shape. The frontend's OAuth buttons can also detect this
+    status code and surface an inline "Sign-in temporarily unavailable"
+    message instead of treating it as a generic auth error.
+    """
+    return HTTPException(
+        status_code=503,
+        detail={
+            "error": "oauth_not_configured",
+            "provider": provider,
+            "message": (
+                f"{provider.title()} OAuth is not configured on the backend. "
+                f"Set the {_client_env_var_for(provider)} (and matching "
+                f"secret) environment variable in Railway and redeploy."
+            ),
+        },
+    )
+
+
+def _client_env_var_for(provider: str) -> str:
+    return {
+        "google": "GOOGLE_CLIENT_ID",
+        "github": "GITHUB_CLIENT_ID",
+    }.get(provider, "OAUTH_CLIENT_ID")
+
+
 router = APIRouter(prefix="/auth", tags=["OAuth"])
 settings = get_settings()
 
@@ -86,12 +133,21 @@ async def _get_or_create_oauth_user(
 
 @router.get("/google/login")
 async def google_login(request: Request):
+    if not _provider_configured("google"):
+        logger.warning(
+            "oauth_login_attempt_unconfigured",
+            provider="google",
+            remote=request.client.host if request.client else None,
+        )
+        raise _provider_not_configured_response("google")
     redirect_uri = request.url_for("google_callback")
     return await oauth.google.authorize_redirect(request, redirect_uri)
 
 
 @router.get("/google/callback")
 async def google_callback(request: Request, db: AsyncSession = Depends(get_db)):
+    if not _provider_configured("google"):
+        raise _provider_not_configured_response("google")
     try:
         token = await oauth.google.authorize_access_token(request)
         userinfo = token.get("userinfo")
@@ -131,12 +187,21 @@ async def google_callback(request: Request, db: AsyncSession = Depends(get_db)):
 
 @router.get("/github/login")
 async def github_login(request: Request):
+    if not _provider_configured("github"):
+        logger.warning(
+            "oauth_login_attempt_unconfigured",
+            provider="github",
+            remote=request.client.host if request.client else None,
+        )
+        raise _provider_not_configured_response("github")
     redirect_uri = request.url_for("github_callback")
     return await oauth.github.authorize_redirect(request, redirect_uri)
 
 
 @router.get("/github/callback")
 async def github_callback(request: Request, db: AsyncSession = Depends(get_db)):
+    if not _provider_configured("github"):
+        raise _provider_not_configured_response("github")
     try:
         token = await oauth.github.authorize_access_token(request)
         resp = await oauth.github.get("user", token=token)

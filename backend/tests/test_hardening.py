@@ -10,6 +10,10 @@ Covers:
   4. Password policy — every structural rule on its own, plus
      the breaker (HIBP breach_count > 0) and HIBP response
      parser.
+  5. OAuth callback flow — clean 503 (not 500) when credentials
+     aren't configured; structured detail with the missing env
+     var name; never crashes with AttributeError when the
+     provider isn't registered.
 
 Run with:
     cd backend && .venv/bin/python -m pytest tests/test_hardening.py -v
@@ -23,6 +27,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
+from fastapi.testclient import TestClient
 
 from app.core.config import get_settings
 from app.core.password_policy import (
@@ -735,3 +740,140 @@ class TestSecurityInvariants:
         # not reversible.
         assert key.startswith("turnstile:verified:")
         assert len(key) == len("turnstile:verified:") + 64  # SHA-256 hex
+
+
+# ---------------------------------------------------------------------------
+# 6. OAuth login / callback when credentials are not configured
+# ---------------------------------------------------------------------------
+
+
+class TestOAuthUnconfigured:
+    """When GOOGLE_CLIENT_ID / GITHUB_CLIENT_ID aren't set on the
+    backend, the login endpoints must respond with a clean 503
+    explaining the missing env var, NOT a generic 500 from
+    AttributeError on the unregistered oauth client.
+
+    These tests monkey-patch the module's `oauth` instance so we
+    can reproduce the "registered client missing" condition in CI
+    without needing real Google / GitHub credentials.
+    """
+
+    @pytest.fixture
+    def _no_google_client(self, monkeypatch):
+        """Strip the `google` attribute off the module's authlib
+        OAuth instance — that's the production state when the ID
+        is empty and oauth.register was skipped."""
+        from app.api import oauth as oauth_module
+
+        saved = oauth_module.oauth.__dict__.copy()
+        oauth_module.oauth.__dict__.pop("google", None)
+        try:
+            yield
+        finally:
+            oauth_module.oauth.__dict__.clear()
+            oauth_module.oauth.__dict__.update(saved)
+
+    @pytest.fixture
+    def _no_github_client(self, monkeypatch):
+        from app.api import oauth as oauth_module
+
+        saved = oauth_module.oauth.__dict__.copy()
+        oauth_module.oauth.__dict__.pop("github", None)
+        try:
+            yield
+        finally:
+            oauth_module.oauth.__dict__.clear()
+            oauth_module.oauth.__dict__.update(saved)
+
+    def test_google_login_returns_503_when_unconfigured(self, _no_google_client):
+        """Pre-fix this returned a generic 500 with
+        `{"detail":"Internal server error"}`, which looked like a
+        code bug instead of a missing-config situation."""
+        from app.main import app
+
+        client = TestClient(app, raise_server_exceptions=False)
+        # Give a fake Cookie so the rate-limiter middleware (if
+        # active in CI) doesn't count this against the same IP for
+        # repeated runs.
+        resp = client.get(
+            "/api/v1/auth/google/login",
+            headers={"Cookie": "client=test_hardening_503_google"},
+        )
+        assert (
+            resp.status_code == 503
+        ), f"Expected 503, got {resp.status_code}: {resp.text}"
+        body = resp.json()
+        assert isinstance(body["detail"], dict)
+        assert body["detail"]["error"] == "oauth_not_configured"
+        assert body["detail"]["provider"] == "google"
+        # The error message MUST name the env var so an operator
+        # knows exactly what to set in Railway.
+        assert "GOOGLE_CLIENT_ID" in body["detail"]["message"]
+
+    def test_github_login_returns_503_when_unconfigured(self, _no_github_client):
+        from app.main import app
+
+        client = TestClient(app, raise_server_exceptions=False)
+        resp = client.get(
+            "/api/v1/auth/github/login",
+            headers={"Cookie": "client=test_hardening_503_github"},
+        )
+        assert (
+            resp.status_code == 503
+        ), f"Expected 503, got {resp.status_code}: {resp.text}"
+        body = resp.json()
+        assert body["detail"]["error"] == "oauth_not_configured"
+        assert body["detail"]["provider"] == "github"
+        assert "GITHUB_CLIENT_ID" in body["detail"]["message"]
+
+    def test_google_callback_returns_503_when_unconfigured(self, _no_google_client):
+        """A logged-out request that hits the callback URL
+        directly — same 503 treatment as /login."""
+        from app.main import app
+
+        client = TestClient(app, raise_server_exceptions=False)
+        resp = client.get(
+            "/api/v1/auth/google/callback",
+            headers={"Cookie": "client=test_hardening_cb_google"},
+        )
+        assert resp.status_code == 503
+        assert resp.json()["detail"]["provider"] == "google"
+
+    def test_github_callback_returns_503_when_unconfigured(self, _no_github_client):
+        from app.main import app
+
+        client = TestClient(app, raise_server_exceptions=False)
+        resp = client.get(
+            "/api/v1/auth/github/callback",
+            headers={"Cookie": "client=test_hardening_cb_github"},
+        )
+        assert resp.status_code == 503
+        assert resp.json()["detail"]["provider"] == "github"
+
+    def test_provider_not_configured_response_shape(self):
+        """Pin the error shape so the Flutter side can pattern-match
+        on `error == "oauth_not_configured"`."""
+        from app.api.oauth import _provider_not_configured_response
+
+        exc = _provider_not_configured_response("github")
+        assert exc.status_code == 503
+        assert exc.detail["error"] == "oauth_not_configured"
+        assert exc.detail["provider"] == "github"
+        assert "GITHUB_CLIENT_ID" in exc.detail["message"]
+
+    def test_provider_configured_helper_returns_false_for_unregistered(
+        self, _no_github_client
+    ):
+        """Direct unit test of the helper. In the test environment
+        neither provider is configured (conftest doesn't set the
+        client IDs); we additionally strip `github` to confirm the
+        helper is reading the current `oauth` instance, not a
+        stale-cached value."""
+        from app.api.oauth import _provider_configured
+
+        # _no_github_client already removed github. google is also
+        # unregistered in CI (no env var set).
+        assert _provider_configured("github") is False
+        # Unknown provider names return False (not AttributeError) —
+        # we never want a typo in a future provider to crash.
+        assert _provider_configured("notarealprovider") is False
