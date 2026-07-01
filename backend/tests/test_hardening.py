@@ -906,8 +906,7 @@ class TestOAuthUnconfigured:
             headers={"Cookie": "client=test_global_handler"},
         )
         assert resp.status_code == 404, (
-            f"Expected FastAPI's built-in 404, got "
-            f"{resp.status_code}: {resp.text}"
+            f"Expected FastAPI's built-in 404, got " f"{resp.status_code}: {resp.text}"
         )
         assert resp.json()["detail"] == "Not Found", (
             "Global handler ate the FastAPI 404. Re-raise path "
