@@ -1,9 +1,7 @@
 import pytest
 import os
 import tempfile
-import shutil
-from unittest.mock import Mock, patch, MagicMock
-from pathlib import Path
+from unittest.mock import Mock, patch
 
 from app.services.conversion_service import ConversionService, ConversionError
 

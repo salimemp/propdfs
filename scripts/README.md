@@ -10,7 +10,7 @@ audit it or write a post every week.
 | Secret | Where it goes | What it does |
 |---|---|---|
 | `HARBORSEO_API_KEY` | GitHub Actions secret + local env | Audits sites + generates posts |
-| `PROPDFS_ADMIN_TOKEN` | GitHub Actions secret + local env | Bearer token for an admin user, used to POST to `/api/v1/blog/posts` |
+| `PROPDFS_ADMIN_TOKEN` | GitHub Actions secret + local env | Bearer token for an **admin user** (`is_admin=True`), used to POST to `/api/v1/blog/posts` |
 | `PROPDFS_API` | GitHub Actions secret + local env | Base URL of the backend, defaults to `https://api.propdfs.com/api/v1` |
 
 **Tell me when you want me to wire these in.** Once the API key is set:
@@ -110,7 +110,9 @@ Open a PR. The next workflow_dispatch run will pick it up.
 
 ## Where the auto-publish endpoints live
 
-`POST /api/v1/blog/posts` in `backend/app/api/blog.py`. Open for now —
-we restrict via CORS + a shared-secret header before going to
-production. Long term, this should be admin-only and gated behind the
-`is_admin` column we added to the `User` model.
+`POST /api/v1/blog/posts` in `backend/app/api/blog.py`. This endpoint
+is **gated behind the `require_admin` dependency** — the caller must
+present a valid JWT Bearer token for a user whose `is_admin` column is
+`True`. Unauthenticated or non-admin requests receive a 401/403
+response. The `PROPDFS_ADMIN_TOKEN` secret must therefore be a valid
+JWT for an admin user, not a static shared-secret.

@@ -9,6 +9,7 @@ against the real R2/S3 endpoint.
 We also stub out the secret key to a known dev value so JWT signing
 is deterministic in tests.
 """
+
 import os
 from unittest.mock import MagicMock
 
@@ -29,4 +30,4 @@ import boto3  # noqa: E402
 _boto3_client_mock = MagicMock(name="boto3.client")
 _boto3_client_mock.return_value.head_bucket.return_value = {}
 _boto3_client_mock.return_value.create_bucket.return_value = {}
-boto3.client = _boto3_client_mock  # type: ignore[assignment] 
+boto3.client = _boto3_client_mock  # type: ignore[assignment]

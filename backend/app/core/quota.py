@@ -15,17 +15,17 @@ Key shape: `quota:{user_id}:{feature}:{YYYY-MM-DD}`
 
 from __future__ import annotations
 
-import logging
 from datetime import datetime, timezone
 from enum import Enum
 
 import redis.asyncio as aioredis
+import structlog
 from fastapi import HTTPException
 
 from app.core.config import get_settings
 from app.models.database import PlanTier
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class QuotaFeature(str, Enum):

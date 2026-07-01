@@ -1,5 +1,10 @@
 """
-Alembic migration environment
+Alembic migration environment.
+
+IMPORTANT: All model modules must be imported here so that their
+table definitions are registered on the Base.metadata before
+``autogenerate`` runs. If you add a new model file, import it in
+the block below.
 """
 from logging.config import fileConfig
 
@@ -8,7 +13,11 @@ from sqlalchemy import pool
 
 from alembic import context
 from app.core.config import get_settings
-from app.models.database import Base
+
+# ── Import ALL model modules so autogenerate sees every table ──
+from app.models.database import Base          # users, user_sessions, documents, processing_tasks, usage_logs, plan_limits
+from app.models import beta                  # beta_users, beta_waitlist
+from app.models import waitlist              # tool_waitlist
 
 settings = get_settings()
 config = context.config

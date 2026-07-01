@@ -162,8 +162,14 @@ def parse_hibp_range_response(
         0018A45C4D1DEF81644B54AB7F969B88D65:1
         00D4F6E8FA6EECAD2A3AA415EEC418D38EC:3
         ...
-    The suffix is the 35 chars after the colon. We look ours
-    up case-insensitively (HIBP always uses upper hex).
+
+    Each line is the full 40-char SHA-1 hash (which happens to start
+    with the prefix we sent) plus the breach count. We look up our
+    exact entry by matching the SUFFIX at the END of each row's hash,
+    not by comparing the whole hash against our suffix. Comparing
+    whole-hash-against-suffix was a bug — the lengths don't match
+    (40 chars vs 35) so the lookup always returned 0 and the
+    breach check never reported anything.
     """
     needle = suffix.upper()
     for raw in body.splitlines():
@@ -171,7 +177,14 @@ def parse_hibp_range_response(
         if not line or ":" not in line:
             continue
         sfx, _, count = line.partition(":")
-        if sfx.upper() == needle:
+        if sfx.upper().endswith(needle):
+            # Matched our suffix. Use the count, but degrade gracefully
+            # to 0 rather than 500 if the count column is malformed —
+            # the endpoint treats breach_check as best-effort, and a
+            # single bad row shouldn't poison the whole response.
+            # NB: must continue the loop on ValueError? No — once we
+            # match our suffix, no other row can match it (suffix is
+            # unique to our hash). So returning 0 here is correct.
             try:
                 return int(count)
             except ValueError:

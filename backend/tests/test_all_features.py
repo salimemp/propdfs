@@ -1,28 +1,16 @@
 import os
 import socket
-import tempfile
 import uuid
 from datetime import datetime, timezone, timedelta
-from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker
 
 from app.core.config import get_settings
 from app.core.security import create_access_token, hash_password
 from app.main import app
 from app.models.beta import BetaUser, BetaWaitlist
-from app.models.database import (
-    Base,
-    Document,
-    DocumentStatus,
-    PlanTier,
-    User,
-    UserStatus,
-)
-from app.services.ai_service import AIError, AIService
+from app.services.ai_service import AIService
 from app.services.conversion_service import ConversionError, ConversionService
 from app.services.ocr_service import OCRError, OCRService
 from app.services.pdf_service import PDFProcessingService, PDFServiceError

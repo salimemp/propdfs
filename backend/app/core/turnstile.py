@@ -23,15 +23,15 @@ provision a Cloudflare site key.
 from __future__ import annotations
 
 import hashlib
-import logging
 from typing import Optional
 
 import httpx
 import redis.asyncio as aioredis
+import structlog
 
 from app.core.config import get_settings
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 # Redis key prefix for verified Turnstile tokens. The token's
 # own SHA-256 hash is the suffix — so the key doesn't leak the

@@ -2,5 +2,15 @@
   "$schema": "https://railway.app/railway.schema.json",
   "build": {
     "builder": "DOCKERFILE"
+  },
+  "$schemaNote": "For the Celery worker service, add a second Railway service from the same repo, set root to ./backend, and override the start command to: celery -A app.services.celery_tasks.celery_app worker --loglevel=info --concurrency=2",
+  "services": {
+    "celery-worker": {
+      "root": "./backend",
+      "builder": "DOCKERFILE",
+      "startCommand": "celery -A app.services.celery_tasks.celery_app worker --loglevel=info --concurrency=2",
+      "buildCommand": "pip install -r requirements.txt",
+      "_comment": "Add this as a separate Railway service. It shares the same Dockerfile as the API but overrides the start command to run the Celery worker instead of uvicorn. Ensure REDIS_URL, CELERY_BROKER_URL, and CELERY_RESULT_BACKEND env vars are set."
+    }
   }
 }

@@ -30,7 +30,14 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     expire = datetime.now(timezone.utc) + (
         expires_delta or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     )
-    to_encode.update({"exp": expire, "type": "access"})
+    # Set `type` AFTER copying the caller's dict so that callers can
+    # issue special-purpose tokens (mfa_pending, password_reset,
+    # email_verification, ...) without us hard-coding "access". The
+    # caller-provided value (if any) wins; we only default to "access"
+    # when the caller didn't specify.
+    if "type" not in to_encode:
+        to_encode["type"] = "access"
+    to_encode["exp"] = expire
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 
@@ -39,7 +46,13 @@ def create_refresh_token(data: dict) -> str:
     expire = datetime.now(timezone.utc) + timedelta(
         days=settings.REFRESH_TOKEN_EXPIRE_DAYS
     )
-    to_encode.update({"exp": expire, "type": "refresh"})
+    # Same pattern as create_access_token: don't clobber a caller-
+    # supplied `type`. Refresh tokens keep type="refresh" because
+    # the only callsite (auth.py:register/login/refresh) passes
+    # {"type": "refresh"} implicitly via this function.
+    if "type" not in to_encode:
+        to_encode["type"] = "refresh"
+    to_encode["exp"] = expire
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 
