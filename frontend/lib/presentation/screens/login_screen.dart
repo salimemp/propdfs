@@ -576,6 +576,70 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             ),
                           ],
                         ),
+                        const SizedBox(height: 16),
+
+                        // Legal acknowledgement. Wraps on narrow
+                        // viewports and across translations (German /
+                        // Russian strings are ~30% longer than English).
+                        // Each link uses the canonical route — the
+                        // legacy `/privacy-policy`, `/terms-of-service`,
+                        // `/cookie-policy` paths redirect to the
+                        // canonical `/privacy` / `/terms` / `/cookies`
+                        // routes via app_router.dart for any inbound
+                        // search-engine links.
+                        Center(
+                          child: Wrap(
+                            alignment: WrapAlignment.center,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              Text(
+                                'By signing in, you agree to our ',
+                                style: TextStyle(
+                                  color: Colors.grey[500],
+                                  fontSize: 12,
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: () => context.push('/terms'),
+                                child: Text(
+                                  'Terms of Service',
+                                  style: TextStyle(
+                                    color: Colors.grey[300],
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    decoration: TextDecoration.underline,
+                                  ),
+                                ),
+                              ),
+                              Text(
+                                ' and ',
+                                style: TextStyle(
+                                  color: Colors.grey[500],
+                                  fontSize: 12,
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: () => context.push('/privacy'),
+                                child: Text(
+                                  'Privacy Policy',
+                                  style: TextStyle(
+                                    color: Colors.grey[300],
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    decoration: TextDecoration.underline,
+                                  ),
+                                ),
+                              ),
+                              Text(
+                                '.',
+                                style: TextStyle(
+                                  color: Colors.grey[500],
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ],
                     ),
                   ),
