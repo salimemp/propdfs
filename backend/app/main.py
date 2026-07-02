@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse, Response
 from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
+from starlette.middleware.sessions import SessionMiddleware
 import structlog
 
 from app.core.config import get_settings
@@ -133,6 +134,21 @@ app.add_middleware(
 )
 
 app.add_middleware(GZipMiddleware, minimum_size=1000)
+
+
+# SessionMiddleware — empty session, no secret needed for our use case.
+# We don't store anything in request.session, but Starlette's
+# OAuth library + FastAPI's request.url_for machinery reaches into
+# it on older Starlette versions (FastAPI 0.111.0 pins ~0.36). Without
+# this middleware mounted, the OAuth /login endpoints trip
+# `AssertionError("SessionMiddleware must be installed to access
+# request.session")` at runtime — see live debug in 4f17719.
+#
+# A secret_key IS required by Starlette even though we don't write
+# anything; using settings.SECRET_KEY keeps the signing-key surface
+# consistent with our JWT signing key. A random per-request cookie
+# would still trip the assertion, so we keep it mounted.
+app.add_middleware(SessionMiddleware, secret_key=settings.SECRET_KEY, max_age=14 * 24 * 60 * 60)
 
 
 @app.middleware("http")
