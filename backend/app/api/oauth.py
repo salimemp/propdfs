@@ -143,16 +143,18 @@ async def google_login(request: Request):
         provider_configured=provider_ok,
     )
     if not provider_ok:
+        # Don't read request.client.host — touching request.client
+        # can fail on Railway because of Starlette's BaseHTTPMiddleware
+        # request-rebuild and the lack of SessionMiddleware. Live
+        # showed "SessionMiddleware must be installed to access
+        # request.session" with v2 code present. Just log without
+        # the IP — structured logs already include the request_id
+        # which is enough for ops.
         logger.warning(
             "oauth_login_attempt_unconfigured",
             provider="google",
-            remote=request.client.host if request.client else None,
         )
         exc = _provider_not_configured_response("google")
-        # Render the HTTPException here directly so the response
-        # is deterministic — independent of how the global
-        # exception handler is wired. Adds X-ProPDFs-OAuth-Debug
-        # so curl can confirm this branch ran.
         return JSONResponse(
             status_code=exc.status_code,
             content={"detail": exc.detail},
@@ -205,13 +207,19 @@ async def google_callback(request: Request, db: AsyncSession = Depends(get_db)):
 
 @router.get("/github/login")
 async def github_login(request: Request):
+    from fastapi.responses import JSONResponse
+
     if not _provider_configured("github"):
         logger.warning(
             "oauth_login_attempt_unconfigured",
             provider="github",
-            remote=request.client.host if request.client else None,
         )
-        raise _provider_not_configured_response("github")
+        exc = _provider_not_configured_response("github")
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={"detail": exc.detail},
+            headers={"X-ProPDFs-OAuth-Debug": "github_login_v2_not_configured"},
+        )
     redirect_uri = request.url_for("github_callback")
     return await oauth.github.authorize_redirect(request, redirect_uri)
 
