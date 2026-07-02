@@ -216,7 +216,38 @@ async def health_check():
         "version": settings.APP_VERSION,
         "git_sha": os.environ.get("RAILWAY_GIT_COMMIT_SHA", "unknown"),
         "oauth_handler_v2": "yes",
+        # Pin which version of the global exception handler is
+        # deployed. Lets us read this from `/health` and confirm
+        # in one curl whether fix 10b38fc (let HTTPException
+        # pass through) is live. Without this we can't tell
+        # whether the OAuth 500s are due to a stale container
+        # or a different code path.
+        "exception_handler_v2": (
+            "rereaise" if "raise exc" in _EX_HANDLER_BODY else "swallow"
+        ),
     }
+
+
+# Body of the global exception handler, captured at import time
+# so /health can report which version is deployed. Used by the
+# exception_handler_v2 field above.
+_EX_HANDLER_BODY: str = ""
+
+
+# Re-pickup: capture after the handler is defined below. We do this
+# at module import time so the value is set before any request
+# can hit /health.
+def _capture_ex_handler_body():
+    global _EX_HANDLER_BODY
+    try:
+        from inspect import getsource
+
+        from app.main import global_exception_handler  # noqa: F401
+
+        src = getsource(global_exception_handler)
+        _EX_HANDLER_BODY = src
+    except Exception:
+        _EX_HANDLER_BODY = ""
 
 
 # Prometheus metrics endpoint. No auth — typically scraped over an
@@ -278,6 +309,12 @@ async def global_exception_handler(request, exc):
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={"detail": "Internal server error"},
     )
+
+
+# Capture this handler's source code at import time so /health
+# can report which version is deployed. Helps diagnose stale-
+# container issues when the OAuth /login endpoint returns 500.
+_capture_ex_handler_body()
 
 
 if __name__ == "__main__":
