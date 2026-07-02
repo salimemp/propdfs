@@ -133,20 +133,33 @@ async def _get_or_create_oauth_user(
 
 @router.get("/google/login")
 async def google_login(request: Request):
-    # Marker so /health-style debugging can confirm the route handler
-    # is being entered on the deployed instance. Cheap: 1 dict
-    # allocation per request.
+    # Marker so curl can see whether the route was actually entered.
+    # The response header makes this visible in `curl -i` output.
+    from fastapi.responses import JSONResponse
+
+    provider_ok = _provider_configured("google")
     logger.info(
         "oauth_google_login_entered",
-        provider_configured=_provider_configured("google"),
+        provider_configured=provider_ok,
     )
-    if not _provider_configured("google"):
+    if not provider_ok:
         logger.warning(
             "oauth_login_attempt_unconfigured",
             provider="google",
             remote=request.client.host if request.client else None,
         )
-        raise _provider_not_configured_response("google")
+        exc = _provider_not_configured_response("google")
+        # Render the HTTPException here directly so the response
+        # is deterministic — independent of how the global
+        # exception handler is wired. Adds X-ProPDFs-OAuth-Debug
+        # so curl can confirm this branch ran.
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={"detail": exc.detail},
+            headers={
+                "X-ProPDFs-OAuth-Debug": "google_login_v2_not_configured"
+            },
+        )
     redirect_uri = request.url_for("google_callback")
     return await oauth.google.authorize_redirect(request, redirect_uri)
 
