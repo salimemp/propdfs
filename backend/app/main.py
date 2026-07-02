@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 import os
 
-from fastapi import FastAPI, Request, status
+from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse, Response
@@ -282,23 +282,30 @@ app.include_router(assets_router)
 # Global exception handler — keep last so it wraps everything.
 #
 # We register against `Exception` so that any unhandled Python error
-# still produces a clean JSON 500 (not a stack trace leak). However,
-# we MUST let `HTTPException` pass through, otherwise our handler
-# would override FastAPI's built-in HTTPException handler and every
-# deliberate `raise HTTPException(404|403|503|...)` would surface as
-# a generic 500 with body `{"detail":"Internal server error"}` —
-# exactly the OAuth-login symptom we hit when this handler ran
-# ahead of `HTTPException` handling.
+# still produces a clean JSON 500 (not a stack trace leak). We also
+# handle HTTPException here so the JSON envelope (`{"detail": ...}`)
+# matches FastAPI's default shape exactly.
+#
+# Background: the previous version tried to re-raise HTTPException
+# so FastAPI's built-in handler would run. That created an
+# infinite-loop on the live deployment — re-raising inside an
+# exception handler routes back through the same lookup, finds
+# the same Exception handler, and the framework falls back to a
+# bare 500 with body `{"detail":"Internal server error"}`. The
+# fix is to render HTTPException directly here, identical to
+# what fastapi.exception_handlers.http_exception_handler does,
+# rather than re-raise.
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
-    from fastapi import HTTPException as _HTTPException
-
-    if isinstance(exc, _HTTPException):
-        # Re-raise so FastAPI's built-in handler runs and produces
-        # the intended status code + structured `detail` body.
-        # Re-raising from within an exception handler is fine —
-        # FastAPI looks up the next matching handler in the chain.
-        raise exc
+    if isinstance(exc, HTTPException):
+        # Render HTTPException ourselves — same shape as
+        # FastAPI's built-in handler ({"detail": exc.detail},
+        # exc.status_code, exc.headers).
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={"detail": exc.detail},
+            headers=getattr(exc, "headers", None),
+        )
 
     logger.error(
         "unhandled_exception",
@@ -308,6 +315,20 @@ async def global_exception_handler(request, exc):
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={"detail": "Internal server error"},
+    )
+
+
+# Register the same handler for the explicit HTTPException type so
+# FastAPI's built-in is overridden. The combination above already
+# matches HTTPException via isinstance, but registering for the
+# concrete class too prevents any subclass-match confusion if a
+# route raises a custom subclass of HTTPException.
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request, exc):  # noqa: F811
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail},
+        headers=getattr(exc, "headers", None),
     )
 
 
