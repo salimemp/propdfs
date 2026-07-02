@@ -9,7 +9,6 @@ import 'core/theme.dart';
 import 'core/theme_provider.dart';
 import 'core/localization/app_localizations.dart';
 import 'core/accessibility/accessibility_provider.dart';
-import 'presentation/widgets/cookie_consent_banner.dart';
 
 /// Sentry DSN. Pass via `--dart-define=SENTRY_DSN=...` at build time.
 /// Empty in dev → Sentry is a no-op (SentryFlutter.init early-returns
@@ -118,19 +117,6 @@ class ProPDFsApp extends ConsumerWidget {
         locale: const Locale('en'),
         supportedLocales: AppLocalizations.supportedLocales,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
-        builder: (context, child) {
-          return Stack(
-            children: [
-              child!,
-              const Positioned(
-                bottom: 0,
-                left: 0,
-                right: 0,
-                child: CookieConsentBanner(),
-              ),
-            ],
-          );
-        },
       ),
     );
   }

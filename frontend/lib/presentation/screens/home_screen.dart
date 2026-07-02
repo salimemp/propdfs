@@ -8,6 +8,7 @@ import '../../core/tools/tool_registry.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/app_footer.dart';
 import '../widgets/brand_logo.dart';
+import '../widgets/cookie_consent_banner.dart';
 import '../widgets/quota_bar.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -22,34 +23,50 @@ class HomeScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppColors.surfaceLight,
-      body: Column(
+      body: Stack(
         children: [
-          // Sticky header
-          _Header(isLoggedIn: isLoggedIn),
+          Column(
+            children: [
+              // Sticky header
+              _Header(isLoggedIn: isLoggedIn),
 
-          // Scrollable content
-          Expanded(
-            child: SingleChildScrollView(
-              child: Column(
-                children: [
-                  // Email verification nudge — only for signed-in users
-                  // who haven't verified yet. Dismissible per-session.
-                  if (isLoggedIn &&
-                      authState.value?.user != null &&
-                      !authState.value!.user!.isEmailVerified)
-                    const _EmailVerificationBanner(),
-                  _HeroSection(isWide: isWide, isLoggedIn: isLoggedIn),
-                  const SizedBox(height: 64),
-                  _ToolsSection(isWide: isWide),
-                  const SizedBox(height: 80),
-                  _WhyProPDFsSection(isWide: isWide),
-                  const SizedBox(height: 80),
-                  _TrustSection(isWide: isWide),
-                  const SizedBox(height: 64),
-                  const AppFooter(),
-                ],
+              // Scrollable content
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      // Email verification nudge — only for signed-in users
+                      // who haven't verified yet. Dismissible per-session.
+                      if (isLoggedIn &&
+                          authState.value?.user != null &&
+                          !authState.value!.user!.isEmailVerified)
+                        const _EmailVerificationBanner(),
+                      _HeroSection(isWide: isWide, isLoggedIn: isLoggedIn),
+                      const SizedBox(height: 64),
+                      _ToolsSection(isWide: isWide),
+                      const SizedBox(height: 80),
+                      _WhyProPDFsSection(isWide: isWide),
+                      const SizedBox(height: 80),
+                      _TrustSection(isWide: isWide),
+                      const SizedBox(height: 64),
+                      const AppFooter(),
+                    ],
+                  ),
+                ),
               ),
-            ),
+            ],
+          ),
+          // Cookie banner pinned to the bottom of HomeScreen only.
+          // (Previously this lived in MaterialApp.builder, which
+          // pinned it to the bottom of EVERY page and visually covered
+          // the legal pages when the user clicked Privacy / Terms /
+          // Cookies. The banner state is global via Riverpod, so it
+          // correctly remembers consent across navigation.)
+          const Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: CookieConsentBanner(),
           ),
         ],
       ),
