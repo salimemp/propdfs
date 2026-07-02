@@ -225,6 +225,13 @@ async def health_check():
         "exception_handler_v2": (
             "rereaise" if "raise exc" in _EX_HANDLER_BODY else "swallow"
         ),
+        # Live introspection of the OAuth module — confirms
+        # whether the OAuth router running on this replica has
+        # the new X-ProPDFs-Oauth-Debug header in its source.
+        # If this says "old" while /health says "yes" to the v2
+        # markers, the image has a mixed bag of code and the
+        # COPY step is partially broken.
+        "oauth_module_v2": _OAUTH_V2_MARKER,
     }
 
 
@@ -232,6 +239,23 @@ async def health_check():
 # so /health can report which version is deployed. Used by the
 # exception_handler_v2 field above.
 _EX_HANDLER_BODY: str = ""
+
+
+# Live source-of-truth on whether the OAuth module the running
+# container loaded includes the v2 diagnostic header. Captured at
+# import time so the value is set before any request can hit
+# /health.
+_OAUTH_V2_MARKER: str = "unknown"
+try:
+    from inspect import getsource as _gs
+    from app.api import oauth as _oauth_mod
+
+    if "google_login_v2_not_configured" in _gs(_oauth_mod.google_login):
+        _OAUTH_V2_MARKER = "v2"
+    else:
+        _OAUTH_V2_MARKER = "old"
+except Exception:
+    _OAUTH_V2_MARKER = "introspect-error"
 
 
 # Re-pickup: capture after the handler is defined below. We do this
