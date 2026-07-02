@@ -136,6 +136,76 @@ app.add_middleware(
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 
+# Reverse-proxy scheme fix — Railway (and most reverse proxies)
+# connect to the app container over plain HTTP, but the public-facing
+# URL is HTTPS. Starlette needs to read `X-Forwarded-Proto: https`
+# from the proxy and rewrite the request scheme accordingly,
+# otherwise `request.url_for("..._callback")` produces `http://...`
+# URLs.
+#
+# That matters for OAuth: authlib's authorize_redirect reads
+# `request.url_for(callback_name)` to build the `redirect_uri`
+# query param sent to Google/GitHub. With `http://...` and the
+# registered redirect_uri being `https://...`, the providers reject
+# the request with `redirect_uri_mismatch` — exactly what we hit on
+# the live deployment.
+#
+# We hand-roll this instead of importing starlette's
+# `ProxyHeadersMiddleware` because the older Starlette version pinned
+# by `fastapi==0.111.0` doesn't expose it under that name.
+class ProxySchemeMiddleware:
+    """Pure-ASGI middleware that rewrites `scope['scheme']` and the
+    `Host` header from `X-Forwarded-*` headers. Used as the
+    reverse-proxy front-end so downstream code (route handlers,
+    authlib's authorize_redirect) sees the public-facing URL.
+    """
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        headers = dict(scope.get("headers") or [])
+        # X-Forwarded-Proto — public scheme (https://...)
+        xfp = headers.get(b"x-forwarded-proto")
+        if xfp:
+            scheme = (
+                xfp.decode("latin-1", errors="replace").split(",")[0].strip().lower()
+            )
+            if scheme in ("http", "https"):
+                scope["scheme"] = scheme
+
+        # X-Forwarded-Host — public hostname (e.g. backend-...railway.app)
+        xfh = headers.get(b"x-forwarded-host")
+        if xfh:
+            host = xfh.decode("latin-1", errors="replace").split(",")[0].strip()
+            if host:
+                # Starlette stores headers as a list of (bytes, bytes)
+                # tuples; rewrite the host header in place.
+                new_headers = []
+                for k, v in scope["headers"]:
+                    if k.lower() == b"host":
+                        new_headers.append((k, host.encode("latin-1")))
+                    else:
+                        new_headers.append((k, v))
+                # Insert/replace the host header
+                has_host = any(k.lower() == b"host" for k, _ in new_headers)
+                if not has_host:
+                    new_headers.append((b"host", host.encode("latin-1")))
+                scope["headers"] = new_headers
+
+        await self.app(scope, receive, send)
+
+
+# Note: middleware added via add_middleware is wrapped in reverse
+# order. We want ProxySchemeMiddleware to run FIRST on inbound, so
+# it must be added LAST.
+app.add_middleware(ProxySchemeMiddleware)
+
+
 # SessionMiddleware — empty session, no secret needed for our use case.
 # We don't store anything in request.session, but Starlette's
 # OAuth library + FastAPI's request.url_for machinery reaches into
