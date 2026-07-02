@@ -133,6 +133,13 @@ async def _get_or_create_oauth_user(
 
 @router.get("/google/login")
 async def google_login(request: Request):
+    # Marker so /health-style debugging can confirm the route handler
+    # is being entered on the deployed instance. Cheap: 1 dict
+    # allocation per request.
+    logger.info(
+        "oauth_google_login_entered",
+        provider_configured=_provider_configured("google"),
+    )
     if not _provider_configured("google"):
         logger.warning(
             "oauth_login_attempt_unconfigured",
