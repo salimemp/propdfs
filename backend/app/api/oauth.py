@@ -156,9 +156,7 @@ async def google_login(request: Request):
         return JSONResponse(
             status_code=exc.status_code,
             content={"detail": exc.detail},
-            headers={
-                "X-ProPDFs-OAuth-Debug": "google_login_v2_not_configured"
-            },
+            headers={"X-ProPDFs-OAuth-Debug": "google_login_v2_not_configured"},
         )
     redirect_uri = request.url_for("google_callback")
     return await oauth.google.authorize_redirect(request, redirect_uri)
