@@ -148,7 +148,9 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 # anything; using settings.SECRET_KEY keeps the signing-key surface
 # consistent with our JWT signing key. A random per-request cookie
 # would still trip the assertion, so we keep it mounted.
-app.add_middleware(SessionMiddleware, secret_key=settings.SECRET_KEY, max_age=14 * 24 * 60 * 60)
+app.add_middleware(
+    SessionMiddleware, secret_key=settings.SECRET_KEY, max_age=14 * 24 * 60 * 60
+)
 
 
 @app.middleware("http")
