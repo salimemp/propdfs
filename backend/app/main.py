@@ -335,10 +335,20 @@ async def global_exception_handler(request, exc):
         "unhandled_exception",
         error=str(exc),
         path=request.url.path,
+        exc_type=type(exc).__name__,
     )
+    # TEMP DEBUG: include the exception class + str() in the body
+    # so a curl can show us what's actually throwing. Once the
+    # OAuth 500s are diagnosed we'll revert this to the generic
+    # body. The /health response tracks exception_handler_v2 so we
+    # know when this is live.
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content={"detail": "Internal server error"},
+        content={
+            "detail": "Internal server error",
+            "_debug_exc_type": type(exc).__name__,
+            "_debug_exc_str": str(exc)[:500],
+        },
     )
 
 
